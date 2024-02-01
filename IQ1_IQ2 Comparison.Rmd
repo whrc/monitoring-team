@@ -1,0 +1,229 @@
+---
+title: "IQ1/IQ2 Comparison"
+output: html_document
+date: "`r Sys.Date()`"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, dev="png")
+```
+
+
+## IQ1/IQ2 Data Comparison Fall 2023
+
+Compares flux and biomet measurements between IQ1/IQ2 for overlapping Fall '23 dates 
+
+
+## Data Loading
+
+
+Clear console and add packages
+```{r, warning=FALSE, echo=FALSE}
+rm(list = ls())
+
+library(data.table)
+library(ggplot2)
+library(cowplot)
+library(openair)
+library(plotrix)
+library(signal)
+library(svMisc)
+library(zoo)
+library(stringr)
+library(plyr)
+library(dplyr)
+library(viridis)
+library(lubridate)
+```
+
+
+To load cleaned data from respective cleaning scripts 
+
+```{r, warning=FALSE}
+
+IQ1_df = fread('C:/Users/dtrangmoe/Documents/IQ/IQ Loading & Cleaning/IQ1_Fall23_Clean.csv')
+
+
+IQ2_df = fread('C:/Users/dtrangmoe/Documents/IQ/IQ Loading & Cleaning/IQ2_Fall23_Clean.csv')
+
+
+df= merge(IQ1_df,IQ2_df,by='ts',all = F, suffixes = c(".IQ1", ".IQ2"))
+## find way to add suffix to every col, not just duplicates
+
+
+rm(IQ1_df, IQ2_df)
+```
+
+
+
+Creates a variable to input a date range for the plots
+
+```{r, warning=FALSE}
+compare_dates <- c('2023-08-15', '2023-10-18')
+```
+
+
+
+
+## Plotting Flux Data
+
+
+#### NEE
+
+Not great
+
+```{r, warning=FALSE}
+ggplot(data = df)+
+  geom_point(aes(ts,co2_flux.c.IQ1,col='IQ1'))+
+  geom_point(aes(ts,co2_flux.c.IQ2,col='IQ2'))+
+  scale_y_continuous(limits = c(-13,13),
+                     expression('NEE ('*mu*mol~m^-2~s^-1*')'))+
+  scale_x_datetime(limits = as.POSIXct(compare_dates,format="%F"))
+
+ggplot(data = df)+
+  geom_point(aes(co2_flux.c.IQ1, co2_flux.c.IQ2))+ 
+  geom_abline(slope = 1,intercept = 0,col='red')+
+  scale_x_continuous(limits = c(-10,10),expression('IQ1'))+
+  scale_y_continuous(limits = c(-10,10),expression('IQ2'))
+```
+
+
+#### H~2~O
+
+```{r, warning=FALSE}
+ggplot(data = df)+
+  geom_point(aes(ts,h2o_flux.c.IQ1,col='IQ1'))+
+  geom_point(aes(ts,h2o_flux.c.IQ2, col='IQ2'))+
+  scale_y_continuous(limits = c(-3,5),
+                     expression('H2O Flux ('*mmol~m^-2~s^-1*')'))+
+  scale_x_datetime(limits = as.POSIXct(compare_dates,format="%F"))
+
+ggplot(data = df)+
+  geom_point(aes(h2o_flux.c.IQ1, h2o_flux.c.IQ2))+ 
+  geom_abline(slope = 1,intercept = 0,col='red')+
+  scale_x_continuous(limits = c(-2.5,5),expression('IQ1'))+
+  scale_y_continuous(limits = c(-2.5,5),expression('IQ2'))
+```
+
+
+#### LE
+
+```{r, warning=FALSE}
+ggplot(data = df)+
+  geom_point(aes(ts,LE.c.IQ1,col='IQ1'))+
+  geom_point(aes(ts,LE.c.IQ2,col='IQ2'))+
+  scale_y_continuous(limits = c(-75,130),
+                     expression('LE ('*W~m^-2*')'))+
+  scale_x_datetime(limits = as.POSIXct(compare_dates,format="%F"))
+
+ggplot(data = df)+
+  geom_point(aes(LE.c.IQ1, LE.c.IQ2))+ 
+  geom_abline(slope = 1,intercept = 0,col='red')+
+  scale_x_continuous(limits = c(-50,150),expression('IQ1'))+
+  scale_y_continuous(limits = c(-50,150),expression('IQ2'))
+```
+
+#### H
+
+```{r, warning=FALSE}
+ggplot(data = df)+
+  geom_point(aes(ts,H.c.IQ1,col='IQ1'))+
+  geom_point(aes(ts,H.c.IQ2,col='IQ2'))+
+  scale_y_continuous(expression('H ('*W~m^-2*')'))+
+  scale_x_datetime(limits = as.POSIXct(compare_dates,format="%F"))
+
+ggplot(data = df)+
+  geom_point(aes(H.c.IQ1, H.c.IQ2))+ 
+  geom_abline(slope = 1,intercept = 0,col='red')+
+  scale_x_continuous(limits = c(-50,150),expression('IQ1'))+
+  scale_y_continuous(limits = c(-50,150),expression('IQ2'))
+```
+
+
+
+
+
+
+## Plotting Biomet Data
+
+
+#### Net Radiation
+
+```{r, warning=FALSE}
+
+ggplot(data = df)+
+  geom_point(aes(ts,NR_Wm2_Avg.c,col='IQ1'))+
+  geom_point(aes(ts,Rn_Avg.c,col='IQ2'))+
+  scale_y_continuous(expression('Net Radiation ('*W~m^-2*')'))+
+  scale_x_datetime(limits = as.POSIXct(compare_dates,format="%F"))
+
+ggplot(data = df)+
+  geom_point(aes(NR_Wm2_Avg.c, Rn_Avg.c))+ 
+  geom_abline(slope = 1,intercept = 0,col='red')+
+  scale_x_continuous(limits = c(-150,450),expression('IQ1'))+
+  scale_y_continuous(limits = c(-150,450),expression('IQ2'))
+
+```
+
+
+#### Air Temperature
+
+
+```{r, warning=FALSE}
+
+ggplot(data = df)+
+  geom_point(aes(ts,T_air_HC2S3_Avg.c,col='IQ1'))+
+  geom_point(aes(ts,AirTC_Avg.c,col='IQ2'))+
+  scale_y_continuous(expression('Air Temp ('*Celcius*')'))+
+  scale_x_datetime(limits = as.POSIXct(compare_dates,format="%F"))
+
+ggplot(data = df)+
+  geom_point(aes(T_air_HC2S3_Avg.c, AirTC_Avg.c))+ 
+  geom_abline(slope = 1,intercept = 0,col='red')+
+  scale_x_continuous(limits = c(-15,15),expression('IQ1'))+
+  scale_y_continuous(limits = c(-15,15),expression('IQ2'))
+
+```
+
+
+#### Relative Humidity
+
+interesting at high vals
+
+```{r, warning=FALSE}
+
+ggplot(data = df)+
+  geom_point(aes(ts,RH_HC2S3_Avg.c,col='IQ1'))+
+  geom_point(aes(ts,RH_Avg.c,col='IQ2'))+
+  scale_y_continuous(expression('Relative Humidity ('*percent*')'))+
+  scale_x_datetime(limits = as.POSIXct(compare_dates,format="%F"))
+
+ 
+ggplot(data = df)+
+  geom_point(aes(RH_HC2S3_Avg.c, RH_Avg.c))+ 
+  geom_abline(slope = 1,intercept = 0,col='red')+
+  scale_x_continuous(limits = c(50,100),expression('IQ1'))+
+  scale_y_continuous(limits = c(50,100),expression('IQ2'))
+
+```
+
+#### Rain
+
+Not great
+```{r, warning=FALSE}
+ggplot(data = df)+
+  geom_point(aes(ts,Rainfall_Tot.c,col='IQ1'))+
+  geom_point(aes(ts,Rain_mm_Tot.c,col='IQ2'))+
+  scale_y_continuous(expression('Rain ('*mm*')'))+
+  scale_x_datetime(limits = as.POSIXct(compare_dates,format="%F"))
+
+
+ggplot(data = df)+
+  geom_point(aes(Rainfall_Tot.c, Rain_mm_Tot.c))+
+  geom_abline(slope = 1,intercept = 0,col='red')+
+  scale_x_continuous(limits = c(-2,12),expression('IQ1'))+
+  scale_y_continuous(limits = c(-2,12),expression('IQ2'))
+
+```
+
+
