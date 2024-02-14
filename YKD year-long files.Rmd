@@ -1,0 +1,316 @@
+---
+title: "YKD Year Long Files"
+author: "Dani Trangmoe"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r, warning=FALSE}
+rm(list = ls())
+
+library(data.table)
+library(ggplot2)
+library(cowplot)
+library(openair)
+library(plotrix)
+library(signal)
+library(svMisc)
+library(zoo)
+library(stringr)
+library(plyr)
+library(dplyr)
+library(lubridate)
+```
+
+# YKD Burned 
+
+
+Load in entire cleaned met file 
+```{r, warning=FALSE}
+
+df1 = fread('C:/Users/dtrangmoe/Documents/YKD Burned/Cleaned Data/YKDBurned_Met_clean.csv')
+
+#create timestamp variable
+df1$ts = as.POSIXct(paste(df1$date, df1$time), format="%Y-%m-%d %H:%M", tz="utc")
+
+#check to make sure all duplicated rows are removed
+sum(duplicated(df1))
+
+df1 <- df1[!duplicated(df1$ts),]
+
+mindate1 = floor_date(min(df1$ts))
+maxdate1 = ceiling_date(max(df1$ts))
+
+
+
+```
+
+### Load
+
+Load in entire flux cleaned data
+```{r, warning=FALSE}
+
+df2 = fread('C:/Users/dtrangmoe/Documents/YKD Burned/Cleaned Data/YKDBurned_Flux_clean.csv')
+
+
+sum(duplicated(df2))
+
+df2 <- df2[!duplicated(df2$ts),]
+
+#check to make sure correct number of rows are kept
+mindate2 = floor_date(min(df2$ts))
+maxdate2 = ceiling_date(max(df2$ts))
+
+
+
+```
+
+### Merge
+Merge dataframes to inc. cleaned flux and met
+
+```{r, warning=F}
+
+
+df <- merge(df1, df2, by="ts", suffixes = (c("", ".rm")), all = TRUE)
+
+mindate = floor_date(min(df$ts))
+maxdate = ceiling_date(max(df$ts))
+
+# #make sure biomet is identical from each file before removing cols
+plot(df$ALB_1_1_1, df$ALB_1_1_1.rm);abline(a = 0, b = 1, col = "red")
+plot(df$P_RAIN_1_1_1, df$P_RAIN_1_1_1.rm);abline(a = 0, b = 1, col = "red")
+plot(df$PPFD_1_1_1, df$PPFD_1_1_1.rm);abline(a = 0, b = 1, col = "red")
+
+df <- select(df, !ends_with(".rm"))
+
+#check for timestamps that don't end in 00 or 30
+minutes <- format(df$ts, "%M")
+minutes_vector <- minutes != "00" & minutes != "30"
+sum(minutes_vector)
+
+df$ts = round_date(df$ts, "30 minutes")
+
+minutes <- format(df$ts, "%M")
+minutes_vector <- minutes != "00" & minutes != "30"
+sum(minutes_vector)
+
+#create a timestamp variable every half hour to the full months
+ts = seq(from = mindate,to = maxdate,by = 60*30)
+ts = as.data.frame(ts)
+
+
+#merge with the flux data frame to create NAs where data is missing
+df = merge(ts,df,by = 'ts',all.x = T)
+
+```
+
+### 2019 File
+
+```{r, warning=FALSE}
+
+df19 <- df %>%
+  filter(year(ts) %in% c(2019))
+
+plot(df19$ts, df19$co2_flux.c)
+
+# Save df as 2019 file 
+
+write.csv(x = df19,file = 'C:/Users/dtrangmoe/Documents/YKD Burned/Cleaned Data/YKDBurned_Cleaned_Met_Flux_2019.csv',row.names = F,quote = F)
+
+```
+
+### 2020 File
+
+```{r, warning=FALSE}
+
+df20 <- df %>%
+  filter(year(ts) %in% c(2020))
+
+plot(df20$ts, df20$co2_flux.c)
+
+# Save df as 2020 file 
+
+write.csv(x = df20,file = 'C:/Users/dtrangmoe/Documents/YKD Burned/Cleaned Data/YKDBurned_Cleaned_Met_Flux_2020.csv',row.names = F,quote = F)
+
+```
+
+### 2021 File
+
+```{r, warning=FALSE}
+
+df21 <- df %>%
+  filter(year(ts) %in% c(2021))
+
+plot(df21$ts, df21$co2_flux.c)
+
+# Save df as 2021 file 
+
+write.csv(x = df21,file = 'C:/Users/dtrangmoe/Documents/YKD Burned/Cleaned Data/YKDBurned_Cleaned_Met_Flux_2021.csv',row.names = F,quote = F)
+
+```
+
+### 2022 File
+
+```{r, warning=FALSE}
+
+df22 <- df %>%
+  filter(year(ts) %in% c(2022))
+
+plot(df22$ts, df22$co2_flux.c)
+
+# Save df as 2022 file 
+
+write.csv(x = df22,file = 'C:/Users/dtrangmoe/Documents/YKD Burned/Cleaned Data/YKDBurned_Cleaned_Met_Flux_2022.csv',row.names = F,quote = F)
+
+```
+
+
+
+
+# YKD Unburned 
+
+### Load
+
+Load in entire cleaned met file 
+```{r, warning=FALSE}
+
+df1 = fread('C:/Users/dtrangmoe/Documents/YKD Unburned/Cleaned Data/YKDUnburned_Met_clean.csv')
+
+
+#check to make sure all duplicated rows are removed
+sum(duplicated(df1))
+df1 <- df1[!duplicated(df1$ts),]
+
+
+#take the min and max date rounding to the nearest full month
+mindate1 = floor_date(min(df1$ts))
+maxdate1 = ceiling_date(max(df1$ts))
+
+
+
+#create a timestamp variable every half hour to the full months
+ts = seq(from = mindate1,to = maxdate1,by = 60*30)
+ts = as.data.frame(ts)
+
+
+#merge with the flux data frame to create NAs where data is missing
+df = merge(ts,df1,by = 'ts',all.x = T)
+
+mindate1 = floor_date(min(df1$ts))
+maxdate1 = ceiling_date(max(df1$ts))
+
+```
+
+
+Load in entire flux cleaned data
+```{r, warning=FALSE}
+
+df2 = fread('C:/Users/dtrangmoe/Documents/YKD Unburned/Cleaned Data/YKDUnburned_Flux_clean.csv')
+
+
+sum(duplicated(df2))
+
+df2 <- df2[!duplicated(df2$ts),]
+
+#check to make sure corrext number of rows are kept
+mindate2 = floor_date(min(df2$ts))
+maxdate2 = ceiling_date(max(df2$ts))
+
+```
+
+### Merge
+Merge dataframes to inc. cleaned flux and met
+
+```{r, warning=F}
+
+
+df <- merge(df1, df2, by="ts", suffixes = (c("", ".rm")), all = TRUE)
+
+# #make sure biomet is identical from each file before removing cols
+plot(df$ALB_1_1_1, df$ALB_1_1_1.rm);abline(a = 0, b = 1, col = "red")
+plot(df$P_RAIN_1_1_1, df$P_RAIN_1_1_1.rm);abline(a = 0, b = 1, col = "red")
+plot(df$PPFD_1_1_1, df$PPFD_1_1_1.rm);abline(a = 0, b = 1, col = "red")
+
+df <- select(df, !ends_with(".rm"))
+
+# check to ensure timestamps are only 00 or 30 min.
+minutes <- format(df1$ts, "%M")
+minutes_vector <- minutes != "00" & minutes != "30"
+sum(minutes_vector)
+
+#create a timestamp variable every half hour to the full months
+ts = seq(from = mindate,to = maxdate,by = 60*30)
+ts = as.data.frame(ts)
+
+
+#merge with the flux data frame to create NAs where data is missing
+df = merge(ts,df,by = 'ts',all.x = T)
+
+```
+
+### 2019 File
+
+```{r, warning=FALSE}
+
+df19 <- df %>%
+  filter(year(ts) %in% c(2019))
+
+plot(df19$ts, df19$co2_flux.c)
+
+# Save df as 2019 file 
+
+write.csv(x = df19,file = 'C:/Users/dtrangmoe/Documents/YKD Unburned/Cleaned Data/YKDUnburned_Cleaned_Met_Flux_2019.csv',row.names = F,quote = F)
+
+```
+
+### 2020 File
+
+```{r, warning=FALSE}
+
+df20 <- df %>%
+  filter(year(ts) %in% c(2020))
+
+plot(df20$ts, df20$co2_flux.c)
+
+# Save df as 2020 file 
+
+write.csv(x = df20,file = 'C:/Users/dtrangmoe/Documents/YKD Unburned/Cleaned Data/YKDUnburned_Cleaned_Met_Flux_2020.csv',row.names = F,quote = F)
+
+```
+
+### 2021 File
+
+```{r, warning=FALSE}
+
+df21 <- df %>%
+  filter(year(ts) %in% c(2021))
+
+plot(df21$ts, df21$co2_flux.c)
+
+# Save df as 2021 file 
+
+write.csv(x = df21,file = 'C:/Users/dtrangmoe/Documents/YKD Unburned/Cleaned Data/YKDUnburned_Cleaned_Met_Flux_2021.csv',row.names = F,quote = F)
+
+```
+
+### 2022 File
+
+```{r, warning=FALSE}
+
+df22 <- df %>%
+  filter(year(ts) %in% c(2022))
+
+plot(df22$ts, df22$co2_flux.c)
+
+# Save df as 2022 file 
+
+write.csv(x = df22,file = 'C:/Users/dtrangmoe/Documents/YKD Unburned/Cleaned Data/YKDUnburned_Cleaned_Met_Flux_2022.csv',row.names = F,quote = F)
+
+```
+
+

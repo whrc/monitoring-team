@@ -1,0 +1,819 @@
+---
+title: "YKDBurned_Cleaning"
+author: "Marco Montemayor"
+date: "2022-12-12"
+output: pdf_document
+---
+
+# Loading DF's
+
+Clear Console and add packages
+
+```{r,include= FALSE}
+rm(list = ls())
+
+library(data.table)
+library(ggplot2)
+library(plotrix)
+library(signal)
+library(svMisc)
+library(zoo)
+library(stringr)
+library(plyr)
+library(dplyr)
+```
+
+Load in eddypro output and Biomet files
+
+```{r}
+fp = 'C:/Permafrost Pathways/YKDBurned/eddypro/EP_full_output'
+files = list.files(path = fp,pattern = '*full_output.+csv$',recursive = T,full.names = T)
+
+#load the headers and data into their own lists
+
+h   = lapply(files, fread,skip = 1,nrow = 0)
+dat = lapply(files, fread,skip = 3,header = F,na.strings=c('-9999','NA','NaN','NAN'))
+
+#assign the headers to the data
+
+for (i in 1:length(h)) {
+  names(dat[[i]]) = names(h[[i]])
+}
+
+#make all the lists into one dataframe
+
+df = dat[[1]]
+for (i in 2:length(dat)) {
+  df = rbind.fill(df,dat[[i]])
+}
+#create a timestamp from the date and time of full_EP
+
+df$ts = as.POSIXct(x = paste(df$date,df$time,sep = ' '),tz = 'UTC')
+
+#load in the biomet data
+
+fp = 'C:/Permafrost Pathways/YKDBurned/eddypro/EP_biomet'
+files = list.files(path = fp,pattern = '*biomet',recursive = T,full.names = T)
+
+
+#load the headers and data into their own lists
+
+h   = lapply(files, fread,skip = 0,nrow = 0)
+dat = lapply(files, fread,skip = 2,header = F,fill = T, na.strings=c('-9999','NA','NaN','NAN'),drop=c('_0_0_1'))
+
+#assign the headers to the data
+
+for (i in 1:length(h)) {
+  names(dat[[i]]) = names(h[[i]])
+}
+
+#make all the lists into one dataframe
+
+met = dat[[1]]
+for (i in 2:length(dat)) {
+  met = rbind.fill(met,dat[[i]])
+}
+
+#create a timestamp from the date and time
+
+met$ts = as.POSIXct(x = paste(met$date,met$time,sep = ' '),tz = 'UTC')
+#merge datasets
+df= merge(met,df,by= c('ts','date','time','DOY'),all = T)
+```
+
+# Initial Clean
+
+## Energy Balance
+
+combine energy fluxes by met and flux components
+
+```{r}
+df$SHF_mean <- mean(c(df$SHF_1_1_1, df$SHF_2_1_1, df$SHF_3_1_1),na.rm = T)
+df$met =  (df$LWIN_1_1_1 + df$SWIN_1_1_1) - (df$LWOUT_1_1_1 + df$SWOUT_1_1_1) - df$SHF_mean
+df$flux = df$H + df$LE
+
+```
+
+plot shortwave radiation in
+
+```{r}
+plot(df$SWIN_1_1_1)
+```
+plot shortwave radation out
+
+```{r}
+plot(df$SWOUT_1_1_1)
+```
+
+plot longwave radiation in
+
+```{r}
+plot(df$LWIN_1_1_1)
+```
+
+plot longwave radiation out
+
+```{r}
+plot(df$ts,df$LWOUT_1_1_1,ylim = c(0,800))
+``` 
+create and plot mismatch variable between met and flux
+
+```{r}
+df$mismatch = df$flux/df$met
+
+plot(df$ts,df$mismatch,ylim = c(0,5))
+```
+plot energy balance
+```{r}
+plot(df$met,df$flux, xlim = c(-150,650), ylim = c(-150,650), abline(a=0, b=1, col='red') ) 
+```
+NEED TO REASSESS OR GET RID OF THIS CHUNK ---- removes where the energy balance is off by more than a factor of 10, not sure I like this, mostly removes small fluxes where the factor would have a larger relative mismatch
+
+create new variable _.energy
+
+## EP QC
+
+filter by the eddypro flags and create new variable _.qc
+
+```{r}
+Tau.energy  = replace(df$Tau ,abs(df$mismatch)>20,NA)
+H.energy    = replace(df$H   ,abs(df$mismatch)>20,NA)
+LE.energy   = replace(df$LE  ,abs(df$mismatch)>20,NA)
+co2_flux.energy   = replace(df$co2_flux  ,abs(df$mismatch)>20,NA)
+ch4_flux.energy = replace(df$ch4_flux,abs(df$mismatch)>20,NA)
+
+Tau.qc      = replace(df$Tau,df$qc_Tau == 2,NA)
+co2_flux.qc = replace(df$co2_flux,df$qc_co2_flux == 2,NA)
+ch4_flux.qc = replace(df$ch4_flux,df$qc_ch4_flux == 2,NA)
+LE.qc       = replace(df$LE,df$qc_LE == 2,NA)
+H.qc        = replace(df$H,df$qc_H == 2,NA)
+```
+
+## Clear Outliers
+
+look for absolute outliers and manually set some absolute limits to remove crazy data
+
+### Tau
+
+Plot Tau Histogram
+
+```{r}
+hist(df$Tau,breaks=100, xlim=c(-1,1))
+```
+
+Cut the crazy data and create new variable (Tau.limits)
+
+```{r}
+Tau.limits = replace(df$Tau,df$Tau.c > -1,NA)
+Tau.limits = replace(df$Tau,df$Tau.c < .5,NA)
+```
+
+### NEE
+
+Plot NEE Histogram
+
+```{r}
+hist(df$co2_flux,breaks=100, xlim=c(-120,120))
+```
+```{r}
+monthlycleaning = data.frame(month = seq(1,12),
+                             minflux = c(-5,-5,-7,-10,-12,-15,-15,-15,-12,-7,-5,-5),
+                             maxflux = c(9,10,11,11,11,11,11,11,11,11,10,9))
+                             
+
+df=df%>% 
+  #select(-c(minflux,maxflux))%>%
+  mutate(month=month(ts))%>%
+  left_join(monthlycleaning,by=c('month'))
+  
+```
+
+```{r}
+ggplot(df,aes(x=ts))+
+  geom_ribbon(aes(ymin= minflux, ymax= maxflux),fill='yellow')+
+  geom_point( aes(y=co2_flux))+
+  scale_y_continuous(limits= c(-25,25))+
+  scale_x_datetime(limits = as.POSIXct(c('2022-4-12','2022-12-31')))
+  
+```
+
+```{r}
+co2_flux.limits = df%>%
+  mutate(co2_flux.limits= ifelse(co2_flux >= minflux & co2_flux <= maxflux,
+                                 co2_flux,
+                                 NA))%>% 
+  pull(co2_flux.limits)
+plot(co2_flux.limits)
+```
+
+
+### CH4
+
+Plot CH4 Histogram
+```{r}
+hist(df$ch4_flux,breaks=100)
+```
+
+Plot what we might clean
+
+```{r}
+plot(df$ts,df$ch4_flux,ylim = c(-2,6.8));abline(h=-.36, col= 'red');abline(h=6, col='red'); abline(h=0,col= 'black')
+```
+
+Clean based on graphs, create new variable (ch4_flux.limits), and see cleaned product
+
+```{r}
+ch4_flux.limits = replace(df$ch4_flux,df$ch4_flux > 6 | df$ch4_flux < -0.36,NA)
+hist(ch4_flux.limits,breaks = 100)
+plot(ch4_flux.limits)
+```
+
+### H
+
+Plot H Histogram and plot what we might clean
+
+```{r}
+hist(df$H,breaks=100)
+
+plot(df$ts,df$H,ylim = c(-250,475));abline(h=-175, col= 'red');abline(h=380, col='red')
+```
+
+Clean based on graphs, create new variable (H.limits), and see cleaned product
+
+```{r}
+H.limits = replace(df$H, df$H < -175 | df$H > 380,NA)
+hist(H.limits,breaks = 100)
+plot(H.limits)
+```
+
+### LE
+
+Plot LE Histogram
+
+```{r}
+hist(df$LE,breaks=100)
+```
+
+Plot what we might clean
+
+```{r}
+plot(df$ts,df$LE,ylim = c(-350,500));abline(h=-210, col= 'red');abline(h=310, col='red')
+```
+
+Clean based on graphs, create new variable (LE.limits), and see cleaned product
+
+```{r}
+LE.limits = replace(df$LE, df$LE < -210 | df$LE > 310,NA)
+hist(LE.limits)
+plot(LE.limits)
+```
+
+## USTAR
+
+use night-time only flux values and plot
+
+```{r}
+df$nightCO2 = co2_flux.limits
+df$nightCO2 = replace(df$nightCO2,df$SWIN_1_1_1 > 10,NA)
+
+plot(df$nightCO2,ylim = c(-20,20))
+```
+
+Create a USTAR threshold scatter plot based on the drop off in data
+
+```{r}
+Uthreshold=0.05
+ggplot(data = df,aes(`u*`,nightCO2))+
+  ylab(expression(paste("Flux (g-C", ~CO[2], ~"m",""^"-2","d",""^"-1",")")))+
+  geom_point()+xlab("U*")+
+  scale_x_continuous(limits = c(0,.6))+
+  geom_vline(xintercept = Uthreshold,col='red')
+
+```
+
+pick threshold and filter based on plots above, I liked .05
+
+```{r}
+Tau.u  = replace(df$Tau ,df$`u*` < Uthreshold,NA)
+H.u    = replace(df$H   ,df$`u*` < Uthreshold,NA)
+LE.u   = replace(df$LE  ,df$`u*` < Uthreshold,NA)
+co2_flux.u   = replace(df$co2_flux  ,df$`u*` < Uthreshold,NA)
+ch4_flux.u = replace(df$ch4_flux,df$`u*` < Uthreshold,NA)
+```
+
+## Combine Cleaning
+
+investigate the previous limits and combine all to create a new variable (_clean), plot to see difference
+
+```{r}
+co2fluxclean = ifelse(is.na(co2_flux.qc) | is.na(co2_flux.limits) | is.na(co2_flux.u),NA,df$co2_flux)
+ch4fluxclean = ifelse(is.na(ch4_flux.qc) | is.na(ch4_flux.limits) | is.na(ch4_flux.u),NA,df$ch4_flux)
+Hclean = ifelse(is.na(H.qc) | is.na(H.limits) | is.na(H.u),NA,df$H)
+LEclean = ifelse(is.na(LE.qc) | is.na(LE.limits) | is.na(LE.u),NA,df$LE)
+Tauclean = ifelse(is.na(Tau.qc) | is.na(Tau.limits) | is.na(Tau.u),NA,df$Tau)
+
+plot(df$ts,co2fluxclean)
+plot(df$ts,ch4fluxclean)
+plot(df$ts,Hclean)
+plot(df$ts,LEclean)
+plot(df$ts,Tauclean)
+
+```
+# MAD Filter
+
+Now, Spike filtering on half-hourly fluxes. For this type of data, filters based on median rather than std perform better. Use Unsymmetric Distributions and double MAD -MAD=Median Absolute Deviation for more info see link below <https://eurekastatistics.com/using-the-median-absolute-deviation-to-find-outliers/>
+
+## NEE
+```{r}
+f = co2fluxclean # first make a new flux vector to apply the above filters
+# prepare the inputs for a zero-phase (forward and reverse) filter  
+ind       = which(complete.cases(f))   # first save the index of all the NAs
+b         = rep(1,8)/8                 # moving average coefficient
+a         = 1                          # coefficient of the ARMA filter
+Flux_i    = filtfilt(b, a, na.omit(f)) #create a forward and reverse ARMA filter
+Flux_filt = f                          # make a copy of the full fluxes again
+Flux_filt[ind] = Flux_i                # apply the filter where the real data exist
+
+n = 7*48 # set the length of the rolling filter, 48 half hours in day * x days
+roll.mad = rollapply(data = Flux_filt,
+                     width = n,
+                     FUN = mad,
+                     partial = TRUE,
+                     na.rm = T,
+                     fill = NA)  #create a rolling MAD or sd or other
+roll.mad[is.na(Flux_filt)] = NA  #make NA values where NAs exist in the real data
+```
+
+Graph to see filter and points
+
+```{r}
+plot(df$ts,Flux_filt,xlim = as.POSIXct(c('2019-9-1','2022-9-1')),col='red',type = 'l');points(df$ts,df$co2_flux)
+
+plot(df$ts,roll.mad,xlim = as.POSIXct(c('2019-9-1','2022-9-1')),col='red',type = 'l')
+```
+
+now filter the data based on this signal
+
+adjust this value (N) to tweak how many MADs to be away from the norm
+
+```{r}
+N = 3 
+```
+
+Add clean value to dataframe (_.c)
+
+```{r}
+df$co2_flux.c = ifelse(abs(co2fluxclean - Flux_filt) > (N * roll.mad),NA,co2fluxclean)
+```
+
+Compare cleaned vs. uncleaned
+
+```{r}
+plot(df$ts,df$co2_flux,col='red',ylim = c(-20,20));points(df$ts,df$co2_flux.c)
+```
+
+See data with multiple layers of the MAD filter to see if it should be changed
+
+```{r}
+ggplot(data = df)+
+  geom_ribbon(aes(x = ts,ymax = Flux_filt+roll.mad*6,ymin = Flux_filt-roll.mad*6,fill='6'))+
+  geom_ribbon(aes(x = ts,ymax = Flux_filt+roll.mad*3,ymin = Flux_filt-roll.mad*3,fill='3'))+
+  geom_ribbon(aes(x = ts,ymax = Flux_filt+roll.mad*2,ymin = Flux_filt-roll.mad*2,fill='2'))+
+  geom_ribbon(aes(x = ts,ymax = Flux_filt+roll.mad*1,ymin = Flux_filt-roll.mad*1,fill='1'))+
+  geom_point(aes(ts,co2fluxclean),col='black')+
+  geom_point(aes(ts,co2_flux.c),col='red')+
+  scale_y_continuous(limits = c(-15,15))+
+scale_x_datetime(limits = as.POSIXct(c('2022-9-21','2022-12-31')))
+```
+## CH4
+```{r}
+ #apply the moving window filter
+f = ch4fluxclean # first make a new flux vector to apply the above filters
+
+# prepare the inputs for a zero-phase (forward and reverse) filter  
+ind       = which(complete.cases(f))   # first save the index of all the NAs
+b         = rep(1,8)/8                 # moving average coefficient
+a         = 1                          # coefficient of the ARMA filter
+Flux_i    = filtfilt(b, a, na.omit(f)) #create a forward and reverse ARMA filter
+Flux_filt = f                          # make a copy of the full fluxes again
+Flux_filt[ind] = Flux_i                # apply the filter where the real data exist
+
+n = 7*48 # set the length of the rolling filter, 48 half hours in day * x days
+roll.mad = rollapply(data = Flux_filt,
+                     width = n,
+                     FUN = mad,
+                     partial = TRUE,
+                     na.rm = T,
+                     fill = NA)  #create a rolling MAD or sd or other
+roll.mad[is.na(Flux_filt)] = NA  #make NA values where NAs exist in the real data
+```
+
+adjust this (N) to tweak how many MADs to be away from the norm, CH4 deserves more because of it's nature, then graph
+
+```{r}
+N = 6 
+df$ch4_flux.c = ifelse(abs(ch4fluxclean - Flux_filt) > (N * roll.mad),NA,ch4fluxclean)
+
+plot(df$ts,roll.mad,xlim = as.POSIXct(c('2019-9-1','2022-9-15')),col='red',type = 'l')
+
+plot(df$ts,Flux_filt,xlim = as.POSIXct(c('2019-9-1','2022-9-15')),col='red',type = 'l');points(df$ts,df$ch4_flux)
+```
+
+Add clean value to the dataframe (_.c) and compare cleaned vs. uncleaned
+
+
+```{r}
+df$ch4_flux.c = ifelse(abs(ch4fluxclean - Flux_filt) > (N * roll.mad),NA,ch4fluxclean)
+
+plot(df$ts,ch4fluxclean,col='red');points(df$ts,df$ch4_flux.c);abline(h=0)
+```
+
+See data with multiple layers of the MAD filter to see if it should be changed
+
+```{r}
+ggplot(data = df)+
+  geom_ribbon(aes(x = df$ts,ymax = Flux_filt+roll.mad*9,ymin = Flux_filt-roll.mad*6,fill='9'))+
+  geom_ribbon(aes(x = df$ts,ymax = Flux_filt+roll.mad*6,ymin = Flux_filt-roll.mad*3,fill='6'))+
+  geom_ribbon(aes(x = df$ts,ymax = Flux_filt+roll.mad*5,ymin = Flux_filt-roll.mad*2,fill='5'))+
+  geom_ribbon(aes(x = df$ts,ymax = Flux_filt+roll.mad*4,ymin = Flux_filt-roll.mad*1,fill='4'))+
+  geom_point(aes(df$ts,ch4fluxclean),col='black')+
+  geom_point(aes(df$ts,ch4_flux.c),col='red')+
+  scale_y_continuous(limits = c(-.15,.35))+
+  scale_x_datetime(limits = as.POSIXct(c('2022-7-12','2022-9-22')))
+```
+## H
+
+```{r}
+# apply the moving window filter
+f = Hclean # first make a new flux vector to apply the above filters
+
+# prepare the inputs for a zero-phase (forward and reverse) filter  
+ind       = which(complete.cases(f))   # first save the index of all the NAs
+b         = rep(1,8)/8                 # moving average coefficient
+a         = 1                          # coefficient of the ARMA filter
+Flux_i    = filtfilt(b, a, na.omit(f)) #create a forward and reverse ARMA filter
+Flux_filt = f                          # make a copy of the full fluxes again
+Flux_filt[ind] = Flux_i                # apply the filter where the real data exist
+
+n = 7*48 # set the length of the rolling filter, 48 half hours in day * x days
+roll.mad = rollapply(data = Flux_filt,
+                     width = n,
+                     FUN = mad,
+                     partial = TRUE,
+                     na.rm = T,
+                     fill = NA)  #create a rolling MAD or sd or other
+roll.mad[is.na(Flux_filt)] = NA  #make NA values where NAs exist in the real data
+
+```
+
+Now filter the data based on this signal (N) adjust this to tweak how many MADs to be away from the norm
+
+```{r}
+N = 3
+```
+
+Add clean value to dataframe (_.c) and Compare Clean vs. Uncleaned
+
+```{r}
+df$H.c = ifelse(abs(Hclean - Flux_filt) > (N * roll.mad),NA,Hclean)
+
+plot(df$ts,Hclean,col='red');points(df$ts,df$H.c)
+```
+
+See data with multiple layers of the MAD filter to see if it should be changed
+
+```{r}
+ggplot(data = df)+
+  geom_ribbon(aes(x = df$ts,ymax = Flux_filt+roll.mad*6,ymin = Flux_filt-roll.mad*6,fill='6'))+
+  geom_ribbon(aes(x = df$ts,ymax = Flux_filt+roll.mad*3,ymin = Flux_filt-roll.mad*3,fill='3'))+
+  geom_ribbon(aes(x = df$ts,ymax = Flux_filt+roll.mad*2,ymin = Flux_filt-roll.mad*2,fill='2'))+
+  geom_ribbon(aes(x = df$ts,ymax = Flux_filt+roll.mad*1,ymin = Flux_filt-roll.mad*1,fill='1'))+
+  geom_point(aes(df$ts,Hclean),col='black')+
+  geom_point(aes(df$ts,H.c),col='red')+
+  scale_y_continuous(limits = c(-550,550))+
+  scale_x_datetime(limits = as.POSIXct(c('2022-9-1','2022-12-31')))
+```
+
+## LE
+
+```{r}
+# apply the moving window filter
+f = LEclean # first make a new flux vector to apply the above filters
+
+# prepare the inputs for a zero-phase (forward and reverse) filter  
+ind       = which(complete.cases(f))   # first save the index of all the NAs
+b         = rep(1,8)/8                 # moving average coefficient
+a         = 1                          # coefficient of the ARMA filter
+Flux_i    = filtfilt(b, a, na.omit(f)) #create a forward and reverse ARMA filter
+Flux_filt = f                          # make a copy of the full fluxes again
+Flux_filt[ind] = Flux_i                # apply the filter where the real data exist
+
+n = 7*48 # set the length of the rolling filter, 48 half hours in day * x days
+roll.mad = rollapply(data = Flux_filt,
+                     width = n,
+                     FUN = mad,
+                     partial = TRUE,
+                     na.rm = T,
+                     fill = NA)  #create a rolling MAD or sd or other
+roll.mad[is.na(Flux_filt)] = NA  #make NA values where NAs exist in the real data
+
+```
+
+Now filter the data based on this signal (N) adjust this to tweak how many MADs to be away from the norm
+
+```{r}
+N = 3
+```
+
+Add clean value to dataframe (_.c) and compare Cleaned vs. Uncleaned
+
+```{r}
+df$LE.c = ifelse(abs(LEclean - Flux_filt) > (N * roll.mad),NA,LEclean)
+
+plot(df$ts,LEclean,col='red');points(df$ts,df$LE.c)
+```
+
+See data with multiple layers of the MAD filter to see if it should be changed
+
+```{r}
+ggplot(data = df)+
+  geom_ribbon(aes(x = df$ts,ymax = Flux_filt+roll.mad*6,ymin = Flux_filt-roll.mad*6,fill='6'))+
+  geom_ribbon(aes(x = df$ts,ymax = Flux_filt+roll.mad*3,ymin = Flux_filt-roll.mad*3,fill='3'))+
+  geom_ribbon(aes(x = df$ts,ymax = Flux_filt+roll.mad*2,ymin = Flux_filt-roll.mad*2,fill='2'))+
+  geom_ribbon(aes(x = df$ts,ymax = Flux_filt+roll.mad*1,ymin = Flux_filt-roll.mad*1,fill='1'))+
+  geom_point(aes(df$ts,LEclean),col='black')+
+  geom_point(aes(df$ts,LE.c),col='red')+
+  scale_y_continuous(limits = c(-550,550))+
+  scale_x_datetime(limits = as.POSIXct(c('2022-9-1','2022-12-31')))
+```
+#Main Plots
+
+Marco's note- During the Fall 22 period, the cleaning code is working extra hard compared to years previous, may need to see if instruments (anemometer specifically) are functioning properly. Cleaned normally, as instructed
+```{r}
+ggplot(data = df)+theme_bw()+geom_hline(yintercept = 0)+
+  geom_point(aes(ts,LE,col='Filt.'))+
+  geom_point(aes(ts,LE.c,col='clean'))+
+  scale_y_continuous(expression('LE ('*W~m^-2*')'),
+                     limits = c(-250,550))+
+  scale_color_manual(values = c('black','red'))
+
+ggplot(data = df)+theme_bw()+geom_hline(yintercept = 0)+
+  geom_point(aes(ts,H,col='Filt.'))+
+  geom_point(aes(ts,H.c,col='clean'))+
+  scale_y_continuous(expression('H ('*W~m^-2*')'),
+                     limits = c(-250,550))+
+  scale_color_manual(values = c('black','red'))
+
+ggplot(data = df)+theme_bw()+geom_hline(yintercept = 0)+
+  geom_point(aes(ts,co2_flux,col='Filt.'))+
+  geom_point(aes(ts,co2_flux.c,col='clean'))+
+  scale_y_continuous(limits = c(-20,15),
+                      expression('NEE ('*mu*mol~m^-2~s^-1*')'))+
+  scale_color_manual(values = c('black','red'))
+
+ggplot(data = df)+theme_bw()+geom_hline(yintercept = 0)+
+  geom_point(aes(ts,ch4_flux,col='Filt.'))+
+  geom_point(aes(ts,ch4_flux.c,col='clean'))+
+  scale_y_continuous(expression(CH[4]~'flux ('*mu*mol~m^-2~s^-1*')'))+
+  scale_color_manual(values = c('black','red'))
+```
+# Funky Fall Period
+
+Similar to what we see in unburned data set in Dec
+```{r}
+df$energy <- df$RN_1_1_1 - df$SHF_mean 
+
+ggplot(data = df)+theme_bw()+geom_hline(yintercept = 0)+
+  geom_point(aes(ts,energy,col='RN-G'))+
+  geom_point(aes(ts,flux,col='H+LE'))+
+  scale_y_continuous(limits = c(-110,400))+
+  scale_x_datetime(limits = as.POSIXct(c('2022-9-3','2022-12-31'),format="%F"))
+```
+
+
+# Diurnal Fluxes
+
+set hour and month vectors to be able to take the averages
+
+```{r}
+df$hour = as.numeric(format(df$ts,'%H'))
+df$month = as.numeric(format(df$ts,'%m'))
+
+diel = df %>%
+  group_by(hour,month) %>%
+  select(co2_flux.c,ch4_flux.c,LE.c,H.c,hour,month) %>%
+  summarise_all(.funs = c(median,sd),na.rm=T)
+
+diel = subset(diel,!is.na(diel$month))
+```
+
+## NEE
+
+```{r}
+ggplot(data = diel)+geom_hline(yintercept = 0)+
+  geom_line(aes(hour,co2_flux.c_fn1),lty=2)+
+  geom_ribbon(aes(x = hour,y = co2_flux.c_fn1,
+                  ymax = co2_flux.c_fn1 + co2_flux.c_fn2,
+                  ymin = co2_flux.c_fn1 - co2_flux.c_fn2),
+              alpha= 0.5)+
+  facet_wrap(~month)
+levels(diel$month)
+```
+
+## CH4
+
+```{r}
+ggplot(data = diel)+geom_hline(yintercept = 0)+
+  geom_line(aes(hour,ch4_flux.c_fn1),lty=2)+
+  geom_ribbon(aes(x = hour,y = ch4_flux.c_fn1,
+                  ymax = ch4_flux.c_fn1 + ch4_flux.c_fn2,
+                  ymin = ch4_flux.c_fn1 - ch4_flux.c_fn2),
+              alpha= 0.5)+
+  facet_wrap(~month)
+
+ggplot(data = diel)+geom_hline(yintercept = 0)+
+  geom_line(aes(hour,ch4_flux.c_fn1*43.2),lty=2)+
+  geom_ribbon(aes(x = hour,y = ch4_flux.c_fn1*43.2,
+                  ymax = ch4_flux.c_fn1*43.2 + ch4_flux.c_fn2*43.2,
+                  ymin = ch4_flux.c_fn1*43.2 - ch4_flux.c_fn2*43.2),
+              alpha= 0.5)+
+  scale_y_continuous(limits = c(-6,6))+
+  facet_wrap(~month)
+```
+
+## H
+
+```{r}
+ggplot(data = diel)+geom_hline(yintercept = 0)+
+  geom_line(aes(hour,H.c_fn1),lty=2)+
+  geom_ribbon(aes(x = hour,y = H.c_fn1,
+                  ymax = H.c_fn1 + H.c_fn2,
+                  ymin = H.c_fn1 - H.c_fn2),
+              alpha= 0.5)+
+  facet_wrap(~month)
+```
+
+## LE
+
+```{r}
+ggplot(data = diel)+geom_hline(yintercept = 0)+
+  geom_line(aes(hour,LE.c_fn1),lty=2)+
+  geom_ribbon(aes(x = hour,y = LE.c_fn1,
+                  ymax = LE.c_fn1 + LE.c_fn2,
+                  ymin = LE.c_fn1 - LE.c_fn2),
+              alpha= 0.5)+
+  facet_wrap(~month)
+```
+# Save
+
+```{r}
+write.csv(x = df,file = 'C:/Permafrost Pathways/Data/Cleaned/YKDBurned_clean',row.names = F,quote = F)
+```
+
+# Monthly Coverage
+
+```{r}
+av = df
+av$year = format(df$ts,'%Y')
+av$month = format(df$ts,'%m')
+av$week = format(df$ts,'%W')
+
+
+
+plot(av$year)
+plot(av$month)
+plot(av$week)
+
+av2 = av %>%
+  dplyr::group_by(month) %>%
+  summarise(co2cov = sum(complete.cases(co2_flux.c)),
+            co2raw = sum(complete.cases(co2_flux)),
+            ch4cov = sum(complete.cases(ch4_flux.c)),
+            ch4raw = sum(complete.cases(ch4_flux)), 
+            LEcov = sum(complete.cases(LE.c)),
+            LEraw = sum(complete.cases(LE)),
+            Hraw = sum(complete.cases(H)),
+            Hcov = sum(complete.cases(H.c)),
+            co2per = co2cov / n()*100,
+            ch4per = ch4cov / n()*100,
+            LEper = LEcov / n()*100,
+            Hper = Hcov / n()*100,
+            co2rawper = co2raw / n()*100,
+            ch4rawper = ch4raw / n()*100,
+            Hrawper = Hraw / n()*100,
+            LErawper = LEraw / n()*100)
+
+
+
+
+```
+
+Subset by percentage clean
+
+```{r}
+
+```
+
+## NEE
+
+```{r}
+co2 = ggplot(data = av2)+theme_bw()+ggtitle('CO2 Coverage')+
+  geom_bar(aes(month,co2rawper,fill = 'raw'),stat = 'identity', fill = 'red')+
+  geom_bar(aes(month,co2per,fill = 'clean'),stat = 'identity', fill = 'black')+
+  scale_y_continuous(expand = c(0,0),limits = c(0,105))
+co2
+```
+
+## CH4
+
+```{r}
+ch4 = ggplot(data = av2)+theme_bw()+ggtitle('CH4 Coverage')+
+    geom_bar(aes(month,ch4rawper,fill = 'raw'),stat = 'identity', fill = 'red')+
+  geom_bar(aes(month,ch4per),stat = 'identity',fill='black')+
+  #facet_wrap(~year,nrow = 4)+
+  scale_y_continuous(expand = c(0,0),limits = c(0,105))
+ch4
+```
+
+## H
+
+```{r}
+h = ggplot(data = av2)+theme_bw()+ggtitle('H Coverage')+
+    geom_bar(aes(month,Hrawper,fill = 'raw'),stat = 'identity', fill = 'red')+
+  geom_bar(aes(month,Hper),stat = 'identity',fill='black')+
+  #facet_wrap(~year,nrow = 4)+
+  scale_y_continuous(expand = c(0,0),limits = c(0,105))
+h
+```
+
+## LE
+
+```{r}
+le = ggplot(data = av2)+theme_bw()+ggtitle('LE Coverage')+
+    geom_bar(aes(month,LErawper,fill = 'raw'),stat = 'identity', fill = 'red')+
+  geom_bar(aes(month,LEper),stat = 'identity',fill='black')+
+  #facet_wrap(~year,nrow = 4)+
+  scale_y_continuous(expand = c(0,0),limits = c(0,105))
+le
+```
+
+# Weekly Coverage
+
+```{r}
+av2 =  av %>%
+  group_by(week) %>%
+  summarise(co2cov = sum(complete.cases(co2_flux.c),na.rm = T),
+            co2rawcov = sum(complete.cases(co2_flux),na.rm = T),
+            ch4cov = sum(complete.cases(ch4_flux.c),na.rm = T),
+            ch4rawcov = sum(complete.cases(ch4_flux),na.rm = T),
+            LEcov = sum(complete.cases(LE.c),na.rm = T),
+            LErawcov = sum(complete.cases(LE),na.rm = T),
+            Hcov = sum(complete.cases(H.c),na.rm = T),
+            Hrawcov = sum(complete.cases(H),na.rm = T))
+```
+
+## NEE
+
+```{r}
+co2cov = ggplot(data = av2)+theme_bw()+ggtitle('CO2 Coverage')+
+  geom_bar(aes(week,co2rawcov/336*100),stat = 'identity',fill='red')+
+  geom_bar(aes(week,co2cov/336 *100),stat = 'identity',fill='black')+
+  #facet_wrap(~year,nrow = 4)+
+  scale_y_continuous(expand = c(0,0),limits = c(0,105))
+co2cov
+```
+
+## CH4
+
+```{r}
+ch4 = ggplot(data = av2)+theme_bw()+ggtitle('CH4 Coverage')+
+  geom_bar(aes(week,ch4rawcov/336*100),stat = 'identity',fill='red')+
+  geom_bar(aes(week,ch4cov/336*100),stat = 'identity',fill='black')+
+  #facet_wrap(~year,nrow = 4)+
+  scale_y_continuous(expand = c(0,0),limits = c(0,105))
+ch4
+```
+
+## H
+
+```{r}
+h = ggplot(data = av2)+theme_bw()+ggtitle('H Coverage')+
+  geom_bar(aes(week,Hrawcov/336*100),stat = 'identity',fill='red')+
+  geom_bar(aes(week,Hcov/336*100),stat = 'identity',fill='black')+
+  #facet_wrap(~year,nrow = 4)+
+  scale_y_continuous(expand = c(0,0),limits = c(0,105))
+h
+```
+
+## LE
+
+```{r}
+le = ggplot(data = av2)+theme_bw()+ggtitle('LE Coverage')+
+  geom_bar(aes(week,LErawcov/336*100),stat = 'identity',fill='red')+
+  geom_bar(aes(week,LEcov/336*100),stat = 'identity',fill='black')+
+  #facet_wrap(~year,nrow = 4)+
+  scale_y_continuous(expand = c(0,0),limits = c(0,105))
+le
+```
+
+

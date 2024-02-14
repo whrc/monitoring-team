@@ -1,0 +1,124 @@
+---
+title: "churchill_2022_2023_file"
+author: "Dani Trangmoe"
+output: html_document
+date: "`r Sys.Date()`"
+---
+
+```{r, warning=FALSE}
+rm(list = ls())
+
+library(data.table)
+library(ggplot2)
+library(cowplot)
+library(openair)
+library(plotrix)
+library(signal)
+library(svMisc)
+library(zoo)
+library(stringr)
+library(plyr)
+library(dplyr)
+```
+
+# 2022
+
+Load cleaned data
+
+```{r, warning=FALSE}
+
+df = fread('C:/Users/dtrangmoe/Documents/Churchill/Churchill_clean_Aug22toOct23.csv')
+
+```
+
+Select only 2022 data
+
+```{r, warning=FALSE}
+
+df <- df %>%
+  filter(year(TIMESTAMP) %in% c(2022))
+
+```
+
+Save df as 2022 file 
+
+```{r, warning=FALSE}
+
+write.csv(x = df,file = 'C:/Users/dtrangmoe/Documents/Churchill/Churchill_Met_Flux_Clean_2022.csv',row.names = F,quote = F)
+
+```
+
+
+# 2023
+
+Load previously cleaned data
+
+```{r, warning=FALSE}
+
+df1 = fread('C:/Users/dtrangmoe/Documents/Churchill/Churchill_clean_Aug22toOct23.csv')
+
+# Select only 2023 data, and trim Nov. NA rows
+
+df1 <- subset(df1, TIMESTAMP >= as.POSIXct("2023-01-01 00:00", tz= "UTC") & TIMESTAMP <= as.POSIXct("2023-11-01 00:00", tz= "UTC"))
+
+# creates .c columns where cleaning decided unneccessary in cleaning code- to align with other dataset column names
+
+df1$SWC_12_36_1_1_1.c <- df1$SWC_12_36_1_1_1
+df1$SWC_12_36_2_1_1.c <- df1$SWC_12_36_2_1_1
+df1$SWC_12_36_2_2_1.c <- df1$SWC_12_36_2_2_1
+df1$TA_2_1_1_1_1.c <- df1$TA_2_1_1_1_1
+
+
+```
+
+
+Load Nov/Dec 2023 cleaned data
+
+```{r, warning=FALSE}
+
+df2 = fread('C:/Users/dtrangmoe/Documents/Churchill/Churchill_flux_clean_NovDec23.csv')
+
+#removes 2023-11-1 0000 NAs that are included in previous data set 
+df2 = df2[-1,]
+
+
+```
+
+Merge & save
+
+```{r, warning=FALSE}
+
+df <- bind_rows(df1, df2)
+
+# removes a few unused columns only present in Nov/Dec data set
+df = select(df, -c(met_EB, flux_EB, co2_mean.1, h2o_mean.1))
+
+write.csv(df, file='C:/Users/dtrangmoe/Documents/Churchill/Churchill_Met_Flux_Clean_2023.csv', row.names = FALSE, quote = FALSE)
+
+```
+
+
+Plots entire year of cleaned data
+
+
+```{r, warning=FALSE, echo=FALSE}
+
+df.c <- select(df, ends_with(".c") | TIMESTAMP)
+
+
+for (col in names(df.c)[-which(names(df.c) == "TIMESTAMP")]) {
+  
+  col_name <- gsub("\\.c", "", col)
+  
+  # Create a ggplot for each column
+  gg <- ggplot(df.c, aes_string(x = "TIMESTAMP", y = col)) +
+    geom_point() +
+    scale_x_datetime(name = 'Date')+
+    scale_y_continuous(name = col_name)+
+    ggtitle(paste("Plot of cleaned", col_name))
+  
+  # Print the plot
+  print(gg)
+}
+
+```

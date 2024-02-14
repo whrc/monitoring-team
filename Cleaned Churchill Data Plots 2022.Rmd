@@ -1,0 +1,63 @@
+---
+title: "Plots of Cleaned Churchill Data 2022"
+author: "Dani Trangmoe"
+date: "`r Sys.Date()`"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, dev="png")
+```
+
+
+```{r, include=FALSE}
+rm(list = ls())
+
+library(data.table)
+library(ggplot2)
+library(cowplot)
+library(openair)
+library(plotrix)
+library(signal)
+library(svMisc)
+library(zoo)
+library(stringr)
+library(plyr)
+library(viridis)
+library(lubridate)
+library(tidyverse)
+```
+
+
+## Churchill 2022 Cleaned Data
+
+Plots all of the cleaned (.c) variables included in cleaned flux data for 2022
+
+
+```{r, warning=FALSE, echo=FALSE}
+df= fread('C:/Users/dtrangmoe/Documents/Churchill/Churchill_Met_Flux_Clean_2022.csv')
+
+df.c <- select(df, ends_with(".c") | TIMESTAMP)
+
+
+for (col in names(df.c)[-which(names(df.c) == "TIMESTAMP")]) {
+  
+  col_name <- gsub("\\.c", "", col)
+  
+  # Create a ggplot for each column
+  gg <- ggplot(df.c, aes_string(x = "TIMESTAMP", y = col))+
+    theme_bw()+
+    geom_point() +
+    scale_x_datetime(name = 'Date')+
+    scale_y_continuous(name = col_name)+
+    ggtitle(paste("Plot of cleaned", col_name))
+  
+  # Print the plot
+  print(gg)
+}
+
+```
+
+
