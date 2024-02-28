@@ -33,16 +33,16 @@ library(plyr)
 library(dplyr)
 
 
-df = fread('C:/Permafrost Pathways/Data/met/churchillFenBiomet_Aug2022-Jan2023.csv')
+df = fread('C:/Users/karndt.WHRC/desktop/churchill/data/met/churchillFenBiomet_Aug2022-Jan2023.csv',na.strings = c('-9999','NA','NaN','NAN','-7999'))
 
-h = fread('C:/Permafrost Pathways/Data/met/Churchill_AllBiomet_until20230620.dat',skip=1 ,nrows = 0)
-dat = fread('C:/Permafrost Pathways/Data/met/Churchill_AllBiomet_until20230620.dat',skip=4, header = FALSE, na.strings=c('-9999','NA','NaN','NAN'))
+h = fread('C:/Users/karndt.WHRC/desktop/churchill/data/met/Churchill_AllBiomet_until20230620.dat',skip=1 ,nrows = 0)
+dat = fread('C:/Users/karndt.WHRC/desktop/churchill/data/met/Churchill_AllBiomet_until20230620.dat',skip=4, header = FALSE, na.strings=c('-9999','NA','NaN','NAN',"-7999"))
 
-h2 = fread('C:/Permafrost Pathways/Data/met/Churchill_AllBiomet_until20230712.dat',skip=1 ,nrows = 0)
-dat2 = fread('C:/Permafrost Pathways/Data/met/Churchill_AllBiomet_until20230712.dat',skip=4, header = FALSE, na.strings=c('-9999','NA','NaN','NAN'))
+h2 = fread('C:/Users/karndt.WHRC/desktop/churchill/data/met/Churchill_AllBiomet_until20230712.dat',skip=1 ,nrows = 0)
+dat2 = fread('C:/Users/karndt.WHRC/desktop/churchill/data/met/Churchill_AllBiomet_until20230712.dat',skip=4, header = FALSE, na.strings=c('-9999','NA','NaN','NAN',"-7999"))
 
-h3 = fread('C:/Permafrost Pathways/Data/met/Churchill_AllBiomet.dat',skip=1 ,nrows = 0)
-dat3 = fread('C:/Permafrost Pathways/Data/met/Churchill_AllBiomet.dat',skip=4, header = FALSE, na.strings=c('-9999','NA','NaN','NAN'))
+h3 = fread('C:/Users/karndt.WHRC/desktop/churchill/data/met/Churchill_AllBiomet.dat',skip=1 ,nrows = 0)
+dat3 = fread('C:/Users/karndt.WHRC/desktop/churchill/data/met/Churchill_AllBiomet.dat',skip=4, header = FALSE, na.strings=c('-9999','NA','NaN','NAN',"-7999"))
 
 names(dat) = names(h)
 names(dat2) = names(h2)
@@ -57,39 +57,56 @@ df = rbind.fill(df,met,met2,met3)
 df = df[!duplicated(df$TIMESTAMP),]
 
 
-write.csv(x = df,file = 'C:/Permafrost Pathways/Data/Churchill_met_merged.csv',row.names = F,quote = F)
+#write.csv(x = df,file = 'C:/Users/karndt/desktop/churchill/data/Churchill_met_merged.csv',row.names = F,quote = F)
+
+#check time stamps to ensure we have a complete series
+TIMESTAMP = seq(from = min(df$TIMESTAMP), to = max(df$TIMESTAMP),by = 60*30,tz = "UTC")
+tsdf = as.data.frame(TIMESTAMP)
+
+df = merge(tsdf,df,by = "TIMESTAMP",all = T)
+
+
+#na.strings not working for numbers for some reason, remove all here
+df[df == -9999] = NA
+df[df == -7999] = NA
+summary(df)
 ```
 # Air T
 ```{r, warning=FALSE}
 ggplot(data = df)+
   geom_point(aes(TIMESTAMP,TA_2_1_1_1_1),col='black')+
-  scale_y_continuous(limits = c(-40,40),
+  scale_y_continuous(#limits = c(-40,40),
                      expression('Air Temperature ('*Celsius*')'))+
   scale_x_datetime(limits = as.POSIXct(c('2022-8-6','2023-10-31')))
+
+#First we need to just convert from Kelvin to degrees C
+df$TA_2_1_1_1_1 = ifelse(df$TA_2_1_1_1_1 > 200,df$TA_2_1_1_1_1 - 273.15,df$TA_2_1_1_1_1)
+
+ggplot(data = df)+
+  geom_point(aes(TIMESTAMP,TA_2_1_1_1_1),col='black')+
+  scale_y_continuous(#limits = c(-40,40),
+                     expression('Air Temperature ('*Celsius*')'))
+ # scale_x_datetime(limits = as.POSIXct(c('2022-8-6','2023-10-31')))
 ```
 ## Limits
 ```{r, warning=FALSE}
 hist(df$TA_2_1_1_1_1,breaks=100)
-plot(df$TIMESTAMP,df$TA_2_1_1_1_1,ylim = c(-45,40));abline(h=-43, col= 'red');abline(h=40, col='red')
-TA_2_1_1_1_1.limits = replace(df$TA_2_1_1_1_1, df$TA_2_1_1_1_1 < -43 | df$TA_2_1_1_1_1 > 40,NA)
+plot(df$TIMESTAMP,df$TA_2_1_1_1_1,ylim = c(-50,50));abline(h=-50, col= 'red');abline(h=50, col='red')
+TA_2_1_1_1_1.limits = replace(df$TA_2_1_1_1_1, df$TA_2_1_1_1_1 < -50 | df$TA_2_1_1_1_1 > 50,NA)
 hist(TA_2_1_1_1_1.limits,breaks=100)
 plot(TA_2_1_1_1_1.limits)
 ```
 #Relative Humidity
 
 ```{r,warning=FALSE}
-
 ggplot(data = df)+
   geom_point(aes(TIMESTAMP,RH_19_3_1_1_1),col='black')+
-  scale_y_continuous(limits = c(20,100),
-                     expression('Relative Humidity ('*percent*')'))+
-  scale_x_datetime(limits = as.POSIXct(c('2022-8-6','2023-11-3')))
+  scale_y_continuous(#limits = c(20,100),
+                     expression('Relative Humidity ('*percent*')'))
+#  scale_x_datetime(limits = as.POSIXct(c('2022-8-6','2023-11-3')))
 ```
 ## Limits
 ```{r,warning=FALSE}
-
-
-
 RH_19_3_1_1_1.limits = df$RH_19_3_1_1_1
 
 RH_19_3_1_1_1.limits = ifelse(df$RH_19_3_1_1_1 > 0 & df$TIMESTAMP <= '2022-9-23',NA, RH_19_3_1_1_1.limits)
@@ -101,8 +118,6 @@ ggplot(data = df)+
   scale_y_continuous(limits = c(5,100),
                      expression('Relative Humidity ('*percent*')'))+
   scale_x_datetime(limits = as.POSIXct(c('2022-8-6','2023-11-1')))
-
-
 ```
 
 # (!!!)Barometric Pressure 
@@ -110,9 +125,24 @@ ggplot(data = df)+
 ```{r,warning=FALSE}
 ggplot(data = df)+
   geom_point(aes(TIMESTAMP,PA_4_2_1_1_1),col='black')+
-  scale_y_continuous(limits = c(0,1150),
-                     expression ('Barometric Pressure ('*kPa*')'))+
-  scale_x_datetime(limits = as.POSIXct(c('2022-8-6','2023-11-3')))
+  scale_y_continuous(#limits = c(90000,110000),
+                     expression ('Barometric Pressure ('*kPa*')'))
+#  scale_x_datetime(limits = as.POSIXct(c('2022-8-6','2023-11-3')))
+
+df$PA_4_2_1_1_1 = ifelse(df$PA_4_2_1_1_1 > 97000,df$PA_4_2_1_1_1/1000,df$PA_4_2_1_1_1)
+
+ggplot(data = df)+
+  geom_point(aes(TIMESTAMP,PA_4_2_1_1_1),col='black')+
+  scale_y_continuous(limits = c(0,200),
+                     expression ('Barometric Pressure ('*kPa*')'))
+
+
+df$PA_4_2_1_1_1 = ifelse(df$PA_4_2_1_1_1 > 150,df$PA_4_2_1_1_1/10,df$PA_4_2_1_1_1)
+
+ggplot(data = df)+
+  geom_point(aes(TIMESTAMP,PA_4_2_1_1_1),col='black')+
+  scale_y_continuous(limits = c(90,120),
+                     expression ('Barometric Pressure ('*kPa*')'))
 ```
 
 ```{r, warning=FALSE}
@@ -120,27 +150,17 @@ hist(df$PA_4_2_1_1_1,breaks=100)
 
 ggplot(data = df)+
   geom_point(aes(TIMESTAMP,PA_4_2_1_1_1),col='black')+
-  scale_y_continuous(limits = c(0,1150),
-                     expression ('Barometric Pressure ('*kPa*')'))+
-  scale_x_datetime(limits = as.POSIXct(c('2023-1-31','2023-2-1')))
+  scale_y_continuous(limits = c(90,110),
+                     expression ('Barometric Pressure ('*kPa*')'))
 
-
-
-PA_4_2_1_1_1.limits = df$PA_4_2_1_1_1
-
-PA_4_2_1_1_1.limits = ifelse(df$PA_4_2_1_1_1 >= 200 & df$TIMESTAMP <= '2023-2-2'  ,df$PA_4_2_1_1_1 /10, PA_4_2_1_1_1.limits)
+PA_4_2_1_1_1.limits = ifelse(df$PA_4_2_1_1_1 > 110 | df$PA_4_2_1_1_1 < 90,NA, df$PA_4_2_1_1_1)
 
 ggplot(data = df)+
   geom_point(aes(TIMESTAMP,PA_4_2_1_1_1.limits),col='black')+
   geom_hline(yintercept = 106,col = 'red')+
   geom_hline(yintercept = 97,col = 'red')+
   scale_y_continuous(limits = c(90,110),
-                     expression ('Barometric Pressure ('*kPa*')'))+
-  scale_x_datetime(limits = as.POSIXct(c('2022-8-6','2023-11-2')))
-
-
-
-PA_4_2_1_1_1.limits = replace(PA_4_2_1_1_1.limits, PA_4_2_1_1_1.limits < 97 | PA_4_2_1_1_1.limits > 106,NA)
+                     expression ('Barometric Pressure ('*kPa*')'))
 ```
 ## Rolling MAD
 ```{r, warning=FALSE}
@@ -203,7 +223,6 @@ scale_x_datetime(limits = as.POSIXct(c('2022-8-6','2023-11-1'),format="%F"))
 ```
 #Soil Heat Flux
 ```{r, warning=FALSE}
-
 ggplot(data = df)+
   geom_point(aes(TIMESTAMP,SHF_6_37_1_1_1,col='SHF 1'))+
   geom_point(aes(TIMESTAMP,SHF_6_37_2_1_1,col='SHF 2'))+
@@ -325,11 +344,11 @@ scale_x_datetime(limits = as.POSIXct(c('2023-2-6','2023-4-15'),format="%F"))
 ggplot(data = df)+
   geom_point(aes(TIMESTAMP,PPFD_7_21_1_1_1),col='black')+
   scale_y_continuous(limits = c(-25,2000),
-                     expression('PAR ('*mu*mol/m^2/s*')'))+
-  scale_x_datetime(limits = as.POSIXct(c('2022-8-6','2023-11-1')))
+                     expression('PAR ('*mu*mol/m^2/s*')'))
 ```
 
 ```{r, warning=FALSE}
+summary(df$PPFD_7_21_1_1_1)
 hist(df$PPFD_7_21_1_1_1,breaks=100)
 plot(df$TIMESTAMP,df$PPFD_7_21_1_1_1,ylim = c(0,1850));abline(h=1750, col= 'red');abline(h=0, col='red')
 PPFD_7_21_1_1_1.limits = replace(df$PPFD_7_21_1_1_1, df$PPFD_7_21_1_1_1 < 0 | df$PPFD_7_21_1_1_1 > 1750,NA)
@@ -400,11 +419,11 @@ scale_x_datetime(limits = as.POSIXct(c('2022-11-26','2023-1-25'),format="%F"))
 ggplot(data = df)+
   geom_point(aes(TIMESTAMP,PPFDR_7_23_1_1_1),col='black')+
   scale_y_continuous(limits = c(-25,1600),
-                     expression('PAR Reflected ('*mu*mol/m^2/s*')'))+
-  scale_x_datetime(limits = as.POSIXct(c('2022-8-6','2023-11-1')))
+                     expression('PAR Reflected ('*mu*mol/m^2/s*')'))
 ```
 
 ```{r, warning=FALSE}
+summary(df$PPFDR_7_23_1_1_1)
 hist(df$PPFDR_7_23_1_1_1,breaks=100)
 plot(df$TIMESTAMP,df$PPFDR_7_23_1_1_1,ylim = c(0,5850));abline(h=1400, col= 'red');abline(h=-1, col='red')
 PPFDR_7_23_1_1_1.limits=df$PPFDR_7_23_1_1_1
@@ -477,12 +496,10 @@ scale_x_datetime(limits = as.POSIXct(c('2023-10-9','2023-11-3'),format="%F"))
 ggplot(data = df)+
   geom_point(aes(TIMESTAMP, RN_6_5_1_1_1),col='black')+
   scale_y_continuous(limits = c(-125,850),
-                     expression('Net Radiation ('*W/m^2*')'))+
-  scale_x_datetime(limits = as.POSIXct(c('2022-8-6','2023-11-1')))
+                     expression('Net Radiation ('*W/m^2*')'))
 ```
 
 ```{r, warning=FALSE}
-
 hist(df$RN_6_5_1_1_1,breaks=100)
 plot(df$TIMESTAMP,df$RN_6_5_1_1_1,ylim = c(-400,850));abline(h=835,col= 'red');abline(h=-300, col='red')
 RN_6_5_1_1_1.limits = replace(df$RN_6_5_1_1_1, df$RN_6_5_1_1_1 < -300 | df$RN_6_5_1_1_1 > 835,NA)
@@ -544,9 +561,8 @@ scale_x_datetime(limits = as.POSIXct(c('2023-3-6','2023-3-20'),format="%F"))
 ```{r, warning=FALSE}
 ggplot(data = df)+
   geom_point(aes(TIMESTAMP,SWIN_6_10_1_1_1))+
-  scale_y_continuous(limits = c(-10,1000),
-                     expression('Shortwave In ('*W/m^2*')'))+
-  scale_x_datetime(limits = as.POSIXct(c("2022-9-22",'2023-11-1')))
+  scale_y_continuous(#limits = c(-10,1000),
+                     expression('Shortwave In ('*W/m^2*')'))
 ```
 
 ```{r, warning=FALSE}
@@ -2694,7 +2710,7 @@ ggplot(data = df)+
 # Save
 
 ```{r, warning=FALSE}
-write.csv(x = df,file = 'C:/Permafrost Pathways/Data/Cleaned/Churchill_met_clean.csv',row.names = F,quote = F)
+write.csv(x = df,file = 'C:/Users/karndt/desktop/churchill/data/Cleaned/Churchill_met_clean.csv',row.names = F,quote = F)
 ```
 
 
@@ -2703,9 +2719,9 @@ Load in eddypro output files
 
 ```{r warning=FALSE}
 
-met = fread('C:/Permafrost Pathways/Data/Cleaned/Churchill_met_clean.csv')
+met = fread('C:/Users/karndt/desktop/churchill/data/Cleaned/Churchill_met_clean.csv')
 
-df = fread('C:/Permafrost Pathways/Data/Churchill_fluxes_merged.csv')
+df = fread('C:/Users/karndt.WHRC/desktop/churchill/data/Churchill_fluxes_merged.csv')
 
 df$TIMESTAMP = df$ts
 
@@ -2918,11 +2934,12 @@ ggplot(data = df,aes(`u*`,nightCO2))+
 pick threshold and filter based on plots above, I liked .07
 
 ```{r, warning=FALSE}
-Tau.u  = replace(df$Tau ,df$`u*` < Uthreshold,NA)
-H.u    = replace(df$H   ,df$`u*` < Uthreshold,NA)
-LE.u   = replace(df$LE  ,df$`u*` < Uthreshold,NA)
-co2_flux.u   = replace(df$co2_flux  ,df$`u*` < Uthreshold,NA)
-ch4_flux.u = replace(df$ch4_flux,df$`u*` < Uthreshold,NA)
+u_flag = ifelse(df$`u*` < Uthreshold,1,0)
+# Tau.u  = replace(df$Tau ,df$`u*` < Uthreshold,NA)
+# H.u    = replace(df$H   ,df$`u*` < Uthreshold,NA)
+# LE.u   = replace(df$LE  ,df$`u*` < Uthreshold,NA)
+# co2_flux.u   = replace(df$co2_flux  ,df$`u*` < Uthreshold,NA)
+# ch4_flux.u = replace(df$ch4_flux,df$`u*` < Uthreshold,NA)
 ```
 
 ## Combine Cleaning
@@ -3328,7 +3345,7 @@ ggplot(data = diel)+geom_hline(yintercept = 0)+
 
 ```{r, warning=FALSE}
 
-write.csv(x = df,file = 'C:/Permafrost Pathways/Data/Cleaned/Churchill_clean.csv',row.names = F,quote = F)
+write.csv(x = df,file = 'C:/Users/karndt/desktop/churchill/data/Cleaned/Churchill_clean.csv',row.names = F,quote = F)
 ```
 
 
