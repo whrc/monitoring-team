@@ -4,7 +4,7 @@ output: pdf_document
 date: "2022-12-08"
 ---
 
-# To DO 
+# To Do
 
 
 Make sure all of the timestamps are loaded
@@ -33,16 +33,16 @@ library(plyr)
 library(dplyr)
 
 
-df = fread('C:/Users/karndt.WHRC/desktop/churchill/data/met/churchillFenBiomet_Aug2022-Jan2023.csv',na.strings = c('-9999','NA','NaN','NAN','-7999'))
+df = fread('C:/Users/dtrangmoe/Documents/Churchill/churchillFenBiomet_Aug2022-Jan2023.csv',na.strings = c('-9999','NA','NaN','NAN','-7999'))
 
-h = fread('C:/Users/karndt.WHRC/desktop/churchill/data/met/Churchill_AllBiomet_until20230620.dat',skip=1 ,nrows = 0)
-dat = fread('C:/Users/karndt.WHRC/desktop/churchill/data/met/Churchill_AllBiomet_until20230620.dat',skip=4, header = FALSE, na.strings=c('-9999','NA','NaN','NAN',"-7999"))
+h = fread('C:/Users/dtrangmoe/Documents/Churchill/Churchill_AllBiomet_until20230620.dat',skip=1 ,nrows = 0)
+dat = fread('C:/Users/dtrangmoe/Documents/Churchill/Churchill_AllBiomet_until20230620.dat',skip=4, header = FALSE, na.strings=c('-9999','NA','NaN','NAN',"-7999"))
 
-h2 = fread('C:/Users/karndt.WHRC/desktop/churchill/data/met/Churchill_AllBiomet_until20230712.dat',skip=1 ,nrows = 0)
-dat2 = fread('C:/Users/karndt.WHRC/desktop/churchill/data/met/Churchill_AllBiomet_until20230712.dat',skip=4, header = FALSE, na.strings=c('-9999','NA','NaN','NAN',"-7999"))
+h2 = fread('C:/Users/dtrangmoe/Documents/Churchill/Churchill_AllBiomet_until20230712.dat',skip=1 ,nrows = 0)
+dat2 = fread('C:/Users/dtrangmoe/Documents/Churchill/Churchill_AllBiomet_until20230712.dat',skip=4, header = FALSE, na.strings=c('-9999','NA','NaN','NAN',"-7999"))
 
-h3 = fread('C:/Users/karndt.WHRC/desktop/churchill/data/met/Churchill_AllBiomet.dat',skip=1 ,nrows = 0)
-dat3 = fread('C:/Users/karndt.WHRC/desktop/churchill/data/met/Churchill_AllBiomet.dat',skip=4, header = FALSE, na.strings=c('-9999','NA','NaN','NAN',"-7999"))
+h3 = fread('C:/Users/dtrangmoe/Documents/Churchill/Churchill_AllBiomet.dat',skip=1 ,nrows = 0)
+dat3 = fread('C:/Users/dtrangmoe/Documents/Churchill/Churchill_AllBiomet.dat',skip=4, header = FALSE, na.strings=c('-9999','NA','NaN','NAN',"-7999"))
 
 names(dat) = names(h)
 names(dat2) = names(h2)
@@ -57,7 +57,7 @@ df = rbind.fill(df,met,met2,met3)
 df = df[!duplicated(df$TIMESTAMP),]
 
 
-#write.csv(x = df,file = 'C:/Users/karndt/desktop/churchill/data/Churchill_met_merged.csv',row.names = F,quote = F)
+write.csv(x = df,file = 'C:/Users/dtrangmoe/Documents/Churchill/Churchill_met_merged.csv',row.names = F,quote = F)
 
 #check time stamps to ensure we have a complete series
 TIMESTAMP = seq(from = min(df$TIMESTAMP), to = max(df$TIMESTAMP),by = 60*30,tz = "UTC")
@@ -71,23 +71,33 @@ df[df == -9999] = NA
 df[df == -7999] = NA
 summary(df)
 ```
+
+
+Creates a variable to input a date range for the plots in the biomet section of
+cleaning code. Used to easily change date range for different data sets. 
+```{r, warning=FALSE}
+biomet_dates <- c('2022-08-05', '2024-02-28')
+```
+
+
 # Air T
 ```{r, warning=FALSE}
 ggplot(data = df)+
   geom_point(aes(TIMESTAMP,TA_2_1_1_1_1),col='black')+
   scale_y_continuous(#limits = c(-40,40),
                      expression('Air Temperature ('*Celsius*')'))+
-  scale_x_datetime(limits = as.POSIXct(c('2022-8-6','2023-10-31')))
+  scale_x_datetime(limits = as.POSIXct(biomet_dates))
 
 #First we need to just convert from Kelvin to degrees C
 df$TA_2_1_1_1_1 = ifelse(df$TA_2_1_1_1_1 > 200,df$TA_2_1_1_1_1 - 273.15,df$TA_2_1_1_1_1)
 
 ggplot(data = df)+
   geom_point(aes(TIMESTAMP,TA_2_1_1_1_1),col='black')+
-  scale_y_continuous(#limits = c(-40,40),
-                     expression('Air Temperature ('*Celsius*')'))
- # scale_x_datetime(limits = as.POSIXct(c('2022-8-6','2023-10-31')))
+  scale_y_continuous(limits = c(-40,40),
+                      expression('Air Temperature ('*Celsius*')'))
 ```
+
+
 ## Limits
 ```{r, warning=FALSE}
 hist(df$TA_2_1_1_1_1,breaks=100)
@@ -96,6 +106,8 @@ TA_2_1_1_1_1.limits = replace(df$TA_2_1_1_1_1, df$TA_2_1_1_1_1 < -50 | df$TA_2_1
 hist(TA_2_1_1_1_1.limits,breaks=100)
 plot(TA_2_1_1_1_1.limits)
 ```
+
+
 #Relative Humidity
 
 ```{r,warning=FALSE}
@@ -103,8 +115,10 @@ ggplot(data = df)+
   geom_point(aes(TIMESTAMP,RH_19_3_1_1_1),col='black')+
   scale_y_continuous(#limits = c(20,100),
                      expression('Relative Humidity ('*percent*')'))
-#  scale_x_datetime(limits = as.POSIXct(c('2022-8-6','2023-11-3')))
+#  scale_x_datetime(limits = as.POSIXct(biomet_dates))
 ```
+
+
 ## Limits
 ```{r,warning=FALSE}
 RH_19_3_1_1_1.limits = df$RH_19_3_1_1_1
@@ -117,17 +131,17 @@ ggplot(data = df)+
   geom_point(aes(TIMESTAMP,RH_19_3_1_1_1.c),col='black')+
   scale_y_continuous(limits = c(5,100),
                      expression('Relative Humidity ('*percent*')'))+
-  scale_x_datetime(limits = as.POSIXct(c('2022-8-6','2023-11-1')))
+  scale_x_datetime(limits = as.POSIXct(biomet_dates))
 ```
 
-# (!!!)Barometric Pressure 
+# Barometric Pressure 
 
 ```{r,warning=FALSE}
 ggplot(data = df)+
   geom_point(aes(TIMESTAMP,PA_4_2_1_1_1),col='black')+
   scale_y_continuous(#limits = c(90000,110000),
                      expression ('Barometric Pressure ('*kPa*')'))
-#  scale_x_datetime(limits = as.POSIXct(c('2022-8-6','2023-11-3')))
+#  scale_x_datetime(limits = as.POSIXct(biomet_dates))
 
 df$PA_4_2_1_1_1 = ifelse(df$PA_4_2_1_1_1 > 97000,df$PA_4_2_1_1_1/1000,df$PA_4_2_1_1_1)
 
@@ -141,9 +155,10 @@ df$PA_4_2_1_1_1 = ifelse(df$PA_4_2_1_1_1 > 150,df$PA_4_2_1_1_1/10,df$PA_4_2_1_1_
 
 ggplot(data = df)+
   geom_point(aes(TIMESTAMP,PA_4_2_1_1_1),col='black')+
-  scale_y_continuous(limits = c(90,120),
+  scale_y_continuous(limits = c(0,140),
                      expression ('Barometric Pressure ('*kPa*')'))
 ```
+
 
 ```{r, warning=FALSE}
 hist(df$PA_4_2_1_1_1,breaks=100)
@@ -153,7 +168,7 @@ ggplot(data = df)+
   scale_y_continuous(limits = c(90,110),
                      expression ('Barometric Pressure ('*kPa*')'))
 
-PA_4_2_1_1_1.limits = ifelse(df$PA_4_2_1_1_1 > 110 | df$PA_4_2_1_1_1 < 90,NA, df$PA_4_2_1_1_1)
+PA_4_2_1_1_1.limits = ifelse(df$PA_4_2_1_1_1 > 110 | df$PA_4_2_1_1_1 < 97,NA, df$PA_4_2_1_1_1)
 
 ggplot(data = df)+
   geom_point(aes(TIMESTAMP,PA_4_2_1_1_1.limits),col='black')+
@@ -188,7 +203,7 @@ ggplot(df)+geom_hline(yintercept = 0)+
   geom_line(aes(TIMESTAMP,mad_filt,col='Filter'))+
   geom_line(aes(TIMESTAMP,roll.mad,col='MAD'))+
   scale_y_continuous(limits = c(0,110))+
-  scale_x_datetime(limits = as.POSIXct(c('2022-8-5','2023-11-1'),format="%F"))+
+  scale_x_datetime(limits = as.POSIXct(biomet_dates,format="%F"))+
   scale_color_manual(values=c('yellow','red','black'))
 ```
 
@@ -206,7 +221,7 @@ ggplot(df)+geom_hline(yintercept = 0)+
   geom_point(aes(TIMESTAMP,PA_4_2_1_1_1,col='Uncleaned'))+
   geom_point(aes(TIMESTAMP,PA_4_2_1_1_1.c,col='Cleaned'))+
   scale_y_continuous(limits = c(90,110))+
-  scale_x_datetime(limits = as.POSIXct(c('2022-8-5','2023-11-1'),format="%F"))+
+  scale_x_datetime(limits = as.POSIXct(biomet_dates,format="%F"))+
   scale_color_manual(values=c('black','red'))
 ```
 
@@ -219,8 +234,10 @@ ggplot(data = df)+
   geom_point(aes(TIMESTAMP,PA_4_2_1_1_1.limits),col='red')+
   geom_point(aes(TIMESTAMP,PA_4_2_1_1_1.c),col='black')+
   scale_y_continuous(limits = c(80,115))+
-scale_x_datetime(limits = as.POSIXct(c('2022-8-6','2023-11-1'),format="%F"))
+scale_x_datetime(limits = as.POSIXct(biomet_dates,format="%F"))
 ```
+
+
 #Soil Heat Flux
 ```{r, warning=FALSE}
 ggplot(data = df)+
@@ -229,8 +246,9 @@ ggplot(data = df)+
   scale_y_continuous(limits = c(-80,190),
                      expression ('Soil Heat Flux ('*W/m^2*')'))+
   scale_color_manual(values = c('red','black'))+
-  scale_x_datetime(limits = as.POSIXct(c('2022-8-6','2023-11-1')))
+  scale_x_datetime(limits = as.POSIXct(biomet_dates))
 ```
+
 ## SHF1
 ```{r, warning=FALSE}
 hist(df$SHF_6_37_1_1_1,breaks=100)
@@ -257,8 +275,10 @@ ggplot(data = df)+
   geom_point(aes(TIMESTAMP,SD_10_99_1_1_1),col='black')+
   scale_y_continuous(limits = c(-1.5,.75),
                      expression('Snow Depth ('*m*')'))+
-  scale_x_datetime(limits = as.POSIXct(c('2022-10-26','2023-11-1')))
+  scale_x_datetime(limits = as.POSIXct(biomet_dates))
 ```
+
+
 ```{r, warning=FALSE}
 hist(df$SD_10_99_1_1_1,breaks=100)
 plot(df$TIMESTAMP,df$SD_10_99_1_1_1,ylim = c(-1.5,1));abline(h=0, col= 'red');abline(h=.8, col='red')
@@ -270,7 +290,7 @@ ggplot(data = df)+
   geom_point(aes(TIMESTAMP,SD_10_99_1_1_1.limits),col='black')+
   scale_y_continuous(limits = c(-.25,.75),
                      expression('Snow Depth ('*m*')'))+
-  scale_x_datetime(limits = as.POSIXct(c('2022-8-26','2023-11-1')))
+  scale_x_datetime(limits = as.POSIXct(biomet_dates))
 df$SD_10_99_1_1_1.c = SD_10_99_1_1_1.limits 
 ```
 
@@ -303,7 +323,7 @@ ggplot(df)+geom_hline(yintercept = 0)+
   geom_line(aes(TIMESTAMP,mad_filt,col='Filter'))+
   geom_line(aes(TIMESTAMP,roll.mad,col='MAD'))+
   scale_y_continuous(limits = c(-.1,.8))+
-  scale_x_datetime(limits = as.POSIXct(c('2022-10-5','2023-11-1'),format="%F"))+
+  scale_x_datetime(limits = as.POSIXct(biomet_dates,format="%F"))+
   scale_color_manual(values=c('yellow','red','black'))
 
 ```
@@ -322,9 +342,10 @@ ggplot(df)+geom_hline(yintercept = 0)+
   geom_point(aes(TIMESTAMP,SD_10_99_1_1_1,col='Uncleaned'))+
   geom_point(aes(TIMESTAMP,SD_10_99_1_1_1.c,col='Cleaned'))+
   scale_y_continuous(limits = c(-0.75,1))+
-  scale_x_datetime(limits = as.POSIXct(c('2023-4-25','2023-5-10'),format="%F"))+
+  scale_x_datetime(limits = as.POSIXct(biomet_dates,format="%F"))+
   scale_color_manual(values=c('black','red'))
 ```
+
 
 ```{r, warning=FALSE}
 ggplot(data = df)+
@@ -335,7 +356,8 @@ ggplot(data = df)+
   geom_point(aes(TIMESTAMP,SD_10_99_1_1_1.limits),col='red')+
   geom_point(aes(TIMESTAMP,SD_10_99_1_1_1.c),col='black')+
   scale_y_continuous(limits = c(-.25,.5))+
-scale_x_datetime(limits = as.POSIXct(c('2023-2-6','2023-4-15'),format="%F"))
+scale_x_datetime(limits = as.POSIXct(c('2024-1-1','2024-2-26'),format="%F"))
+
 ```
 
 
@@ -355,6 +377,8 @@ PPFD_7_21_1_1_1.limits = replace(df$PPFD_7_21_1_1_1, df$PPFD_7_21_1_1_1 < 0 | df
 hist(PPFD_7_21_1_1_1.limits,breaks=100)
 plot(PPFD_7_21_1_1_1.limits)
 ```
+
+
 ### Rolling SD 
 (Changed to SD because MAD was cutting good data)
 ```{r, warning=FALSE}
@@ -381,7 +405,7 @@ ggplot(df)+geom_hline(yintercept = 0)+
   geom_line(aes(TIMESTAMP,mad_filt,col='Filter'))+
   geom_line(aes(TIMESTAMP,roll.mad,col='MAD'))+
   scale_y_continuous(limits = c(-15,1800))+
-  scale_x_datetime(limits = as.POSIXct(c('2022-8-5','2023-11-1'),format="%F"))+
+  scale_x_datetime(limits = as.POSIXct(biomet_dates,format="%F"))+
   scale_color_manual(values=c('yellow','red','black'))
 
 ```
@@ -400,9 +424,10 @@ ggplot(df)+geom_hline(yintercept = 0)+
   geom_point(aes(TIMESTAMP,PPFD_7_21_1_1_1.limits,col='Uncleaned'))+
   geom_point(aes(TIMESTAMP,PPFD_7_21_1_1_1.c,col='Cleaned'))+
   scale_y_continuous(limits = c(0,2000))+
-  scale_x_datetime(limits = as.POSIXct(c('2022-8-5','2023-11-1'),format="%F"))+
+  scale_x_datetime(limits = as.POSIXct(biomet_dates,format="%F"))+
   scale_color_manual(values=c('black','red'))
 ```
+
 ```{r, warning=FALSE}
 ggplot(data = df)+
   geom_ribbon(aes(x = TIMESTAMP,ymax = mad_filt+roll.mad*6,ymin = mad_filt-roll.mad*6,fill='6'))+
@@ -412,8 +437,10 @@ ggplot(data = df)+
   geom_point(aes(TIMESTAMP,PPFD_7_21_1_1_1.limits),col='red')+
   geom_point(aes(TIMESTAMP,PPFD_7_21_1_1_1.c),col='black')+
   scale_y_continuous(limits = c(-500,700))+
-scale_x_datetime(limits = as.POSIXct(c('2022-11-26','2023-1-25'),format="%F"))
+scale_x_datetime(limits = as.POSIXct(c('2024-01-01','2024-02-26'),format="%F"))
 ```
+
+
 # PAR Reflected
 ```{r, warning=FALSE}
 ggplot(data = df)+
@@ -431,6 +458,8 @@ PPFDR_7_23_1_1_1.limits = ifelse(df$PPFDR_7_23_1_1_1 < -1 | df$PPFDR_7_23_1_1_1 
 hist(PPFDR_7_23_1_1_1.limits,breaks=100)
 plot(PPFDR_7_23_1_1_1.limits)
 ```
+
+
 ### Rolling SD
 (Changed to SD because MAD was cutting good data)
 ```{r, warning=FALSE}
@@ -457,7 +486,7 @@ ggplot(df)+geom_hline(yintercept = 0)+
   geom_line(aes(TIMESTAMP,mad_filt,col='Filter'))+
   geom_line(aes(TIMESTAMP,roll.mad,col='MAD'))+
   scale_y_continuous(limits = c(-5,1800))+
-  scale_x_datetime(limits = as.POSIXct(c('2022-8-5','2023-11-1'),format="%F"))+
+  scale_x_datetime(limits = as.POSIXct(biomet_dates,format="%F"))+
   scale_color_manual(values=c('yellow','red','black'))
 
 ```
@@ -473,10 +502,10 @@ df$PPFDR_7_23_1_1_1.c = ifelse(abs(PPFDR_7_23_1_1_1.limits - mad_filt) > (N * ro
 #Compare cleaned vs. uncleaned
 
 ggplot(df)+geom_hline(yintercept = 0)+
-  geom_point(aes(TIMESTAMP,PPFDR_7_23_1_1_1.limits,col='Uncleaned'))+
+  geom_point(aes(TIMESTAMP,PPFDR_7_23_1_1_1,col='Uncleaned'))+
   geom_point(aes(TIMESTAMP,PPFDR_7_23_1_1_1.c,col='Cleaned'))+
   scale_y_continuous(limits = c(0,2000))+
-  scale_x_datetime(limits = as.POSIXct(c('2022-8-5','2023-11-1'),format="%F"))+
+  scale_x_datetime(limits = as.POSIXct(biomet_dates,format="%F"))+
   scale_color_manual(values=c('black','red'))
 ```
 
@@ -489,8 +518,9 @@ ggplot(data = df)+
   geom_point(aes(TIMESTAMP,PPFDR_7_23_1_1_1.limits),col='red')+
   geom_point(aes(TIMESTAMP,PPFDR_7_23_1_1_1.c),col='black')+
   scale_y_continuous(limits = c(-600,900))+
-scale_x_datetime(limits = as.POSIXct(c('2023-10-9','2023-11-3'),format="%F"))
+scale_x_datetime(limits = as.POSIXct(c('2024-01-01','2024-02-29'),format="%F"))
 ```
+
 # Net Radiation 
 ```{r, warning=FALSE}
 ggplot(data = df)+
@@ -541,8 +571,8 @@ df$RN_6_5_1_1_1.c = ifelse(abs(RN_6_5_1_1_1.limits - mad_filt) > (N * roll.mad),
 ggplot(df)+geom_hline(yintercept = 0)+
   geom_point(aes(TIMESTAMP,RN_6_5_1_1_1.limits,col='Uncleaned'))+
   geom_point(aes(TIMESTAMP,RN_6_5_1_1_1.c,col='Cleaned'))+
-  scale_y_continuous(limits = c(-250,250))+
-  scale_x_datetime(limits = as.POSIXct(c('2022-8-6','2023-6-20'),format="%F"))+
+  scale_y_continuous(limits = c(-250,800))+
+  scale_x_datetime(limits = as.POSIXct(biomet_dates,format="%F"))+
   scale_color_manual(values=c('black','red'))
 ```
 
@@ -557,6 +587,7 @@ ggplot(data = df)+
   scale_y_continuous(limits = c(-500,600))+
 scale_x_datetime(limits = as.POSIXct(c('2023-3-6','2023-3-20'),format="%F"))
 ```
+
 # Shortwave in 
 ```{r, warning=FALSE}
 ggplot(data = df)+
@@ -573,6 +604,7 @@ SWIN_6_10_1_1_1.limits[df$SWIN_6_10_1_1_1 < 0] <- 0
 hist(SWIN_6_10_1_1_1.limits,breaks=100)
 plot(df$TIMESTAMP,SWIN_6_10_1_1_1.limits)
 ```
+
 ## Rolling SD 
 ```{r, warning=FALSE}
 f = SWIN_6_10_1_1_1.limits # first make a new flux vector to apply the above filters
@@ -599,7 +631,7 @@ ggplot(df)+geom_hline(yintercept = 0)+
   geom_line(aes(TIMESTAMP,mad_filt,col='Filter'))+
   geom_line(aes(TIMESTAMP,roll.mad,col='MAD'))+
   scale_y_continuous(limits = c(-5,900))+
-  scale_x_datetime(limits = as.POSIXct(c('2022-9-20','2023-11-1'),format="%F"))+
+  scale_x_datetime(limits = as.POSIXct(biomet_dates,format="%F"))+
   scale_color_manual(values=c('yellow','red','black'))
 
 ```
@@ -628,13 +660,15 @@ ggplot(data = df)+
   scale_y_continuous(limits = c(-300,700))+
 scale_x_datetime(limits = as.POSIXct(c('2022-11-6','2022-12-25'),format="%F"))
 ```
+
+
 # Shortwave out 
 ```{r, warning=FALSE}
 ggplot(data = df)+
   geom_point(aes(TIMESTAMP,SWOUT_6_11_1_1_1))+
   scale_y_continuous(limits = c(-10,750),
                      expression('Shortwave Out ('*W/m^2*')'))+
-  scale_x_datetime(limits = as.POSIXct(c("2022-9-22",'2023-11-1')))
+  scale_x_datetime(limits = as.POSIXct(biomet_dates))
 ```
 
 ```{r, warning=FALSE}
@@ -645,6 +679,8 @@ SWOUT_6_11_1_1_1.limits[df$SWOUT_6_11_1_1_1 < 0] <- 0
 hist(SWOUT_6_11_1_1_1.limits,breaks=100)
 plot(df$TIMESTAMP,SWOUT_6_11_1_1_1.limits)
 ```
+
+
 ### Rolling SD
 (Changed to SD because MAD was cutting good data)
 ```{r, warning=FALSE}
@@ -670,8 +706,8 @@ ggplot(df)+geom_hline(yintercept = 0)+
   geom_point(aes(TIMESTAMP,SWOUT_6_11_1_1_1.limits,col='Shortwave out'))+
   geom_line(aes(TIMESTAMP,mad_filt,col='Filter'))+
   geom_line(aes(TIMESTAMP,roll.mad,col='MAD'))+
-  scale_y_continuous(limits = c(-5,800))+
-  scale_x_datetime(limits = as.POSIXct(c('2022-9-20','2023-11-1'),format="%F"))+
+  scale_y_continuous(limits = c(-5,700))+
+  scale_x_datetime(limits = as.POSIXct(biomet_dates,format="%F"))+
   scale_color_manual(values=c('yellow','red','black'))
 
 
@@ -701,6 +737,8 @@ ggplot(data = df)+
   scale_y_continuous(limits = c(-250,300))+
 scale_x_datetime(limits = as.POSIXct(c('2023-9-24','2023-11-2'),format="%F"))
 ```
+
+
 # Albedo 
 ```{r, warning=FALSE}
 albedo = df$SWOUT_6_11_1_1_1.c / df$SWIN_6_10_1_1_1.c
@@ -708,8 +746,8 @@ albedo = df$SWOUT_6_11_1_1_1.c / df$SWIN_6_10_1_1_1.c
 ggplot(data = df)+
   geom_point(aes(TIMESTAMP,albedo))+
   scale_y_continuous(limits = c(-1,2),
-                     expression('Snow Depth ('*m*')'))+
-  scale_x_datetime(limits = as.POSIXct(c("2022-9-22",'2023-11-2')))
+                     expression('Albedo'))+
+  scale_x_datetime(limits = as.POSIXct(biomet_dates))
 
 albedo.limits = replace(albedo, albedo < .05 | albedo > 1,NA)
 
@@ -717,8 +755,8 @@ albedo.limits = replace(albedo, albedo < .05 | albedo > 1,NA)
 ggplot(data = df)+
   geom_point(aes(TIMESTAMP,albedo.limits))+
   scale_y_continuous(limits = c(-.5,1.5),
-                     expression('Snow Depth ('*m*')'))+
-  scale_x_datetime(limits = as.POSIXct(c("2022-9-22",'2023-11-1')))
+                     expression('Albedo'))+
+  scale_x_datetime(limits = as.POSIXct(biomet_dates))
 
 
 ```
@@ -747,7 +785,7 @@ ggplot(df)+geom_hline(yintercept = 0)+
   geom_line(aes(TIMESTAMP,mad_filt,col='Filter'))+
   geom_line(aes(TIMESTAMP,roll.mad,col='MAD'))+
   scale_y_continuous(limits = c(0,1))+
-  scale_x_datetime(limits = as.POSIXct(c('2022-9-20','2023-11-1'),format="%F"))+
+  scale_x_datetime(limits = as.POSIXct(biomet_dates,format="%F"))+
   scale_color_manual(values=c('black','yellow','red'))
 ```
 
@@ -767,7 +805,7 @@ ggplot(df)+geom_hline(yintercept = 0)+
   geom_point(aes(TIMESTAMP,albedo.limits,col='Uncleaned'))+
   geom_point(aes(TIMESTAMP,df$ALB_1_1_1.c,col='Cleaned'))+
   scale_y_continuous(limits = c(0,1))+
-  scale_x_datetime(limits = as.POSIXct(c('2022-8-6','2023-11-1'),format="%F"))+
+  scale_x_datetime(limits = as.POSIXct(c('2023-01-01','2023-02-01'),format="%F"))+
   scale_color_manual(values=c('black','red'))
 
 
@@ -779,7 +817,7 @@ ggplot(data = df)+
   geom_point(aes(TIMESTAMP,LWIN_6_14_1_1_1))+
   scale_y_continuous(limits = c(50,750),
                      expression('Longwave In ('*W/m^2*')'))+
-  scale_x_datetime(limits = as.POSIXct(c("2022-9-21",'2023-11-1')))
+  scale_x_datetime(limits = as.POSIXct(biomet_dates))
 
 ```
 
@@ -793,7 +831,7 @@ ggplot(data = df)+
   geom_point(aes(TIMESTAMP,LWIN_6_14_1_1_1.limits))+
   scale_y_continuous(limits = c(50,550),
                      expression('Longwave In ('*W/m^2*')'))+
-  scale_x_datetime(limits = as.POSIXct(c("2022-9-21",'2023-11-1')))
+  scale_x_datetime(limits = as.POSIXct(biomet_dates))
 
 df$LWIN_6_14_1_1_1.c = LWIN_6_14_1_1_1.limits
 ```
@@ -805,7 +843,7 @@ ggplot(data = df)+
   geom_point(aes(TIMESTAMP,LWOUT_6_15_1_1_1))+
   scale_y_continuous(limits = c(150,750),
                      expression('Longwave Out ('*W/m^2*')'))+
-  scale_x_datetime(limits = as.POSIXct(c("2022-09-12",'2023-10-31')))
+  scale_x_datetime(limits = as.POSIXct(biomet_dates))
 ```
 
 ```{r, warning=FALSE}
@@ -817,6 +855,18 @@ plot(LWOUT_6_15_1_1_1.limits)
 df$LWOUT_6_15_1_1_1.c = LWOUT_6_15_1_1_1.limits
 ```
 
+
+# Convert Soil Temps in Kelvin to Celcius
+```{r, warning=FALSE}
+
+ts_columns <- names(df)[grepl("TS", names(df))]
+
+for (col in ts_columns) {
+  df[[col]] <- ifelse(df[[col]] > 150, df[[col]] - 273.15, df[[col]])
+}
+
+```
+
 # Open Water Surface Therm
 
 ```{r, warning=FALSE}
@@ -825,7 +875,7 @@ ggplot(data = df)+ theme_bw()+ geom_hline(yintercept = 0)+
   geom_hline(yintercept = 0)+
   scale_y_continuous(limits = c(-15,25),
                      expression('Open Water Therms Soil T ('*C*')'))+
-  scale_x_datetime(limits = as.POSIXct(c("2022-8-6",'2023-6-20')))
+  scale_x_datetime(limits = as.POSIXct(biomet_dates))
 
 ``` 
 
@@ -840,8 +890,19 @@ TS_2_38_3_1_1.limits = df$TS_2_38_3_1_1
 
 TS_2_38_3_1_1.limits = ifelse(df$TS_2_38_3_1_1 < -5 & df$TIMESTAMP >= '2022-11-16' & df$TIMESTAMP <= '2022-11-29' ,NA, TS_2_38_3_1_1.limits)
 
-TS_2_38_3_1_1.limits = ifelse(df$TS_2_38_3_1_1 >= -100 & df$TIMESTAMP >= '2023-4-9' & df$TIMESTAMP <= '2023-6-12' ,NA, TS_2_38_3_1_1.limits)
+ggplot(data = df)+ theme_bw()+ geom_hline(yintercept = 0)+
+  geom_point(aes(TIMESTAMP, TS_2_38_3_1_1.limits, col = 'Surface'))+
+  scale_y_continuous(expression('Open Water Therms Soil T ('*C*')'))+
+  scale_x_datetime(limits = as.POSIXct(c("2023-02-09",'2023-06-12')))
 
+TS_2_38_3_1_1.limits = ifelse(df$TS_2_38_3_1_1 <= -100 & df$TIMESTAMP >= '2023-2-1' & df$TIMESTAMP <= '2023-6-12' ,NA, TS_2_38_3_1_1.limits)
+
+TS_2_38_3_1_1.limits = ifelse(df$TIMESTAMP >= '2023-04-20' & df$TIMESTAMP <= '2023-6-12' ,NA, TS_2_38_3_1_1.limits)
+
+ggplot(data = df)+ theme_bw()+ geom_hline(yintercept = 0)+
+  geom_point(aes(TIMESTAMP, TS_2_38_3_1_1.limits, col = 'Surface'))+
+  scale_y_continuous(expression('Open Water Therms Soil T ('*C*')'))+
+  scale_x_datetime(limits = as.POSIXct(c("2023-02-09",'2023-06-12')))
 
 ggplot(data = df)+ theme_bw()+ geom_hline(yintercept = 0)+
   geom_point(aes(TIMESTAMP, TS_2_38_3_1_1.limits, col = 'Surface'))+
@@ -850,13 +911,12 @@ ggplot(data = df)+ theme_bw()+ geom_hline(yintercept = 0)+
   scale_x_datetime(limits = as.POSIXct(c("2022-11-16",'2022-11-29')))
 
 ggplot(data = df)+ theme_bw()+ geom_hline(yintercept = 0)+
-  geom_line(aes(TIMESTAMP, TS_2_38_3_1_1.limits, col = 'Surface'))+
-  scale_y_continuous(limits = c(-15,25),
-                     expression('Open Water Therms Soil T ('*C*')'))+
-  scale_x_datetime(limits = as.POSIXct(c("2022-8-6",'2023-7-14')))
+  geom_point(aes(TIMESTAMP, TS_2_38_3_1_1.limits, col = 'Surface'))+
+  scale_x_datetime(limits = as.POSIXct(c('2023-04-04','2023-05-01')))
 
-
+TS_2_38_3_1_1.limits = ifelse(df$TIMESTAMP >= '2023-04-07 1800' & df$TIMESTAMP <= '2023-04-24 0000' ,NA, TS_2_38_3_1_1.limits)
 ```
+
 ## Rolling MAD 
 ```{r, warning=FALSE}
 f = TS_2_38_3_1_1.limits # first make a new flux vector to apply the above filters
@@ -883,7 +943,7 @@ ggplot(df)+geom_hline(yintercept = 0)+
   geom_line(aes(TIMESTAMP,mad_filt,col='Filter'))+
   geom_line(aes(TIMESTAMP,roll.mad,col='MAD'))+
   scale_y_continuous(limits = c(-15,30))+
-  scale_x_datetime(limits = as.POSIXct(c('2022-8-6','2023-11-1'),format="%F"))+
+  scale_x_datetime(limits = as.POSIXct(biomet_dates,format="%F"))+
   scale_color_manual(values=c('yellow','red','black'))
 ```
 
@@ -901,7 +961,7 @@ ggplot(df)+geom_hline(yintercept = 0)+
   geom_point(aes(TIMESTAMP,TS_2_38_3_1_1.limits,col='Uncleaned'))+
   geom_point(aes(TIMESTAMP,df$TS_2_38_3_1_1.c,col='Cleaned'))+
   scale_y_continuous(limits = c(-15,30))+
-  scale_x_datetime(limits = as.POSIXct(c('2022-8-6','2023-11-1'),format="%F"))+
+  scale_x_datetime(limits = as.POSIXct(biomet_dates,format="%F"))+
   scale_color_manual(values=c('black','red'))
 
 ```
@@ -916,16 +976,17 @@ ggplot(data = df)+
   geom_point(aes(TIMESTAMP,TS_2_38_3_1_1.limits),col='black')+
   geom_point(aes(TIMESTAMP,TS_2_38_3_1_1.c),col='red')+
   scale_y_continuous(limits = c(-15,30))+
-scale_x_datetime(limits = as.POSIXct(c('2022-10-12','2022-12-2'),format="%F"))
+scale_x_datetime(limits = as.POSIXct(c('2022-10-20','2022-12-2'),format="%F"))
 ```
-  scale_y_continuous(limits = c(-15,25),
+
+
 # Open Water 5 Cm depth Therm
 
 ```{r, warning=FALSE}
 
 ggplot(data = df)+ theme_bw()+ geom_hline(yintercept = 0)+
   geom_line(aes(TIMESTAMP, TS_2_38_3_2_1, col = '10 cm'))+
-  scale_x_datetime(limits = as.POSIXct(c("2022-8-4",'2023-11-1')))
+  scale_x_datetime(limits = as.POSIXct(biomet_dates))
 
 TS_2_38_3_2_1.limits = df$TS_2_38_3_2_1
 
@@ -939,8 +1000,8 @@ ggplot(data = df)+ theme_bw()+ geom_hline(yintercept = 0)+
 
 plot(df$TS_2_38_3_2_1.c)
 ```
-## Rolling MAD 
-
+## Rolling MAD
+NA here
 
 # Open Water 10 cm Therm
 
@@ -949,18 +1010,19 @@ ggplot(data = df)+ theme_bw()+ geom_hline(yintercept = 0)+
   geom_line(aes(TIMESTAMP, TS_2_38_3_3_1, col = '10 cm'))+
   scale_y_continuous(limits = c(-15,20),
                      expression('Open Water Therms Soil T ('*C*')'))+
-  scale_x_datetime(limits = as.POSIXct(c("2022-8-6",'2023-11-1')))
+  scale_x_datetime(limits = as.POSIXct(biomet_dates))
 
 
 ggplot(data = df)+ theme_bw()+ geom_hline(yintercept = 0)+
   geom_point(aes(TIMESTAMP, TS_2_38_3_3_1, col = '10 cm'))+
   scale_y_continuous(limits = c(-5,5),
                      expression('Open Water Therms Soil T ('*C*')'))+
-  scale_x_datetime(limits = as.POSIXct(c("2022-10-18",'2022-10-24')))
+  scale_x_datetime(limits = as.POSIXct(c("2022-10-18",'2022-10-24')))+
+  geom_vline(xintercept=as.POSIXct('2022-10-21 1200'))
 
 TS_2_38_3_3_1.limits = df$TS_2_38_3_3_1
 
-TS_2_38_3_3_1.limits = ifelse(df$TS_2_38_3_3_1 <= 0 & df$TIMESTAMP >= '2022-10-18' & df$TIMESTAMP <= '2022-10-22' ,NA, TS_2_38_3_3_1.limits)
+TS_2_38_3_3_1.limits = ifelse(df$TIMESTAMP >= '2022-10-21 2300' & df$TIMESTAMP <= '2022-10-22 1000' ,NA, TS_2_38_3_3_1.limits)
 
 ggplot(data = df)+ theme_bw()+ geom_hline(yintercept = 0)+
   geom_point(aes(TIMESTAMP, TS_2_38_3_3_1.limits, col = '10 cm'))+
@@ -995,7 +1057,7 @@ ggplot(df)+geom_hline(yintercept = 0)+
   geom_line(aes(TIMESTAMP,mad_filt,col='Filter'))+
   geom_line(aes(TIMESTAMP,roll.mad,col='MAD'))+
   scale_y_continuous(limits = c(-15,20))+
-  scale_x_datetime(limits = as.POSIXct(c('2022-8-6','2023-11-1'),format="%F"))+
+  scale_x_datetime(limits = as.POSIXct(biomet_dates,format="%F"))+
   scale_color_manual(values=c('yellow','red','black'))
 
 ```
@@ -1014,7 +1076,7 @@ ggplot(data = df)+geom_hline(yintercept = 0)+
   geom_point(aes(TIMESTAMP,TS_2_38_3_3_1,col='uncleaned'))+
   geom_point(aes(TIMESTAMP,TS_2_38_3_3_1.c,col='cleaned'))+
   scale_y_continuous(limits=c(-15,20))+
-  scale_x_datetime(limits = as.POSIXct(c('2022-8-6','2023-11-1'),format="%F"))+
+  scale_x_datetime(limits = as.POSIXct(biomet_dates,format="%F"))+
   scale_color_manual(values=c('black','red'))
 
 
@@ -1041,13 +1103,28 @@ ggplot(data = df)+ theme_bw()+ geom_hline(yintercept = 0)+
   geom_line(aes(TIMESTAMP, TS_2_38_3_4_1, col = '20 Cm'))+
   scale_y_continuous(limits = c(-12,12),
                      expression('Open Water Therms Soil T ('*C*')'))+
-  scale_x_datetime(limits = as.POSIXct(c("2022-8-6",'2023-11-1')))
+  scale_x_datetime(limits = as.POSIXct(biomet_dates))
 
 
 TS_2_38_3_4_1.limits = replace(df$TS_2_38_3_4_1, df$TS_2_38_3_4_1 < 15 | df$TS_2_38_3_4_1.limits > -15,NA)
 
+ggplot(data = df)+ theme_bw()+ geom_hline(yintercept = 0)+
+  geom_point(aes(TIMESTAMP, TS_2_38_3_4_1, col = '20 cm'))+
+  scale_y_continuous(limits = c(-5,5),
+                     expression('Open Water Therms Soil T ('*C*')'))+
+  scale_x_datetime(limits = as.POSIXct(c("2022-10-18",'2022-10-24')))
+
+TS_2_38_3_4_1.limits = ifelse(df$TIMESTAMP >= '2022-10-21 2300' & df$TIMESTAMP <= '2022-10-22 1000' ,NA, TS_2_38_3_4_1.limits)
+
+ggplot(data = df)+ theme_bw()+ geom_hline(yintercept = 0)+
+  geom_point(aes(TIMESTAMP, TS_2_38_3_4_1.limits, col = '20 cm'))+
+  scale_y_continuous(limits = c(-5,5),
+                     expression('Open Water Therms Soil T ('*C*')'))+
+  scale_x_datetime(limits = as.POSIXct(c("2022-10-18",'2022-10-24')))
 
 ```
+
+
 ## Rolling MAD 
 ```{r, warning=FALSE}
 f = TS_2_38_3_4_1.limits # first make a new flux vector to apply the above filters
@@ -1074,7 +1151,7 @@ ggplot(df)+geom_hline(yintercept = 0)+
   geom_line(aes(TIMESTAMP,mad_filt,col='Filter'))+
   geom_line(aes(TIMESTAMP,roll.mad,col='MAD'))+
   scale_y_continuous(limits = c(-12,12))+
-  scale_x_datetime(limits = as.POSIXct(c('2022-8-6','2023-11-1'),format="%F"))+
+  scale_x_datetime(limits = as.POSIXct(biomet_dates,format="%F"))+
   scale_color_manual(values=c('yellow','red','black'))
 
 ```
@@ -1093,7 +1170,7 @@ ggplot(data = df)+geom_hline(yintercept = 0)+
   geom_point(aes(TIMESTAMP,TS_2_38_3_4_1,col='uncleaned'))+
   geom_point(aes(TIMESTAMP,TS_2_38_3_4_1.c,col='cleaned'))+
   scale_y_continuous(limits=c(-12,12))+
-  scale_x_datetime(limits = as.POSIXct(c('2022-8-6','2023-11-1'),format="%F"))+
+  scale_x_datetime(limits = as.POSIXct(biomet_dates,format="%F"))+
   scale_color_manual(values=c('black','red'))
 
 ```
@@ -1118,12 +1195,27 @@ ggplot(data = df)+ theme_bw()+ geom_hline(yintercept = 0)+
   geom_line(aes(TIMESTAMP, TS_2_38_3_5_1, col = '30 Cm'))+
   scale_y_continuous(limits = c(-10,8.5),
                      expression('Open Water Therms Soil T ('*C*')'))+
-  scale_x_datetime(limits = as.POSIXct(c("2022-8-6",'2023-11-1')))
-TS_2_38_3_5_1 = df$TS_2_38_3_5_1
+  scale_x_datetime(limits = as.POSIXct(biomet_dates))
+
+TS_2_38_3_5_1.limits = df$TS_2_38_3_5_1
+
+ggplot(data = df)+ theme_bw()+ geom_hline(yintercept = 0)+
+  geom_point(aes(TIMESTAMP, TS_2_38_3_5_1))+
+  scale_y_continuous(limits = c(-5,5),
+                     expression('Open Water Therms Soil T ('*C*')'))+
+  scale_x_datetime(limits = as.POSIXct(c("2022-10-18",'2022-10-24')))
+
+TS_2_38_3_5_1.limits = ifelse(df$TIMESTAMP >= '2022-10-21 2300' & df$TIMESTAMP <= '2022-10-22 1000' ,NA, TS_2_38_3_5_1.limits)
+
+ggplot(data = df)+ theme_bw()+ geom_hline(yintercept = 0)+
+  geom_point(aes(TIMESTAMP, TS_2_38_3_5_1.limits))+
+  scale_y_continuous(limits = c(-5,5),
+                     expression('Open Water Therms Soil T ('*C*')'))+
+  scale_x_datetime(limits = as.POSIXct(c("2022-10-18",'2022-10-24')))
 ```
 ## Rolling MAD 
 ```{r, warning=FALSE}
-f = TS_2_38_3_5_1 # first make a new flux vector to apply the above filters
+f = TS_2_38_3_5_1.limits # first make a new flux vector to apply the above filters
 # prepare the inputs for a zero-phase (forward and reverse) filter  
 ind       = which(complete.cases(f))   # first save the index of all the NAs
 b         = rep(1,8)/8                 # moving average coefficient
@@ -1143,21 +1235,21 @@ roll.mad[is.na(mad_filt)] = NA  #make NA values where NAs exist in the real data
 
 
 ggplot(df)+geom_hline(yintercept = 0)+
-  geom_point(aes(TIMESTAMP,TS_2_38_3_5_1,col='Open Water 30 cm Soil T'))+
+  geom_point(aes(TIMESTAMP,TS_2_38_3_5_1.limits,col='Open Water 30 cm Soil T'))+
   geom_line(aes(TIMESTAMP,mad_filt,col='Filter'))+
   geom_line(aes(TIMESTAMP,roll.mad,col='MAD'))+
   scale_y_continuous(limits = c(-10,8.5))+
-  scale_x_datetime(limits = as.POSIXct(c('2022-8-6','2023-11-1'),format="%F"))+
+  scale_x_datetime(limits = as.POSIXct(biomet_dates,format="%F"))+
   scale_color_manual(values=c('yellow','red','black'))
 ```
 
 ```{r, warning=FALSE}
 #adjust this value (N) to tweak how many MADs to be away from the norm
-N = 3
+N = 2
 
 #Add clean value to dataframe (_.c)
 
-df$TS_2_38_3_5_1.c = ifelse(abs(TS_2_38_3_5_1 - mad_filt) > (N * roll.mad),NA,TS_2_38_3_5_1)
+df$TS_2_38_3_5_1.c = ifelse(abs(TS_2_38_3_5_1.limits - mad_filt) > (N * roll.mad),NA,TS_2_38_3_5_1.limits)
 
 #Compare cleaned vs. uncleaned
 
@@ -1165,7 +1257,7 @@ ggplot(data = df)+geom_hline(yintercept = 0)+
   geom_point(aes(TIMESTAMP,TS_2_38_3_5_1,col='uncleaned'))+
   geom_point(aes(TIMESTAMP,TS_2_38_3_5_1.c,col='cleaned'))+
   scale_y_continuous(limits=c(-10,8.5))+
-  scale_x_datetime(limits = as.POSIXct(c('2022-8-6','2023-11-1'),format="%F"))+
+  scale_x_datetime(limits = as.POSIXct(biomet_dates,format="%F"))+
   scale_color_manual(values=c('black','red'))
 
 ```
@@ -1177,24 +1269,30 @@ ggplot(data = df)+
   geom_ribbon(aes(x = TIMESTAMP,ymax = mad_filt+roll.mad*3,ymin = mad_filt-roll.mad*3,fill='3'))+
   geom_ribbon(aes(x = TIMESTAMP,ymax = mad_filt+roll.mad*2,ymin = mad_filt-roll.mad*2,fill='2'))+
   geom_ribbon(aes(x = TIMESTAMP,ymax = mad_filt+roll.mad*1,ymin = mad_filt-roll.mad*1,fill='1'))+
-  geom_point(aes(TIMESTAMP,TS_2_38_3_5_1),col='red')+
+  geom_point(aes(TIMESTAMP,TS_2_38_3_5_1.limits),col='red')+
   geom_point(aes(TIMESTAMP,TS_2_38_3_5_1.c),col='black')+
   scale_y_continuous(limits = c(-3,5))+
 scale_x_datetime(limits = as.POSIXct(c('2022-10-17','2022-11-10'),format="%F"))
 ```
-# Open Water 40 cm depth Therm
 
+
+# Open Water 40 cm depth Therm
 ```{r, warning=FALSE}
 ggplot(data = df)+ theme_bw()+ geom_hline(yintercept = 0)+
   geom_line(aes(TIMESTAMP, TS_2_38_3_6_1, col = '40 Cm'))+
   scale_y_continuous(limits = c(-10,7.5),
                      expression('Open Water Therms Soil T ('*C*')'))+
-  scale_x_datetime(limits = as.POSIXct(c("2022-8-6",'2023-11-1')))
-TS_2_38_3_6_1 = df$TS_2_38_3_6_1
+  scale_x_datetime(limits = as.POSIXct(biomet_dates))
+
+TS_2_38_3_6_1.limits = df$TS_2_38_3_6_1
+
+TS_2_38_3_6_1.limits = ifelse(df$TIMESTAMP >= '2022-10-21 2300' & df$TIMESTAMP <= '2022-10-22 1000' ,NA, TS_2_38_3_6_1.limits)
 ```
+
+
 ## Rolling MAD 
 ```{r, warning=FALSE}
-f = TS_2_38_3_6_1 # first make a new flux vector to apply the above filters
+f = TS_2_38_3_6_1.limits # first make a new flux vector to apply the above filters
 # prepare the inputs for a zero-phase (forward and reverse) filter  
 ind       = which(complete.cases(f))   # first save the index of all the NAs
 b         = rep(1,8)/8                 # moving average coefficient
@@ -1214,11 +1312,11 @@ roll.mad[is.na(mad_filt)] = NA  #make NA values where NAs exist in the real data
 
 
 ggplot(df)+geom_hline(yintercept = 0)+
-  geom_point(aes(TIMESTAMP,TS_2_38_3_6_1,col='Open Water 40 cm Soil T'))+
+  geom_point(aes(TIMESTAMP,TS_2_38_3_6_1.limits,col='Open Water 40 cm Soil T'))+
   geom_line(aes(TIMESTAMP,mad_filt,col='Filter'))+
   geom_line(aes(TIMESTAMP,roll.mad,col='MAD'))+
   scale_y_continuous(limits = c(-10,7.5))+
-  scale_x_datetime(limits = as.POSIXct(c('2022-8-6','2023-11-1'),format="%F"))+
+  scale_x_datetime(limits = as.POSIXct(biomet_dates,format="%F"))+
   scale_color_manual(values=c('yellow','red','black'))
 
 ```
@@ -1229,7 +1327,7 @@ N = 3
 
 #Add clean value to dataframe (_.c)
 
-df$TS_2_38_3_6_1.c = ifelse(abs(TS_2_38_3_6_1 - mad_filt) > (N * roll.mad),NA,TS_2_38_3_6_1)
+df$TS_2_38_3_6_1.c = ifelse(abs(TS_2_38_3_6_1.limits - mad_filt) > (N * roll.mad),NA,TS_2_38_3_6_1.limits)
 
 #Compare cleaned vs. uncleaned
 
@@ -1237,7 +1335,7 @@ ggplot(data = df)+geom_hline(yintercept = 0)+
   geom_point(aes(TIMESTAMP,TS_2_38_3_6_1,col='uncleaned'))+
   geom_point(aes(TIMESTAMP,TS_2_38_3_6_1.c,col='cleaned'))+
   scale_y_continuous(limits=c(-10,10))+
-  scale_x_datetime(limits = as.POSIXct(c('2022-8-6','2023-11-1'),format="%F"))+
+  scale_x_datetime(limits = as.POSIXct(biomet_dates,format="%F"))+
   scale_color_manual(values=c('black','red'))
 ```
 
@@ -1248,11 +1346,13 @@ ggplot(data = df)+
   geom_ribbon(aes(x = TIMESTAMP,ymax = mad_filt+roll.mad*3,ymin = mad_filt-roll.mad*3,fill='3'))+
   geom_ribbon(aes(x = TIMESTAMP,ymax = mad_filt+roll.mad*2,ymin = mad_filt-roll.mad*2,fill='2'))+
   geom_ribbon(aes(x = TIMESTAMP,ymax = mad_filt+roll.mad*1,ymin = mad_filt-roll.mad*1,fill='1'))+
-  geom_point(aes(TIMESTAMP,TS_2_38_3_6_1),col='red')+
+  geom_point(aes(TIMESTAMP,TS_2_38_3_6_1.limits),col='red')+
   geom_point(aes(TIMESTAMP,TS_2_38_3_6_1.c),col='black')+
   scale_y_continuous(limits = c(-10,7.5))+
-scale_x_datetime(limits = as.POSIXct(c('2022-10-15','2022-11-12'),format="%F"))
+scale_x_datetime(limits = as.POSIXct(c('2022-11-01','2022-11-10'),format="%F"))
 ```
+
+
 # Open Water 50 cm depth Therm
 
 ```{r, warning=FALSE}
@@ -1260,12 +1360,17 @@ ggplot(data = df)+ theme_bw()+ geom_hline(yintercept = 0)+
   geom_line(aes(TIMESTAMP, TS_2_38_3_7_1, col = '50 Cm'))+
   scale_y_continuous(limits = c(-10,7),
                      expression('Open Water Therms Soil T ('*K*')'))+
-  scale_x_datetime(limits = as.POSIXct(c("2022-8-6",'2023-11-1')))
-TS_2_38_3_7_1 = df$TS_2_38_3_7_1
+  scale_x_datetime(limits = as.POSIXct(biomet_dates))
+
+TS_2_38_3_7_1.limits = df$TS_2_38_3_7_1
+
+TS_2_38_3_7_1.limits = ifelse(df$TIMESTAMP >= '2022-10-21 2300' & df$TIMESTAMP <= '2022-10-22 1000' ,NA, TS_2_38_3_7_1.limits)
 ```
+
+
 ## Rolling MAD 
 ```{r, warning=FALSE}
-f = TS_2_38_3_7_1 # first make a new flux vector to apply the above filters
+f = TS_2_38_3_7_1.limits # first make a new flux vector to apply the above filters
 # prepare the inputs for a zero-phase (forward and reverse) filter  
 ind       = which(complete.cases(f))   # first save the index of all the NAs
 b         = rep(1,8)/8                 # moving average coefficient
@@ -1284,11 +1389,11 @@ roll.mad = rollapply(data = mad_filt,
 roll.mad[is.na(mad_filt)] = NA  #make NA values where NAs exist in the real data
 
 ggplot(df)+geom_hline(yintercept = 0)+
-  geom_point(aes(TIMESTAMP,TS_2_38_3_7_1,col='Open Water 50 cm Soil T'))+
+  geom_point(aes(TIMESTAMP,TS_2_38_3_7_1.limits,col='Open Water 50 cm Soil T'))+
   geom_line(aes(TIMESTAMP,mad_filt,col='Filter'))+
   geom_line(aes(TIMESTAMP,roll.mad,col='MAD'))+
   scale_y_continuous(limits = c(-10,7.5))+
-  scale_x_datetime(limits = as.POSIXct(c('2022-8-6','2023-11-1'),format="%F"))+
+  scale_x_datetime(limits = as.POSIXct(biomet_dates,format="%F"))+
   scale_color_manual(values=c('yellow','red','black'))
 ```
 
@@ -1298,7 +1403,7 @@ N = 3
 
 #Add clean value to dataframe (_.c)
 
-df$TS_2_38_3_7_1.c = ifelse(abs(TS_2_38_3_7_1 - mad_filt) > (N * roll.mad),NA,TS_2_38_3_7_1)
+df$TS_2_38_3_7_1.c = ifelse(abs(TS_2_38_3_7_1.limits - mad_filt) > (N * roll.mad),NA,TS_2_38_3_7_1.limits)
 
 #Compare cleaned vs. uncleaned
 
@@ -1306,7 +1411,7 @@ ggplot(data = df)+geom_hline(yintercept = 0)+
   geom_point(aes(TIMESTAMP,TS_2_38_3_7_1,col='uncleaned'))+
   geom_point(aes(TIMESTAMP,TS_2_38_3_7_1.c,col='cleaned'))+
   scale_y_continuous(limits=c(-10,10))+
-  scale_x_datetime(limits = as.POSIXct(c('2022-8-6','2023-11-1'),format="%F"))+
+  scale_x_datetime(limits = as.POSIXct(biomet_dates,format="%F"))+
   scale_color_manual(values=c('black','red'))
 ```
 
@@ -1317,24 +1422,28 @@ ggplot(data = df)+
   geom_ribbon(aes(x = TIMESTAMP,ymax = mad_filt+roll.mad*3,ymin = mad_filt-roll.mad*3,fill='3'))+
   geom_ribbon(aes(x = TIMESTAMP,ymax = mad_filt+roll.mad*2,ymin = mad_filt-roll.mad*2,fill='2'))+
   geom_ribbon(aes(x = TIMESTAMP,ymax = mad_filt+roll.mad*1,ymin = mad_filt-roll.mad*1,fill='1'))+
-  geom_point(aes(TIMESTAMP,TS_2_38_3_7_1),col='red')+
+  geom_point(aes(TIMESTAMP,TS_2_38_3_7_1.limits),col='red')+
   geom_point(aes(TIMESTAMP,TS_2_38_3_7_1.c),col='black')+
   scale_y_continuous(limits = c(-5,5))+
 scale_x_datetime(limits = as.POSIXct(c('2022-10-15','2022-11-10'),format="%F"))
 ```
-# Open Water 60 cm depth Therm
 
+
+# Open Water 60 cm depth Therm
 ```{r, warning=FALSE}
 ggplot(data = df)+ theme_bw()+ geom_hline(yintercept = 0)+
   geom_line(aes(TIMESTAMP, TS_2_38_3_8_1, col = '60 Cm'))+
   scale_y_continuous(limits = c(-10,5),
                      expression('Open Water Therms Soil T ('*K*')'))+
-  scale_x_datetime(limits = as.POSIXct(c("2022-8-6",'2023-11-1')))
-TS_2_38_3_8_1 = df$TS_2_38_3_8_1
+  scale_x_datetime(limits = as.POSIXct(biomet_dates))
+
+TS_2_38_3_8_1.limits = df$TS_2_38_3_8_1
+
+TS_2_38_3_8_1.limits = ifelse(df$TIMESTAMP >= '2022-10-21 2300' & df$TIMESTAMP <= '2022-10-22 1000' ,NA, TS_2_38_3_8_1.limits)
 ```
 ## Rolling MAD 
 ```{r, warning=FALSE}
-f = TS_2_38_3_8_1 # first make a new flux vector to apply the above filters
+f = TS_2_38_3_8_1.limits # first make a new flux vector to apply the above filters
 # prepare the inputs for a zero-phase (forward and reverse) filter  
 ind       = which(complete.cases(f))   # first save the index of all the NAs
 b         = rep(1,8)/8                 # moving average coefficient
@@ -1353,11 +1462,11 @@ roll.mad = rollapply(data = mad_filt,
 roll.mad[is.na(mad_filt)] = NA  #make NA values where NAs exist in the real data
 
 ggplot(df)+geom_hline(yintercept = 0)+
-  geom_point(aes(TIMESTAMP,TS_2_38_3_8_1,col='Open Water 60 cm Soil T'))+
+  geom_point(aes(TIMESTAMP,TS_2_38_3_8_1.limits,col='Open Water 60 cm Soil T'))+
   geom_line(aes(TIMESTAMP,mad_filt,col='Filter'))+
   geom_line(aes(TIMESTAMP,roll.mad,col='MAD'))+
   scale_y_continuous(limits = c(-10,5))+
-  scale_x_datetime(limits = as.POSIXct(c('2022-8-6','2023-11-1'),format="%F"))+
+  scale_x_datetime(limits = as.POSIXct(biomet_dates,format="%F"))+
   scale_color_manual(values=c('yellow','red','black'))
 ```
 
@@ -1367,7 +1476,7 @@ N = 3
 
 #Add clean value to dataframe (_.c)
 
-df$TS_2_38_3_8_1.c = ifelse(abs(TS_2_38_3_8_1 - mad_filt) > (N * roll.mad),NA,TS_2_38_3_8_1)
+df$TS_2_38_3_8_1.c = ifelse(abs(TS_2_38_3_8_1.limits - mad_filt) > (N * roll.mad),NA,TS_2_38_3_8_1.limits)
 
 #Compare cleaned vs. uncleaned
 
@@ -1375,7 +1484,7 @@ ggplot(data = df)+geom_hline(yintercept = 0)+
   geom_point(aes(TIMESTAMP,TS_2_38_3_8_1,col='uncleaned'))+
   geom_point(aes(TIMESTAMP,TS_2_38_3_8_1.c,col='cleaned'))+
   scale_y_continuous(limits=c(-10,10))+
-  scale_x_datetime(limits = as.POSIXct(c('2022-8-6','2023-11-1'),format="%F"))+
+  scale_x_datetime(limits = as.POSIXct(biomet_dates,format="%F"))+
   scale_color_manual(values=c('black','red'))
 ```
 
@@ -1386,24 +1495,28 @@ ggplot(data = df)+
   geom_ribbon(aes(x = TIMESTAMP,ymax = mad_filt+roll.mad*3,ymin = mad_filt-roll.mad*3,fill='3'))+
   geom_ribbon(aes(x = TIMESTAMP,ymax = mad_filt+roll.mad*2,ymin = mad_filt-roll.mad*2,fill='2'))+
   geom_ribbon(aes(x = TIMESTAMP,ymax = mad_filt+roll.mad*1,ymin = mad_filt-roll.mad*1,fill='1'))+
-  geom_point(aes(TIMESTAMP,TS_2_38_3_8_1),col='red')+
+  geom_point(aes(TIMESTAMP,TS_2_38_3_8_1.limits),col='red')+
   geom_point(aes(TIMESTAMP,TS_2_38_3_8_1.c),col='black')+
   scale_y_continuous(limits = c(-10,5))+
 scale_x_datetime(limits = as.POSIXct(c('2022-10-15','2022-11-18'),format="%F"))
 ```
-# Open Water 70 cm depth Therm
 
+
+# Open Water 70 cm depth Therm
 ```{r, warning=FALSE}
 ggplot(data = df)+ theme_bw()+ geom_hline(yintercept = 0)+
   geom_line(aes(TIMESTAMP, TS_2_38_3_9_1, col = '70 Cm'))+
   scale_y_continuous(limits = c(-10,5),
                      expression('Open Water Therms Soil T ('*K*')'))+
-  scale_x_datetime(limits = as.POSIXct(c("2022-8-6",'2023-11-1')))
-TS_2_38_3_9_1 = df$TS_2_38_3_9_1
+  scale_x_datetime(limits = as.POSIXct(biomet_dates))
+
+TS_2_38_3_9_1.limits = df$TS_2_38_3_9_1
+
+TS_2_38_3_9_1.limits = ifelse(df$TIMESTAMP >= '2022-10-21 2300' & df$TIMESTAMP <= '2022-10-22 1000' ,NA, TS_2_38_3_9_1.limits)
 ```
 ## Rolling MAD 
 ```{r, warning=FALSE}
-f = TS_2_38_3_9_1 # first make a new flux vector to apply the above filters
+f = TS_2_38_3_9_1.limits # first make a new flux vector to apply the above filters
 # prepare the inputs for a zero-phase (forward and reverse) filter  
 ind       = which(complete.cases(f))   # first save the index of all the NAs
 b         = rep(1,8)/8                 # moving average coefficient
@@ -1422,11 +1535,11 @@ roll.mad = rollapply(data = mad_filt,
 roll.mad[is.na(mad_filt)] = NA  #make NA values where NAs exist in the real data
 
 ggplot(df)+geom_hline(yintercept = 0)+
-  geom_point(aes(TIMESTAMP,TS_2_38_3_9_1,col='Open Water 70 cm Soil T'))+
+  geom_point(aes(TIMESTAMP,TS_2_38_3_9_1.limits,col='Open Water 70 cm Soil T'))+
   geom_line(aes(TIMESTAMP,mad_filt,col='Filter'))+
   geom_line(aes(TIMESTAMP,roll.mad,col='MAD'))+
   scale_y_continuous(limits = c(-10,5))+
-  scale_x_datetime(limits = as.POSIXct(c('2022-8-6','2023-11-1'),format="%F"))+
+  scale_x_datetime(limits = as.POSIXct(biomet_dates,format="%F"))+
   scale_color_manual(values=c('yellow','red','black'))
 ```
 
@@ -1436,7 +1549,7 @@ N = 3
 
 #Add clean value to dataframe (_.c)
 
-df$TS_2_38_3_9_1.c = ifelse(abs(TS_2_38_3_9_1 - mad_filt) > (N * roll.mad),NA,TS_2_38_3_9_1)
+df$TS_2_38_3_9_1.c = ifelse(abs(TS_2_38_3_9_1.limits - mad_filt) > (N * roll.mad),NA,TS_2_38_3_9_1.limits)
 
 #Compare cleaned vs. uncleaned
 
@@ -1444,7 +1557,7 @@ ggplot(data = df)+geom_hline(yintercept = 0)+
   geom_point(aes(TIMESTAMP,TS_2_38_3_8_1,col='uncleaned'))+
   geom_point(aes(TIMESTAMP,TS_2_38_3_8_1.c,col='cleaned'))+
   scale_y_continuous(limits=c(-10,10))+
-  scale_x_datetime(limits = as.POSIXct(c('2022-8-6','2023-11-1'),format="%F"))+
+  scale_x_datetime(limits = as.POSIXct(biomet_dates,format="%F"))+
   scale_color_manual(values=c('black','red'))
 ```
 
@@ -1455,24 +1568,28 @@ ggplot(data = df)+
   geom_ribbon(aes(x = TIMESTAMP,ymax = mad_filt+roll.mad*3,ymin = mad_filt-roll.mad*3,fill='3'))+
   geom_ribbon(aes(x = TIMESTAMP,ymax = mad_filt+roll.mad*2,ymin = mad_filt-roll.mad*2,fill='2'))+
   geom_ribbon(aes(x = TIMESTAMP,ymax = mad_filt+roll.mad*1,ymin = mad_filt-roll.mad*1,fill='1'))+
-  geom_point(aes(TIMESTAMP,TS_2_38_3_9_1),col='red')+
+  geom_point(aes(TIMESTAMP,TS_2_38_3_9_1.limits),col='red')+
   geom_point(aes(TIMESTAMP,TS_2_38_3_9_1.c),col='black')+
   scale_y_continuous(limits = c(-5,10))+
 scale_x_datetime(limits = as.POSIXct(c('2022-10-15','2022-11-20'),format="%F"))
 ```
-# Open Water 80 cm depth Therm
 
+
+# Open Water 80 cm depth Therm
 ```{r, warning=FALSE}
 ggplot(data = df)+ theme_bw()+ geom_hline(yintercept = 0)+
   geom_line(aes(TIMESTAMP, TS_2_38_3_10_1, col = '80 Cm'))+
   scale_y_continuous(limits = c(-10,5),
                      expression('Open Water Therms Soil T ('*K*')'))+
-  scale_x_datetime(limits = as.POSIXct(c("2022-8-6",'2023-11-1')))
-TS_2_38_3_10_1 = df$TS_2_38_3_10_1
+  scale_x_datetime(limits = as.POSIXct(biomet_dates))
+
+TS_2_38_3_10_1.limits = df$TS_2_38_3_10_1
+
+TS_2_38_3_10_1.limits = ifelse(df$TIMESTAMP >= '2022-10-21 2300' & df$TIMESTAMP <= '2022-10-22 1000' ,NA, TS_2_38_3_10_1.limits)
 ```
 ## Rolling MAD 
 ```{r, warning=FALSE}
-f = TS_2_38_3_10_1 # first make a new flux vector to apply the above filters
+f = TS_2_38_3_10_1.limits # first make a new flux vector to apply the above filters
 # prepare the inputs for a zero-phase (forward and reverse) filter  
 ind       = which(complete.cases(f))   # first save the index of all the NAs
 b         = rep(1,8)/8                 # moving average coefficient
@@ -1491,11 +1608,11 @@ roll.mad = rollapply(data = mad_filt,
 roll.mad[is.na(mad_filt)] = NA  #make NA values where NAs exist in the real data
 
 ggplot(df)+geom_hline(yintercept = 0)+
-  geom_point(aes(TIMESTAMP,TS_2_38_3_10_1,col='Open Water 80 cm Soil T'))+
+  geom_point(aes(TIMESTAMP,TS_2_38_3_10_1.limits,col='Open Water 80 cm Soil T'))+
   geom_line(aes(TIMESTAMP,mad_filt,col='Filter'))+
   geom_line(aes(TIMESTAMP,roll.mad,col='MAD'))+
   scale_y_continuous(limits = c(-8,3.5))+
-  scale_x_datetime(limits = as.POSIXct(c('2022-8-6','2023-11-1'),format="%F"))+
+  scale_x_datetime(limits = as.POSIXct(biomet_dates,format="%F"))+
   scale_color_manual(values=c('yellow','red','black'))
 ```
 
@@ -1505,7 +1622,7 @@ N = 4
 
 #Add clean value to dataframe (_.c)
 
-df$TS_2_38_3_10_1.c = ifelse(abs(TS_2_38_3_10_1 - mad_filt) > (N * roll.mad),NA,TS_2_38_3_10_1)
+df$TS_2_38_3_10_1.c = ifelse(abs(TS_2_38_3_10_1.limits - mad_filt) > (N * roll.mad),NA,TS_2_38_3_10_1.limits)
 
 #Compare cleaned vs. uncleaned
 
@@ -1514,7 +1631,7 @@ ggplot(data = df)+geom_hline(yintercept = 0)+
   geom_point(aes(TIMESTAMP,TS_2_38_3_10_1,col='uncleaned'))+
   geom_point(aes(TIMESTAMP,TS_2_38_3_10_1.c,col='cleaned'))+
   scale_y_continuous(limits=c(-8,5))+
-  scale_x_datetime(limits = as.POSIXct(c('2022-8-6','2023-11-1'),format="%F"))+
+  scale_x_datetime(limits = as.POSIXct(biomet_dates,format="%F"))+
   scale_color_manual(values=c('black','red'))
 
 ```
@@ -1526,24 +1643,29 @@ ggplot(data = df)+
   geom_ribbon(aes(x = TIMESTAMP,ymax = mad_filt+roll.mad*3,ymin = mad_filt-roll.mad*3,fill='3'))+
   geom_ribbon(aes(x = TIMESTAMP,ymax = mad_filt+roll.mad*2,ymin = mad_filt-roll.mad*2,fill='2'))+
   geom_ribbon(aes(x = TIMESTAMP,ymax = mad_filt+roll.mad*1,ymin = mad_filt-roll.mad*1,fill='1'))+
-  geom_point(aes(TIMESTAMP,TS_2_38_3_10_1),col='red')+
+  geom_point(aes(TIMESTAMP,TS_2_38_3_10_1.limits),col='red')+
   geom_point(aes(TIMESTAMP,TS_2_38_3_10_1.c),col='black')+
   scale_y_continuous(limits = c(-7.5,10))+
 scale_x_datetime(limits = as.POSIXct(c('2022-10-17','2022-11-3'),format="%F"))
 ```
-# Open Water 90 cm depth Therm
 
+
+# Open Water 90 cm depth Therm
 ```{r, warning=FALSE}
 ggplot(data = df)+ theme_bw()+ geom_hline(yintercept = 0)+
   geom_line(aes(TIMESTAMP, TS_2_38_3_11_1, col = '90 Cm'))+
   scale_y_continuous(limits = c(-10,5),
                      expression('Open Water Therms Soil T ('*K*')'))+
-  scale_x_datetime(limits = as.POSIXct(c("2022-8-6",'2023-11-1')))
-TS_2_38_3_11_1 = df$TS_2_38_3_11_1
+  scale_x_datetime(limits = as.POSIXct(biomet_dates))
+
+TS_2_38_3_11_1.limits = df$TS_2_38_3_11_1
+
+TS_2_38_3_11_1.limits = ifelse(df$TIMESTAMP >= '2022-10-21 2300' & df$TIMESTAMP <= '2022-10-22 1000' ,NA, TS_2_38_3_11_1.limits)
 ```
+
 ## Rolling MAD 
 ```{r, warning=FALSE}
-f = TS_2_38_3_11_1 # first make a new flux vector to apply the above filters
+f = TS_2_38_3_11_1.limits # first make a new flux vector to apply the above filters
 # prepare the inputs for a zero-phase (forward and reverse) filter  
 ind       = which(complete.cases(f))   # first save the index of all the NAs
 b         = rep(1,8)/8                 # moving average coefficient
@@ -1563,11 +1685,11 @@ roll.mad[is.na(mad_filt)] = NA  #make NA values where NAs exist in the real data
 
 
 ggplot(df)+geom_hline(yintercept = 0)+
-  geom_point(aes(TIMESTAMP,TS_2_38_3_11_1,col='Open Water 80 cm Soil T'))+
+  geom_point(aes(TIMESTAMP,TS_2_38_3_11_1.limits,col='Open Water 80 cm Soil T'))+
   geom_line(aes(TIMESTAMP,mad_filt,col='Filter'))+
   geom_line(aes(TIMESTAMP,roll.mad,col='MAD'))+
   scale_y_continuous(limits = c(-8,3.5))+
-  scale_x_datetime(limits = as.POSIXct(c('2022-8-6','2023-11-1'),format="%F"))+
+  scale_x_datetime(limits = as.POSIXct(biomet_dates,format="%F"))+
   scale_color_manual(values=c('yellow','red','black'))
 ```
 
@@ -1578,7 +1700,7 @@ N = 3
 
 #Add clean value to dataframe (_.c)
 
-df$TS_2_38_3_11_1.c = ifelse(abs(TS_2_38_3_11_1 - mad_filt) > (N * roll.mad),NA,TS_2_38_3_11_1)
+df$TS_2_38_3_11_1.c = ifelse(abs(TS_2_38_3_11_1.limits - mad_filt) > (N * roll.mad),NA,TS_2_38_3_11_1.limits)
 
 #Compare cleaned vs. uncleaned
 
@@ -1586,10 +1708,11 @@ ggplot(data = df)+geom_hline(yintercept = 0)+
   geom_point(aes(TIMESTAMP,TS_2_38_3_11_1,col='uncleaned'))+
   geom_point(aes(TIMESTAMP,TS_2_38_3_11_1.c,col='cleaned'))+
   scale_y_continuous(limits=c(-8,5))+
-  scale_x_datetime(limits = as.POSIXct(c('2022-8-6','2023-11-1'),format="%F"))+
+  scale_x_datetime(limits = as.POSIXct(biomet_dates,format="%F"))+
   scale_color_manual(values=c('black','red'))
 
 ```
+
 ```{r, warning=FALSE}
 ggplot(data = df)+
   geom_ribbon(aes(x = TIMESTAMP,ymax = mad_filt+roll.mad*6,ymin = mad_filt-roll.mad*6,fill='6'))+
@@ -1602,20 +1725,23 @@ ggplot(data = df)+
 scale_x_datetime(limits = as.POSIXct(c('2022-10-17','2022-11-3'),format="%F"))
 ```
 
+
 # Open Water 1 m depth Therm
-
-
 ```{r, warning=FALSE}
 ggplot(data = df)+ theme_bw()+ geom_hline(yintercept = 0)+
   geom_line(aes(TIMESTAMP, TS_2_38_3_12_1, col = '1 m'))+
   scale_y_continuous(limits = c(-1000,10),
                      expression('Open Water Therms Soil T ('*K*')'))+
-  scale_x_datetime(limits = as.POSIXct(c("2022-8-6",'2023-11-1')))
+  scale_x_datetime(limits = as.POSIXct(biomet_dates))
 
 TS_2_38_3_12_1.limits = df$TS_2_38_3_12_1
 
 TS_2_38_3_12_1.limits = ifelse(df$TS_2_38_3_12_1 <= -40 & df$TIMESTAMP >= '2022-10-15' & df$TIMESTAMP <= '2022-12-15' ,NA, TS_2_38_3_12_1.limits)
+
+TS_2_38_3_12_1.limits = ifelse(df$TIMESTAMP >= '2022-10-21 2300' & df$TIMESTAMP <= '2022-10-22 1000' ,NA, TS_2_38_3_12_1.limits)
 ```
+
+
 ## Rolling MAD 
 ```{r, warning=FALSE}
 f = TS_2_38_3_12_1.limits # first make a new flux vector to apply the above filters
@@ -1638,11 +1764,11 @@ roll.mad[is.na(mad_filt)] = NA  #make NA values where NAs exist in the real data
 
 
 ggplot(df)+geom_hline(yintercept = 0)+
-  geom_point(aes(TIMESTAMP,TS_2_38_3_12_1.limits,col='Open Water 80 cm Soil T'))+
+  geom_point(aes(TIMESTAMP,TS_2_38_3_12_1.limits,col='Open Water 1 m Soil T'))+
   geom_line(aes(TIMESTAMP,mad_filt,col='Filter'))+
   geom_line(aes(TIMESTAMP,roll.mad,col='MAD'))+
-  scale_y_continuous(limits = c(-8,3.5))+
-  scale_x_datetime(limits = as.POSIXct(c('2022-8-6','2023-11-1'),format="%F"))+
+  scale_y_continuous(limits = c(-25,3.5))+
+  scale_x_datetime(limits = as.POSIXct(biomet_dates,format="%F"))+
   scale_color_manual(values=c('yellow','red','black'))
 ```
 
@@ -1660,7 +1786,7 @@ ggplot(data = df)+geom_hline(yintercept = 0)+
   geom_point(aes(TIMESTAMP,TS_2_38_3_12_1.limits,col='uncleaned'))+
   geom_point(aes(TIMESTAMP,TS_2_38_3_12_1.c,col='cleaned'))+
   scale_y_continuous(limits=c(-8,5))+
-  scale_x_datetime(limits = as.POSIXct(c('2022-8-6','2023-11-1'),format="%F"))+
+  scale_x_datetime(limits = as.POSIXct(biomet_dates,format="%F"))+
   scale_color_manual(values=c('black','red'))
 
 ```
@@ -1677,6 +1803,8 @@ ggplot(data = df)+
   scale_y_continuous(limits = c(-15,2))+
 scale_x_datetime(limits = as.POSIXct(c('2023-4-4','2023-7-3'),format="%F"))
 ```
+
+
 # All open water therms
 ```{r, warning=FALSE}
 ggplot(data = df)+ theme_bw()+
@@ -1694,13 +1822,15 @@ ggplot(data = df)+ theme_bw()+
   geom_line(aes(TIMESTAMP,TS_2_38_3_11_1.c,color='90 cm'))+
   geom_line(aes(TIMESTAMP,TS_2_38_3_12_1.c,color='1 m')) 
 ```
+
+
 # Hummock Surface Therm
 ```{r, warning=FALSE}
 ggplot(data = df)+ theme_bw()+ geom_hline(yintercept = 0)+
   geom_line(aes(TIMESTAMP, TS_2_38_4_1_1, col = 'Surface'))+
   scale_y_continuous(limits = c(-15,35),
                      expression('Hummock Surface Therm Soil T ('*C*')'))+
-  scale_x_datetime(limits = as.POSIXct(c("2022-8-6",'2023-11-1')))
+  scale_x_datetime(limits = as.POSIXct(biomet_dates))
 TS_2_38_4_1_1 = df$TS_2_38_4_1_1
 ```
 ## Rolling MAD 
@@ -1728,7 +1858,7 @@ ggplot(df)+geom_hline(yintercept = 0)+
   geom_line(aes(TIMESTAMP,mad_filt,col='Filter'))+
   geom_line(aes(TIMESTAMP,roll.mad,col='MAD'))+
   scale_y_continuous(limits = c(-15,35))+
-  scale_x_datetime(limits = as.POSIXct(c('2022-8-6','2023-11-1'),format="%F"))+
+  scale_x_datetime(limits = as.POSIXct(biomet_dates,format="%F"))+
   scale_color_manual(values=c('yellow','black','red'))
 ```
 
@@ -1746,7 +1876,7 @@ ggplot(data = df)+geom_hline(yintercept = 0)+
   geom_point(aes(TIMESTAMP,TS_2_38_4_1_1,col='uncleaned'))+
   geom_point(aes(TIMESTAMP,TS_2_38_4_1_1.c,col='cleaned'))+
   scale_y_continuous(limits=c(-15,35))+
-  scale_x_datetime(limits = as.POSIXct(c('2022-8-6','2023-11-1'),format="%F"))+
+  scale_x_datetime(limits = as.POSIXct(biomet_dates,format="%F"))+
   scale_color_manual(values=c('black','red'))
 
 ```
@@ -1769,7 +1899,7 @@ ggplot(data = df)+ theme_bw()+ geom_hline(yintercept = 0)+
   geom_line(aes(TIMESTAMP, TS_2_38_4_2_1, col = 'Surface'))+
   scale_y_continuous(limits = c(-15,30),
                      expression('Hummock Therms Soil T ('*C*')'))+
-  scale_x_datetime(limits = as.POSIXct(c("2022-8-6",'2023-11-1')))
+  scale_x_datetime(limits = as.POSIXct(biomet_dates))
 TS_2_38_4_2_1 = df$TS_2_38_4_2_1
 ```
 ## Rolling MAD 
@@ -1798,7 +1928,7 @@ ggplot(df)+geom_hline(yintercept = 0)+
   geom_line(aes(TIMESTAMP,mad_filt,col='Filter'))+
   geom_line(aes(TIMESTAMP,roll.mad,col='MAD'))+
   scale_y_continuous(limits = c(-15,30))+
-  scale_x_datetime(limits = as.POSIXct(c('2022-8-6','2023-11-1'),format="%F"))+
+  scale_x_datetime(limits = as.POSIXct(biomet_dates,format="%F"))+
   scale_color_manual(values=c('yellow','red','black'))
 
 ```
@@ -1817,7 +1947,7 @@ ggplot(data = df)+geom_hline(yintercept = 0)+
   geom_point(aes(TIMESTAMP,TS_2_38_4_2_1,col='uncleaned'))+
   geom_point(aes(TIMESTAMP,TS_2_38_4_2_1.c,col='cleaned'))+
   scale_y_continuous(limits=c(-15,30))+
-  scale_x_datetime(limits = as.POSIXct(c('2022-8-6','2023-11-1'),format="%F"))+
+  scale_x_datetime(limits = as.POSIXct(biomet_dates,format="%F"))+
   scale_color_manual(values=c('black','red'))
 
 ```
@@ -1834,15 +1964,18 @@ ggplot(data = df)+
   scale_y_continuous(limits = c(-15,25))+
 scale_x_datetime(limits = as.POSIXct(c('2022-10-17','2022-11-1'),format="%F"))
 ```
+
 # Hummock 10 cm Therm
 ```{r, warning=FALSE}
 ggplot(data = df)+ theme_bw()+ geom_hline(yintercept = 0)+
   geom_line(aes(TIMESTAMP, TS_2_38_4_3_1, col = 'Surface'))+
   scale_y_continuous(limits = c(-15,25),
                      expression('Hummock 10 cm Therms Soil T ('*C*')'))+
-  scale_x_datetime(limits = as.POSIXct(c("2022-8-6",'2023-11-1')))
+  scale_x_datetime(limits = as.POSIXct(biomet_dates))
 TS_2_38_4_3_1 = df$TS_2_38_4_3_1
 ```
+
+
 ## Rolling MAD 
 ```{r, warning=FALSE}
 f = TS_2_38_4_3_1 # first make a new flux vector to apply the above filters
@@ -1869,7 +2002,7 @@ ggplot(df)+geom_hline(yintercept = 0)+
   geom_line(aes(TIMESTAMP,mad_filt,col='Filter'))+
   geom_line(aes(TIMESTAMP,roll.mad,col='MAD'))+
   scale_y_continuous(limits = c(-15,22))+
-  scale_x_datetime(limits = as.POSIXct(c('2022-8-6','2023-11-1'),format="%F"))+
+  scale_x_datetime(limits = as.POSIXct(biomet_dates,format="%F"))+
   scale_color_manual(values=c('yellow','red','black'))
 
 
@@ -1889,7 +2022,7 @@ ggplot(data = df)+geom_hline(yintercept = 0)+
   geom_point(aes(TIMESTAMP,TS_2_38_4_3_1,col='uncleaned'))+
   geom_point(aes(TIMESTAMP,TS_2_38_4_3_1.c,col='cleaned'))+
   scale_y_continuous(limits=c(-15,25))+
-  scale_x_datetime(limits = as.POSIXct(c('2022-8-6','2023-11-1'),format="%F"))+
+  scale_x_datetime(limits = as.POSIXct(biomet_dates,format="%F"))+
   scale_color_manual(values=c('black','red'))
 ```
 
@@ -1905,15 +2038,18 @@ ggplot(data = df)+
   scale_y_continuous(limits = c(-15,20))+
 scale_x_datetime(limits = as.POSIXct(c('2022-10-17','2022-11-1'),format="%F"))
 ```
+
 # Hummock 20 cm Therm
 ```{r, warning=FALSE}
 ggplot(data = df)+ theme_bw()+ geom_hline(yintercept = 0)+
   geom_line(aes(TIMESTAMP, TS_2_38_4_4_1, col = 'Surface'))+
   scale_y_continuous(limits = c(-15,15),
                      expression('Hummock Therms 20 cm Soil T ('*C*')'))+
-  scale_x_datetime(limits = as.POSIXct(c("2022-8-6",'2023-11-1')))
+  scale_x_datetime(limits = as.POSIXct(biomet_dates))
 TS_2_38_4_4_1 = df$TS_2_38_4_4_1
 ```
+
+
 ## Rolling MAD 
 ```{r, warning=FALSE}
 f = TS_2_38_4_4_1 # first make a new flux vector to apply the above filters
@@ -1939,7 +2075,7 @@ ggplot(df)+geom_hline(yintercept = 0)+
   geom_line(aes(TIMESTAMP,mad_filt,col='Filter'))+
   geom_line(aes(TIMESTAMP,roll.mad,col='MAD'))+
   scale_y_continuous(limits = c(-15,22))+
-  scale_x_datetime(limits = as.POSIXct(c('2022-8-6','2023-11-1'),format="%F"))+
+  scale_x_datetime(limits = as.POSIXct(biomet_dates,format="%F"))+
   scale_color_manual(values=c('yellow','red','black'))
 
 ```
@@ -1958,7 +2094,7 @@ ggplot(data = df)+geom_hline(yintercept = 0)+
   geom_point(aes(TIMESTAMP,TS_2_38_4_4_1,col='uncleaned'))+
   geom_point(aes(TIMESTAMP,TS_2_38_4_4_1.c,col='cleaned'))+
   scale_y_continuous(limits=c(-15,15))+
-  scale_x_datetime(limits = as.POSIXct(c('2022-8-6','2023-11-1'),format="%F"))+
+  scale_x_datetime(limits = as.POSIXct(biomet_dates,format="%F"))+
   scale_color_manual(values=c('black','red'))
 
 ```
@@ -1975,15 +2111,21 @@ ggplot(data = df)+
   scale_y_continuous(limits = c(-15,15))+
 scale_x_datetime(limits = as.POSIXct(c('2022-10-17','2022-11-1'),format="%F"))
 ```
+
+
 # Hummock 30 cm Therm
 ```{r, warning=FALSE}
 ggplot(data = df)+ theme_bw()+ geom_hline(yintercept = 0)+
   geom_line(aes(TIMESTAMP, TS_2_38_4_5_1, col = 'Surface'))+
   scale_y_continuous(limits = c(-12,10),
                      expression('Hummock Therms Soil T ('*C*')'))+
-  scale_x_datetime(limits = as.POSIXct(c("2022-8-6",'2023-11-1')))
+  scale_x_datetime(limits = as.POSIXct(biomet_dates))
 TS_2_38_4_5_1 = df$TS_2_38_4_5_1
+
+
 ```
+
+
 ## Rolling MAD 
 ```{r, warning=FALSE}
 f = TS_2_38_4_5_1 # first make a new flux vector to apply the above filters
@@ -2009,7 +2151,7 @@ ggplot(df)+geom_hline(yintercept = 0)+
   geom_line(aes(TIMESTAMP,mad_filt,col='Filter'))+
   geom_line(aes(TIMESTAMP,roll.mad,col='MAD'))+
   scale_y_continuous(limits = c(-15,22))+
-  scale_x_datetime(limits = as.POSIXct(c('2022-8-6','2023-11-1'),format="%F"))+
+  scale_x_datetime(limits = as.POSIXct(biomet_dates,format="%F"))+
   scale_color_manual(values=c('yellow','black','red'))
 
 ```
@@ -2028,7 +2170,7 @@ ggplot(data = df)+geom_hline(yintercept = 0)+
   geom_point(aes(TIMESTAMP,TS_2_38_4_5_1,col='uncleaned'))+
   geom_point(aes(TIMESTAMP,TS_2_38_4_5_1.c,col='cleaned'))+
   scale_y_continuous(limits=c(-15,15))+
-  scale_x_datetime(limits = as.POSIXct(c('2022-8-6','2023-11-1'),format="%F"))+
+  scale_x_datetime(limits = as.POSIXct(biomet_dates,format="%F"))+
   scale_color_manual(values=c('black','red'))
 
 ```
@@ -2051,7 +2193,7 @@ ggplot(data = df)+ theme_bw()+ geom_hline(yintercept = 0)+
   geom_line(aes(TIMESTAMP, TS_2_38_4_6_1, col = 'Surface'))+
   scale_y_continuous(limits = c(-15,15),
                      expression('Hummock Therms Soil T ('*C*')'))+
-  scale_x_datetime(limits = as.POSIXct(c("2022-8-6",'2023-11-1')))
+  scale_x_datetime(limits = as.POSIXct(biomet_dates))
 TS_2_38_4_6_1 = df$TS_2_38_4_6_1
 ```
 ## Rolling MAD 
@@ -2079,7 +2221,7 @@ ggplot(df)+geom_hline(yintercept = 0)+
   geom_line(aes(TIMESTAMP,mad_filt,col='Filter'))+
   geom_line(aes(TIMESTAMP,roll.mad,col='MAD'))+
   scale_y_continuous(limits = c(-15,10))+
-  scale_x_datetime(limits = as.POSIXct(c('2022-8-6','2023-11-1'),format="%F"))+
+  scale_x_datetime(limits = as.POSIXct(biomet_dates,format="%F"))+
   scale_color_manual(values=c('yellow','black','red'))
 ```
 
@@ -2097,7 +2239,7 @@ ggplot(data = df)+geom_hline(yintercept = 0)+
   geom_point(aes(TIMESTAMP,TS_2_38_4_6_1,col='uncleaned'))+
   geom_point(aes(TIMESTAMP,TS_2_38_4_6_1.c,col='cleaned'))+
   scale_y_continuous(limits=c(-15,15))+
-  scale_x_datetime(limits = as.POSIXct(c('2022-8-6','2023-11-1'),format="%F"))+
+  scale_x_datetime(limits = as.POSIXct(biomet_dates,format="%F"))+
   scale_color_manual(values=c('black','red'))
 
 
@@ -2121,7 +2263,7 @@ ggplot(data = df)+ theme_bw()+ geom_hline(yintercept = 0)+
   geom_line(aes(TIMESTAMP, TS_2_38_4_7_1, col = 'Surface'))+
   scale_y_continuous(limits = c(-10,7.5),
                      expression('Hummock Therms Soil T ('*C*')'))+
-  scale_x_datetime(limits = as.POSIXct(c("2022-8-6",'2023-11-1')))
+  scale_x_datetime(limits = as.POSIXct(biomet_dates))
 TS_2_38_4_7_1 = df$TS_2_38_4_7_1
 ```
 ## Rolling MAD 
@@ -2150,7 +2292,7 @@ ggplot(df)+geom_hline(yintercept = 0)+
   geom_line(aes(TIMESTAMP,mad_filt,col='Filter'))+
   geom_line(aes(TIMESTAMP,roll.mad,col='MAD'))+
   scale_y_continuous(limits = c(-10,7.5))+
-  scale_x_datetime(limits = as.POSIXct(c('2022-8-6','2023-11-1'),format="%F"))+
+  scale_x_datetime(limits = as.POSIXct(biomet_dates,format="%F"))+
   scale_color_manual(values=c('yellow','black','red'))
 ```
 
@@ -2167,7 +2309,7 @@ ggplot(data = df)+geom_hline(yintercept = 0)+
   geom_point(aes(TIMESTAMP,TS_2_38_4_7_1,col='uncleaned'))+
   geom_point(aes(TIMESTAMP,TS_2_38_4_7_1.c,col='cleaned'))+
   scale_y_continuous(limits=c(-15,15))+
-  scale_x_datetime(limits = as.POSIXct(c('2022-8-6','2023-11-1'),format="%F"))+
+  scale_x_datetime(limits = as.POSIXct(biomet_dates,format="%F"))+
   scale_color_manual(values=c('black','red'))
 ```
 
@@ -2189,7 +2331,7 @@ ggplot(data = df)+ theme_bw()+ geom_hline(yintercept = 0)+
   geom_line(aes(TIMESTAMP, TS_2_38_4_8_1, col = 'Surface'))+
   scale_y_continuous(limits = c(-10,10),
                      expression('Hummock Therms Soil T ('*K*')'))+
-  scale_x_datetime(limits = as.POSIXct(c("2022-8-6",'2023-11-1')))
+  scale_x_datetime(limits = as.POSIXct(biomet_dates))
 TS_2_38_4_8_1 = df$TS_2_38_4_8_1
 ```
 
@@ -2219,7 +2361,7 @@ ggplot(df)+geom_hline(yintercept = 0)+
   geom_line(aes(TIMESTAMP,mad_filt,col='Filter'))+
   geom_line(aes(TIMESTAMP,roll.mad,col='MAD'))+
   scale_y_continuous(limits = c(-10,7.5))+
-  scale_x_datetime(limits = as.POSIXct(c('2022-8-6','2023-11-1'),format="%F"))+
+  scale_x_datetime(limits = as.POSIXct(biomet_dates,format="%F"))+
   scale_color_manual(values=c('yellow','black','red'))
 ```
 
@@ -2236,7 +2378,7 @@ ggplot(data = df)+geom_hline(yintercept = 0)+
   geom_point(aes(TIMESTAMP,TS_2_38_4_8_1,col='uncleaned'))+
   geom_point(aes(TIMESTAMP,TS_2_38_4_8_1.c,col='cleaned'))+
   scale_y_continuous(limits=c(-15,15))+
-  scale_x_datetime(limits = as.POSIXct(c('2022-8-6','2023-11-1'),format="%F"))+
+  scale_x_datetime(limits = as.POSIXct(biomet_dates,format="%F"))+
   scale_color_manual(values=c('black','red'))
 ```
 
@@ -2258,7 +2400,7 @@ ggplot(data = df)+ theme_bw()+ geom_hline(yintercept = 0)+
   geom_line(aes(TIMESTAMP, TS_2_38_4_9_1, col = 'Surface'))+
   scale_y_continuous(limits = c(-10,5),
                      expression('Hummock Therms Soil T ('*C*')'))+
-  scale_x_datetime(limits = as.POSIXct(c("2022-8-6",'2023-11-1')))
+  scale_x_datetime(limits = as.POSIXct(biomet_dates))
 TS_2_38_4_9_1 = df$TS_2_38_4_9_1
 ```
 
@@ -2287,7 +2429,7 @@ ggplot(df)+geom_hline(yintercept = 0)+
   geom_line(aes(TIMESTAMP,mad_filt,col='Filter'))+
   geom_line(aes(TIMESTAMP,roll.mad,col='MAD'))+
   scale_y_continuous(limits = c(-10,7.5))+
-  scale_x_datetime(limits = as.POSIXct(c('2022-8-6','2023-11-1'),format="%F"))+
+  scale_x_datetime(limits = as.POSIXct(biomet_dates,format="%F"))+
   scale_color_manual(values=c('yellow','black','red'))
 ```
 
@@ -2304,7 +2446,7 @@ ggplot(data = df)+geom_hline(yintercept = 0)+
   geom_point(aes(TIMESTAMP,TS_2_38_4_9_1,col='uncleaned'))+
   geom_point(aes(TIMESTAMP,TS_2_38_4_9_1.c,col='cleaned'))+
   scale_y_continuous(limits=c(-10,5))+
-  scale_x_datetime(limits = as.POSIXct(c('2022-8-6','2023-11-1'),format="%F"))+
+  scale_x_datetime(limits = as.POSIXct(biomet_dates,format="%F"))+
   scale_color_manual(values=c('black','red'))
 ```
 
@@ -2326,7 +2468,7 @@ ggplot(data = df)+ theme_bw()+ geom_hline(yintercept = 0)+
   geom_line(aes(TIMESTAMP, TS_2_38_4_10_1, col = 'Surface'))+
   scale_y_continuous(limits = c(-10,5),
                      expression('Hummock Therms Soil T ('*C*')'))+
-  scale_x_datetime(limits = as.POSIXct(c("2022-8-6",'2023-11-1')))
+  scale_x_datetime(limits = as.POSIXct(biomet_dates))
 TS_2_38_4_10_1 = df$TS_2_38_4_10_1
 ```
 
@@ -2356,7 +2498,7 @@ ggplot(df)+geom_hline(yintercept = 0)+
   geom_line(aes(TIMESTAMP,mad_filt,col='Filter'))+
   geom_line(aes(TIMESTAMP,roll.mad,col='MAD'))+
   scale_y_continuous(limits = c(-10,7.5))+
-  scale_x_datetime(limits = as.POSIXct(c('2022-8-6','2023-11-1'),format="%F"))+
+  scale_x_datetime(limits = as.POSIXct(biomet_dates,format="%F"))+
   scale_color_manual(values=c('yellow','black','red'))
 ```
 
@@ -2373,7 +2515,7 @@ ggplot(data = df)+geom_hline(yintercept = 0)+
   geom_point(aes(TIMESTAMP,TS_2_38_4_10_1,col='uncleaned'))+
   geom_point(aes(TIMESTAMP,TS_2_38_4_10_1.c,col='cleaned'))+
   scale_y_continuous(limits=c(-10,5))+
-  scale_x_datetime(limits = as.POSIXct(c('2022-8-6','2023-11-1'),format="%F"))+
+  scale_x_datetime(limits = as.POSIXct(biomet_dates,format="%F"))+
   scale_color_manual(values=c('black','red'))
 
 ```
@@ -2527,7 +2669,7 @@ ggplot(df)+geom_hline(yintercept = 0)+
   geom_line(aes(TIMESTAMP,mad_filt,col='Filter'))+
   geom_line(aes(TIMESTAMP,roll.mad,col='MAD'))+
   scale_y_continuous(limits = c(-10,7.5))+
-  scale_x_datetime(limits = as.POSIXct(c('2022-8-6','2023-11-1'),format="%F"))+
+  scale_x_datetime(limits = as.POSIXct(biomet_dates,format="%F"))+
   scale_color_manual(values=c('yellow','black','red'))
 ```
 
@@ -2545,7 +2687,7 @@ ggplot(data = df)+geom_hline(yintercept = 0)+
   geom_point(aes(TIMESTAMP,TS_2_38_4_11_1,col='uncleaned'))+
   geom_point(aes(TIMESTAMP,TS_2_38_4_11_1.c,col='cleaned'))+
   scale_y_continuous(limits=c(-10,5))+
-  scale_x_datetime(limits = as.POSIXct(c('2022-8-6','2023-11-1'),format="%F"))+
+  scale_x_datetime(limits = as.POSIXct(biomet_dates,format="%F"))+
   scale_color_manual(values=c('black','red'))
 
 ```
@@ -2568,7 +2710,7 @@ ggplot(data = df)+ theme_bw()+ geom_hline(yintercept = 0)+
   geom_line(aes(TIMESTAMP, TS_2_38_4_12_1, col = 'Surface'))+
   scale_y_continuous(limits = c(-10,10),
                      expression('Hummock Therms Soil T ('*C*')'))+
-  scale_x_datetime(limits = as.POSIXct(c("2022-8-6",'2023-11-1')))
+  scale_x_datetime(limits = as.POSIXct(biomet_dates))
 
 TS_2_38_4_12_1.limits = df$TS_2_38_4_12_1
 
@@ -2641,7 +2783,7 @@ ggplot(df)+geom_hline(yintercept = 0)+
   geom_line(aes(TIMESTAMP,mad_filt,col='Filter'))+
   geom_line(aes(TIMESTAMP,roll.mad,col='MAD'))+
   scale_y_continuous(limits = c(-10,7.5))+
-  scale_x_datetime(limits = as.POSIXct(c('2022-8-6','2023-11-1'),format="%F"))+
+  scale_x_datetime(limits = as.POSIXct(biomet_dates,format="%F"))+
   scale_color_manual(values=c('yellow','black','red'))
 ```
 
@@ -2659,7 +2801,7 @@ ggplot(data = df)+geom_hline(yintercept = 0)+
   geom_point(aes(TIMESTAMP,TS_2_38_4_12_1,col='uncleaned'))+
   geom_point(aes(TIMESTAMP,TS_2_38_4_12_1.c,col='cleaned'))+
   scale_y_continuous(limits=c(-10,5))+
-  scale_x_datetime(limits = as.POSIXct(c('2022-8-6','2023-11-1'),format="%F"))+
+  scale_x_datetime(limits = as.POSIXct(biomet_dates,format="%F"))+
   scale_color_manual(values=c('black','red'))
 ```
 
@@ -2704,31 +2846,61 @@ ggplot(data = df)+
   geom_point(aes(TIMESTAMP, SWC_12_36_2_2_1*100,col='10 cm Hummock'))+
   scale_y_continuous(limits = c(0,100),
                      expression('% VWC'))+
-  scale_x_datetime(limits = as.POSIXct(c("2022-8-6",'2023-11-1')))
+  scale_x_datetime(limits = as.POSIXct(biomet_dates))
 ```
 
 # Save
 
 ```{r, warning=FALSE}
-write.csv(x = df,file = 'C:/Users/karndt/desktop/churchill/data/Cleaned/Churchill_met_clean.csv',row.names = F,quote = F)
+write.csv(x = df,file = 'C:/Users/dtrangmoe/Documents/Churchill/Churchill_met_clean.csv',row.names = F,quote = F)
 ```
 
 
+# Flux Cleaning
+
+
+```{r, warning=FALSE}
+rm(list = ls())
+
+library(data.table)
+library(ggplot2)
+library(cowplot)
+library(openair)
+library(plotrix)
+library(signal)
+library(svMisc)
+library(zoo)
+library(stringr)
+library(plyr)
+library(dplyr)
+```
 
 Load in eddypro output files
 
 ```{r warning=FALSE}
 
-met = fread('C:/Users/karndt/desktop/churchill/data/Cleaned/Churchill_met_clean.csv')
+met = fread('C:/Users/dtrangmoe/Documents/Churchill/Churchill_met_clean.csv')
 
-df = fread('C:/Users/karndt.WHRC/desktop/churchill/data/Churchill_fluxes_merged.csv')
+df = fread('C:/Users/dtrangmoe/Documents/Churchill/Churchill_fluxes_merged.csv')
 
 df$TIMESTAMP = df$ts
 
 df= merge(df,met,by='TIMESTAMP',all = T)
 
+#check time stamps to ensure we have a complete series
+TIMESTAMP = seq(from = min(df$TIMESTAMP), to = max(df$TIMESTAMP),by = 60*30,tz = "UTC")
+tsdf = as.data.frame(TIMESTAMP)
+
+df = merge(tsdf,df,by = "TIMESTAMP",all = T)
+
 ```
 
+
+Creates a variable to input a date range for the plots in the flux section of
+cleaning code. Used to easily change date range for different data sets. 
+```{r, warning=FALSE}
+flux_dates <- c('2022-08-05', '2024-01-15')
+```
 # Initial Clean
 
 ## Energy Balance
@@ -2736,8 +2908,11 @@ df= merge(df,met,by='TIMESTAMP',all = T)
 combine energy fluxes by met and flux components
 
 ```{r}
-#df$met = (df$LWIN_6_14_1_1_1.c + df$SWIN_6_10_1_1_1.c) - (df$LWOUT_6_15_1_1_1.c + df$SWOUT_6_11_1_1_1.c) 
-#df$flux = df$H + df$LE
+df$met = (df$LWIN_6_14_1_1_1.c + df$SWIN_6_10_1_1_1.c) - (df$LWOUT_6_15_1_1_1.c + df$SWOUT_6_11_1_1_1.c)
+df$flux = df$H + df$LE
+
+plot(df$met, df$flux)
+
 ```
 
 plot all solar radiation
@@ -2816,8 +2991,12 @@ hist(df$Tau,breaks=100)
 Cut the crazy data and create new variable (Tau.limits)
 
 ```{r, warning=FALSE}
-Tau.limits = replace(df$Tau,df$Tau.c > -1,NA)
-Tau.limits = replace(df$Tau,df$Tau.c < .2,NA)
+
+Tau.limits = df$Tau
+Tau.limits = replace(df$Tau,df$Tau < -1 | df$Tau > .2,NA)
+
+plot(Tau.limits)
+
 ```
 
 ### NEE
@@ -2827,13 +3006,21 @@ Plot NEE Histogram and what we might clean
 ```{r, warning=FALSE}
 hist(df$co2_flux,breaks=100)
 
+#for 2022
 plot(df$ts,df$co2_flux,ylim = c(-25,25));abline(h=10, col= 'red');abline(h=-14, col='red')
+
+# for 2023 and on
+plot(df$ts,df$co2_flux,ylim = c(-25,25));abline(h=7, col= 'red');abline(h=-10, col='red')
 ```
 
 Clean based on graphs, create new variable (co2_flux.limits), and see cleaned product
 
 ```{r, warning=FALSE}
-co2_flux.limits = replace(df$co2_flux,df$co2_flux > 10 | df$co2_flux < -14,NA)
+co2_flux.limits = replace(df$co2_flux,(df$co2_flux > 7 | df$co2_flux < -10) & df$TIMESTAMP >= '2023-01-01' | (df$co2_flux > 10 | df$co2_flux < -14),NA)
+
+
+plot(df$ts,co2_flux.limits,ylim = c(-25,25));abline(h=7, col= 'red');abline(h=-10, col='red')
+
 hist(co2_flux.limits,breaks=100)
 ```
 
@@ -2844,7 +3031,7 @@ Plot CH4 Histogram and what we might clean
 ```{r, warning=FALSE}
 hist(df$ch4_flux,breaks=100)
 
-plot(df$ts,df$ch4_flux,ylim = c(-.3,.35));abline(h=.3, col= 'red');abline(h=-.26, col='red'); abline(h=0,col= 'black')
+plot(df$ts,df$ch4_flux,ylim = c(-.3,.35));abline(h=.3, col= 'red');abline(h=-.20, col='red'); abline(h=0,col= 'black')
 ```
 
 Clean based on graphs, create new variable (ch4_flux.limits), and see cleaned product
@@ -2863,7 +3050,7 @@ CH4MOLE
 ch4_flux.limits = df$ch4_flux
 
 ch4_flux.limits = ifelse(df$ch4_flux < 3 & df$ts <= '2023-9-21 11:00' & df$ts >='2023-9-14 16:30',NA,
-                          ifelse(df$ch4_flux < -.26,NA,
+                          ifelse(df$ch4_flux < -.20,NA,
                                  ifelse(df$ch4_flux > .3,NA,ch4_flux.limits)))
                                         
                                 
@@ -2909,7 +3096,7 @@ plot(df$ts,df$LE,ylim = c(-40,450));abline(h=-40, col= 'red');abline(h=390, col=
 Clean based on graphs, create new variable (H.limits), and see cleaned product
 
 ```{r, warning=FALSE}
-LE.limits = replace(df$LE, df$LE < -80 | df$LE > 390,NA)
+LE.limits = replace(df$LE, df$LE < -40 | df$LE > 390,NA)
 hist(LE.limits)
 plot(LE.limits)
 ```
@@ -2931,27 +3118,28 @@ ggplot(data = df,aes(`u*`,nightCO2))+
 
 ```
 
-pick threshold and filter based on plots above, I liked .07
+pick threshold and filter based on plots above, I liked .065
 
+
+created flag to indicate where u* values are below our threshold- makes clenaing with u* optional but easy when using cleaned datasets
 ```{r, warning=FALSE}
-u_flag = ifelse(df$`u*` < Uthreshold,1,0)
-# Tau.u  = replace(df$Tau ,df$`u*` < Uthreshold,NA)
-# H.u    = replace(df$H   ,df$`u*` < Uthreshold,NA)
-# LE.u   = replace(df$LE  ,df$`u*` < Uthreshold,NA)
-# co2_flux.u   = replace(df$co2_flux  ,df$`u*` < Uthreshold,NA)
-# ch4_flux.u = replace(df$ch4_flux,df$`u*` < Uthreshold,NA)
+df$u_flag = ifelse(df$`u*` < Uthreshold,1,0)
 ```
 
 ## Combine Cleaning
 
-investigate the previous limits and combine all to create a new variable (\_clean), plot to see difference
+investigate the previous limits and combine all to create a new variable (clean), plot to see difference
 
 ```{r, warning=FALSE}
-co2fluxclean = ifelse(is.na(co2_flux.qc) | is.na(co2_flux.limits) | is.na(co2_flux.u),NA,df$co2_flux)
-ch4fluxclean = ifelse(is.na(ch4_flux.qc) | is.na(ch4_flux.limits) | is.na(ch4_flux.u),NA,df$ch4_flux)
-Hclean = ifelse(is.na(H.qc) | is.na(H.limits) | is.na(H.u),NA,df$H)
-LEclean = ifelse(is.na(LE.qc) | is.na(LE.limits) | is.na(LE.u),NA,df$LE)
-Tauclean = ifelse(is.na(Tau.qc) | is.na(Tau.limits) | is.na(Tau.u),NA,df$Tau)
+co2fluxclean = ifelse(is.na(co2_flux.qc) | is.na(co2_flux.limits),NA,df$co2_flux)
+
+ch4fluxclean = ifelse(is.na(ch4_flux.qc) | is.na(ch4_flux.limits),NA,df$ch4_flux)
+
+Hclean = ifelse(is.na(H.qc) | is.na(H.limits),NA,df$H)
+
+LEclean = ifelse(is.na(LE.qc) | is.na(LE.limits),NA,df$LE)
+
+Tauclean = ifelse(is.na(Tau.qc) | is.na(Tau.limits),NA,df$Tau)
 
 plot(df$ts,co2fluxclean)
 plot(df$ts,ch4fluxclean)
@@ -2990,15 +3178,16 @@ ggplot(df)+geom_hline(yintercept = 0)+
   geom_line(aes(ts,Flux_filt,col='Filter'))+
   geom_line(aes(ts,roll.mad,col='MAD'))+
   scale_y_continuous(limits = c(-10,10))+
-  scale_x_datetime(limits = as.POSIXct(c('2022-8-6','2023-11-1'),format="%F"))+
-  scale_color_manual(values=c('black','yellow','red'))
+  scale_x_datetime(limits = as.POSIXct(flux_dates,format="%F"))+
+  scale_color_manual(values=c('black','yellow','red'))+
+  geom_vline(xintercept = as.POSIXct('2024-01-01'))
 ```
 
 now filter the data based on this signal
 
 ```{r, warning=FALSE}
 #adjust this value (N) to tweak how many MADs to be away from the norm
-N = 3 
+N = 3
 
 #Add clean value to dataframe (_.c)
 
@@ -3009,13 +3198,14 @@ ggplot(data = df)+geom_hline(yintercept = 0)+
   geom_point(aes(TIMESTAMP,co2_flux),col='red')+
   geom_point(aes(TIMESTAMP,co2_flux.c),col='black')+
   scale_y_continuous(limits=c(-12,8))+
-  scale_x_datetime(limits = as.POSIXct(c('2022-8-6','2023-11-1'),format="%F"))
+  scale_x_datetime(limits = as.POSIXct(flux_dates,format="%F"))
 ```
 
 ```{r, warning=FALSE}
 
 ggplot(data = df)+theme_bw()+geom_hline(yintercept = 0)+
-  geom_point(aes(ts,co2_flux))+
+  geom_point(aes(ts,co2_flux), col='red')+
+  geom_point(aes(ts,co2_flux.c), col='black')+
   scale_x_datetime(limits = as.POSIXct(c('2022-8-14','2022-8-28'),format="%F"))+
   scale_y_continuous (expression('NEE ('*mu*mol~m^-2~s^-1*')'),
                       limits = c(-20,20))
@@ -3068,7 +3258,7 @@ ggplot(df)+geom_hline(yintercept = 0)+
   geom_line(aes(ts,Flux_filt,col='Filter'))+
   geom_line(aes(ts,roll.mad,col='MAD'))+
   scale_y_continuous(limits = c(-.25,.3))+
-  scale_x_datetime(limits = as.POSIXct(c('2022-8-6','2023-11-1'),format="%F"))+
+  scale_x_datetime(limits = as.POSIXct(flux_dates,format="%F"))+
   scale_color_manual(values=c('black','yellow','red'))
 ```
 
@@ -3084,7 +3274,7 @@ ggplot(data = df)+geom_hline(yintercept = 0)+
   geom_point(aes(TIMESTAMP,ch4_flux,col='uncleaned'))+
   geom_point(aes(TIMESTAMP,ch4_flux.c,col='cleaned'))+
   scale_y_continuous(limits = c(-.25,.3))+
-  scale_x_datetime(limits = as.POSIXct(c('2022-8-6','2023-11-1'),format="%F"))+
+  scale_x_datetime(limits = as.POSIXct(flux_dates,format="%F"))+
   scale_color_manual(values=c('black','red'))
 ```
 
@@ -3113,8 +3303,9 @@ CH4_FALLSOILTCOMP = plot_grid(CH4Filter,CH4RSSI,CH4MOLE,nrow=3,align = 'v')
 CH4_FALLSOILTCOMP
 
 ```
-## H
 
+
+## H
 ```{r, warning=FALSE}
 # apply the moving window filter
 f = Hclean # first make a new flux vector to apply the above filters
@@ -3141,7 +3332,7 @@ ggplot(df)+geom_hline(yintercept = 0)+
   geom_line(aes(ts,Flux_filt,col='Filter'))+
   geom_line(aes(ts,roll.mad,col='MAD'))+
   scale_y_continuous(limits = c(-180,350))+
-  scale_x_datetime(limits = as.POSIXct(c('2022-8-6','2023-11-1'),format="%F"))+
+  scale_x_datetime(limits = as.POSIXct(flux_dates,format="%F"))+
   scale_color_manual(values=c('yellow','black','red'))
 ```
 
@@ -3156,7 +3347,7 @@ ggplot(data = df)+geom_hline(yintercept = 0)+
   geom_point(aes(TIMESTAMP,Hclean,col='uncleaned'))+
   geom_point(aes(TIMESTAMP,H.c,col='cleaned'))+
   scale_y_continuous(limits=c(-150,350))+
-  scale_x_datetime(limits = as.POSIXct(c('2022-8-6','2023-11-1'),format="%F"))+
+  scale_x_datetime(limits = as.POSIXct(flux_dates,format="%F"))+
   scale_color_manual(values=c('black','red'))
 ```
 
@@ -3202,7 +3393,7 @@ ggplot(df)+geom_hline(yintercept = 0)+
   geom_line(aes(ts,Flux_filt,col='Filter'))+
   geom_line(aes(ts,roll.mad,col='MAD'))+
   scale_y_continuous(limits = c(-50,400))+
-  scale_x_datetime(limits = as.POSIXct(c('2022-8-6','2023-11-1'),format="%F"))+
+  scale_x_datetime(limits = as.POSIXct(flux_dates,format="%F"))+
   scale_color_manual(values=c('yellow','black','red'))
 ```
 
@@ -3217,7 +3408,7 @@ ggplot(data = df)+geom_hline(yintercept = 0)+
   geom_point(aes(TIMESTAMP,LEclean,col='uncleaned'))+
   geom_point(aes(TIMESTAMP,LE.c,col='cleaned'))+
   scale_y_continuous(limits=c(-100,400))+
-  scale_x_datetime(limits = as.POSIXct(c('2022-8-6','2023-11-1'),format="%F"))+
+  scale_x_datetime(limits = as.POSIXct(flux_dates,format="%F"))+
   scale_color_manual(values=c('black','red'))
 ```
 
@@ -3344,8 +3535,9 @@ ggplot(data = diel)+geom_hline(yintercept = 0)+
 # Save
 
 ```{r, warning=FALSE}
+df <- df[!duplicated(df$TIMESTAMP), ]
 
-write.csv(x = df,file = 'C:/Users/karndt/desktop/churchill/data/Cleaned/Churchill_clean.csv',row.names = F,quote = F)
+write.csv(x = df,file = 'C:/Users/dtrangmoe/Documents/Churchill/Churchill_Flux_Met_Clean_Ameriflux_2022_2023.csv',row.names = F,quote = F)
 ```
 
 

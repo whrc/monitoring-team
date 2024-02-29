@@ -37,7 +37,7 @@ Plots all of the cleaned (.c) variables included in cleaned flux data for 2022
 
 
 ```{r, warning=FALSE, echo=FALSE}
-df= fread('C:/Users/dtrangmoe/Documents/Churchill/Churchill_Met_Flux_Clean_2022.csv')
+df= fread('C:/Users/dtrangmoe/Documents/Churchill/Churchill_Met_Flux_Clean_Ameriflux_2022.csv')
 
 df.c <- select(df, ends_with(".c") | TIMESTAMP)
 

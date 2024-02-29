@@ -27,7 +27,7 @@ Load cleaned data
 
 ```{r, warning=FALSE}
 
-df = fread('C:/Users/dtrangmoe/Documents/Churchill/Churchill_clean_Aug22toOct23.csv')
+df = fread('C:/Users/dtrangmoe/Documents/Churchill/Churchill_Flux_Met_Clean_Ameriflux_2022_2023.csv')
 
 ```
 
@@ -35,7 +35,7 @@ Select only 2022 data
 
 ```{r, warning=FALSE}
 
-df <- df %>%
+df22 <- df %>%
   filter(year(TIMESTAMP) %in% c(2022))
 
 ```
@@ -44,7 +44,7 @@ Save df as 2022 file
 
 ```{r, warning=FALSE}
 
-write.csv(x = df,file = 'C:/Users/dtrangmoe/Documents/Churchill/Churchill_Met_Flux_Clean_2022.csv',row.names = F,quote = F)
+write.csv(x = df22,file = 'C:/Users/dtrangmoe/Documents/Churchill/Churchill_Met_Flux_Clean_Ameriflux_2022.csv',row.names = F,quote = F)
 
 ```
 
@@ -55,8 +55,37 @@ Load previously cleaned data
 
 ```{r, warning=FALSE}
 
-df1 = fread('C:/Users/dtrangmoe/Documents/Churchill/Churchill_clean_Aug22toOct23.csv')
+df = fread('C:/Users/dtrangmoe/Documents/Churchill/Churchill_Flux_Met_Clean_Ameriflux_2022_2023.csv')
+```
 
+Select only 2023 data
+
+```{r, warning=FALSE}
+
+df23 <- df %>%
+  filter(year(TIMESTAMP) %in% c(2023))
+
+```
+
+Save df as 2023 file 
+
+```{r, warning=FALSE}
+
+write.csv(x = df23,file = 'C:/Users/dtrangmoe/Documents/Churchill/Churchill_Met_Flux_Clean_Ameriflux_2023.csv',row.names = F,quote = F)
+
+```
+
+
+
+
+
+
+
+
+
+
+
+```{r, warning=FALSE}
 # Select only 2023 data, and trim Nov. NA rows
 
 df1 <- subset(df1, TIMESTAMP >= as.POSIXct("2023-01-01 00:00", tz= "UTC") & TIMESTAMP <= as.POSIXct("2023-11-01 00:00", tz= "UTC"))
