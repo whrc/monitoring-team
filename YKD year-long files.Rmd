@@ -107,6 +107,10 @@ ts = as.data.frame(ts)
 #merge with the flux data frame to create NAs where data is missing
 df = merge(ts,df,by = 'ts',all.x = T)
 
+# 
+# # Load in cleaned, merged, tidy file for splitting if possible 
+# 
+# df=fread('C:/Users/dtrangmoe/Documents/YKD Burned/YKDBurned_Flux_Met_Clean_AmerifluxFormat.csv')
 ```
 
 ### 2019 File
@@ -120,7 +124,7 @@ plot(df19$ts, df19$co2_flux.c)
 
 # Save df as 2019 file 
 
-write.csv(x = df19,file = 'C:/Users/dtrangmoe/Documents/YKD Burned/Cleaned Data/YKDBurned_Cleaned_Met_Flux_2019.csv',row.names = F,quote = F)
+write.csv(x = df19,file = 'C:/Users/dtrangmoe/Documents/YKD Burned/Cleaned Data/YKDBurned_Cleaned_Met_Flux_2019_Ameriflux.csv',row.names = F,quote = F)
 
 ```
 
@@ -135,7 +139,7 @@ plot(df20$ts, df20$co2_flux.c)
 
 # Save df as 2020 file 
 
-write.csv(x = df20,file = 'C:/Users/dtrangmoe/Documents/YKD Burned/Cleaned Data/YKDBurned_Cleaned_Met_Flux_2020.csv',row.names = F,quote = F)
+write.csv(x = df20,file = 'C:/Users/dtrangmoe/Documents/YKD Burned/Cleaned Data/YKDBurned_Cleaned_Met_Flux_2020_Ameriflux.csv',row.names = F,quote = F)
 
 ```
 
@@ -150,7 +154,7 @@ plot(df21$ts, df21$co2_flux.c)
 
 # Save df as 2021 file 
 
-write.csv(x = df21,file = 'C:/Users/dtrangmoe/Documents/YKD Burned/Cleaned Data/YKDBurned_Cleaned_Met_Flux_2021.csv',row.names = F,quote = F)
+write.csv(x = df21,file = 'C:/Users/dtrangmoe/Documents/YKD Burned/Cleaned Data/YKDBurned_Cleaned_Met_Flux_2021_Ameriflux.csv',row.names = F,quote = F)
 
 ```
 
@@ -165,9 +169,11 @@ plot(df22$ts, df22$co2_flux.c)
 
 # Save df as 2022 file 
 
-write.csv(x = df22,file = 'C:/Users/dtrangmoe/Documents/YKD Burned/Cleaned Data/YKDBurned_Cleaned_Met_Flux_2022.csv',row.names = F,quote = F)
+write.csv(x = df22,file = 'C:/Users/dtrangmoe/Documents/YKD Burned/Cleaned Data/YKDBurned_Cleaned_Met_Flux_2022_Am.csv',row.names = F,quote = F)
 
 ```
+
+
 
 
 
@@ -223,6 +229,8 @@ maxdate2 = ceiling_date(max(df2$ts))
 
 ```
 
+
+
 ### Merge
 Merge dataframes to inc. cleaned flux and met
 
@@ -244,12 +252,28 @@ minutes_vector <- minutes != "00" & minutes != "30"
 sum(minutes_vector)
 
 #create a timestamp variable every half hour to the full months
-ts = seq(from = mindate,to = maxdate,by = 60*30)
+ts = seq(from = mindate1,to = maxdate1,by = 60*30)
 ts = as.data.frame(ts)
 
 
 #merge with the flux data frame to create NAs where data is missing
 df = merge(ts,df,by = 'ts',all.x = T)
+
+```
+
+For pre-merged file
+```{r, warning=FALSE}
+rm(list=ls())
+
+df = fread('C:/Users/dtrangmoe/Documents/YKD Unburned/YKDUnburned_Flux_Met_Clean_AmerifluxFormat.csv')
+
+```
+
+
+To save off full merged file
+```{r, warning=FALSE}
+
+# write.csv(df, 'C:/Users/dtrangmoe/Documents/YKD Unburned/YKDUnburned_Flux_Met_Clean_NotAmeriflux.csv')
 
 ```
 
@@ -260,11 +284,11 @@ df = merge(ts,df,by = 'ts',all.x = T)
 df19 <- df %>%
   filter(year(ts) %in% c(2019))
 
-plot(df19$ts, df19$co2_flux.c)
+plot(df19$ts, df19$ch4_flux.c)
 
 # Save df as 2019 file 
 
-write.csv(x = df19,file = 'C:/Users/dtrangmoe/Documents/YKD Unburned/Cleaned Data/YKDUnburned_Cleaned_Met_Flux_2019.csv',row.names = F,quote = F)
+write.csv(x = df19,file = 'C:/Users/dtrangmoe/Documents/YKD Unburned/Cleaned Data/YKDUnburned_Cleaned_Met_Flux_2019_Ameriflux.csv',row.names = F,quote = F)
 
 ```
 
@@ -279,7 +303,7 @@ plot(df20$ts, df20$co2_flux.c)
 
 # Save df as 2020 file 
 
-write.csv(x = df20,file = 'C:/Users/dtrangmoe/Documents/YKD Unburned/Cleaned Data/YKDUnburned_Cleaned_Met_Flux_2020.csv',row.names = F,quote = F)
+write.csv(x = df20,file = 'C:/Users/dtrangmoe/Documents/YKD Unburned/Cleaned Data/YKDUnburned_Cleaned_Met_Flux_2020_Ameriflux.csv',row.names = F,quote = F)
 
 ```
 
@@ -294,7 +318,7 @@ plot(df21$ts, df21$co2_flux.c)
 
 # Save df as 2021 file 
 
-write.csv(x = df21,file = 'C:/Users/dtrangmoe/Documents/YKD Unburned/Cleaned Data/YKDUnburned_Cleaned_Met_Flux_2021.csv',row.names = F,quote = F)
+write.csv(x = df21,file = 'C:/Users/dtrangmoe/Documents/YKD Unburned/Cleaned Data/YKDUnburned_Cleaned_Met_Flux_2021_Ameriflux.csv',row.names = F,quote = F)
 
 ```
 
@@ -309,8 +333,97 @@ plot(df22$ts, df22$co2_flux.c)
 
 # Save df as 2022 file 
 
-write.csv(x = df22,file = 'C:/Users/dtrangmoe/Documents/YKD Unburned/Cleaned Data/YKDUnburned_Cleaned_Met_Flux_2022.csv',row.names = F,quote = F)
+write.csv(x = df22,file = 'C:/Users/dtrangmoe/Documents/YKD Unburned/Cleaned Data/YKDUnburned_Cleaned_Met_Flux_2022_Ameriflux.csv',row.names = F,quote = F)
 
 ```
 
 
+## Compare old/new files 
+
+Load into one df
+```{r, warning=FASLE}
+rm(list = ls())
+
+df_new = fread('C:/Users/dtrangmoe/Documents/YKD Unburned/YKDUnburned_Flux_Met_Clean_AmerifluxFormat.csv')
+
+df_old = fread('C:/Users/dtrangmoe/Documents/YKD Unburned/YKDUnburned_Flux_Met_Clean_NotAAmeriflux.csv')
+
+
+df_old_renamed <- df_old %>% 
+    rename_with(~paste0(., "_old"), everything())
+
+df_old_renamed$ts = df_old_renamed$ts_old
+
+
+df <- full_join(df_new, df_old_renamed, by = 'ts')
+
+```
+
+
+Compare
+```{r, warning=FASLE}
+
+library(gridExtra)
+
+## CH4 
+
+
+old <- ggplot(data = df, aes(x = ts, y = ch4_flux.c_old)) + 
+  geom_point() +
+  ggtitle("Old Data")
+
+new <- ggplot(data = df, aes(x = ts, y = ch4_flux.c)) + 
+  geom_point() +
+  ggtitle("New Data")
+
+# Arrange the plots side by side
+combined_plot <- grid.arrange(new, old, ncol = 2)
+
+
+
+## CO2
+
+oldco2 <- ggplot(data = df, aes(x = ts, y = co2_flux.c_old)) + 
+  geom_point() +
+  ggtitle("Old Data")
+
+newco2 <- ggplot(data = df, aes(x = ts, y = co2_flux.c)) + 
+  geom_point() +
+  ggtitle("New Data")
+
+# Arrange the plots side by side
+combined_plot <- grid.arrange(newco2, oldco2, ncol = 2)
+
+
+
+## LE
+
+oldLE <- ggplot(data = df, aes(x = ts, y = LE.c_old)) + 
+  geom_point() +
+  ggtitle("Old Data")
+
+newLE <- ggplot(data = df, aes(x = ts, y = LE.c)) + 
+  geom_point() +
+  ggtitle("New Data")
+
+# Arrange the plots side by side
+combined_plot <- grid.arrange(newLE, oldLE, ncol = 2)
+
+
+
+
+
+## H
+
+oldH <- ggplot(data = df, aes(x = ts, y = H.c_old)) + 
+  geom_point() +
+  ggtitle("Old Data")
+
+newH <- ggplot(data = df, aes(x = ts, y = H.c)) + 
+  geom_point() +
+  ggtitle("New Data")
+
+# Arrange the plots side by side
+combined_plot <- grid.arrange(newH, oldH, ncol = 2)
+
+```

@@ -1,5 +1,5 @@
 ---
-title: "YKDBurned_Cleaning"
+title: "YKDUnburned_Cleaning"
 author: "Marco Montemayor"
 date: "2022-12-12"
 output: pdf_document
@@ -26,7 +26,7 @@ library(dplyr)
 Load in eddypro output and Biomet files
 
 ```{r}
-# fp = 'C:/Users/dtrangmoe/Documents/YKD Burned/EP_full_output'
+# fp = 'C:/Users/dtrangmoe/Documents/YKD Unburned/EP_full_output'
 # files = list.files(path = fp,pattern = '*full_output.+csv$',recursive = T,full.names = T)
 # 
 # #load the headers and data into their own lists
@@ -52,7 +52,7 @@ Load in eddypro output and Biomet files
 # 
 # #load in the biomet data
 # 
-# fp = 'C:/Permafrost Pathways/YKDBurned/eddypro/EP_biomet'
+# fp = 'C:/Permafrost Pathways/YKDUnburned/eddypro/EP_biomet'
 # files = list.files(path = fp,pattern = '*biomet',recursive = T,full.names = T)
 # 
 # 
@@ -84,7 +84,10 @@ Load in eddypro output and Biomet files
 Load in tidy, uncleaned data file (if possible)
 ```{r, warning=FALSE}
 
-df = fread('C:/Users/dtrangmoe/Documents/YKD Burned/YKD_Burned_Flux_Met_Uncleaned_2019_2022')
+df = fread('C:/Users/dtrangmoe/Documents/YKD Unburned/YKD_Unburned_Flux_Met_Uncleaned_2019_2022')
+
+df[df == -9999] = NA
+df[df == -7999] = NA
 
 ```
 
@@ -107,7 +110,7 @@ plot shortwave radiation in
 ```{r}
 plot(df$ts, df$SWIN_1_1_1)
 ```
-plot shortwave radation out
+plot shortwave radiation out
 
 ```{r}
 plot(df$ts, df$SWOUT_1_1_1)
@@ -194,7 +197,7 @@ plot(df$ts, df$co2_flux, ylim=c(-100,100))
 ```{r}
 monthlycleaning = data.frame(month = seq(1,12),
                              minflux = c(-5,-5,-7,-10,-12,-15,-15,-15,-12,-7,-5,-5),
-                             maxflux = c(9,10,11,11,11,11,11,11,11,11,10,9))
+                             maxflux = c(7,8,9,9,10,11,11,10,9,9,8,7))
                              
 
 df=df%>% 
@@ -213,7 +216,7 @@ ggplot(df,aes(x=ts))+
 
 ggplot(df,aes(x=ts))+
   geom_ribbon(aes(ymin= minflux, ymax= maxflux),fill='yellow')+
-  geom_point( aes(y=co2_flux))+
+  geom_point(aes(y=co2_flux))+
   scale_y_continuous(limits= c(-25,25))+
   scale_x_datetime(limits = as.POSIXct(c('2021-01-01','2021-12-31')))
 
@@ -245,13 +248,13 @@ hist(df$ch4_flux,breaks=100)
 Plot what we might clean
 
 ```{r}
-plot(df$ts,df$ch4_flux,ylim = c(-2,6.8));abline(h=-.2, col= 'red');abline(h=0.2, col='red'); abline(h=0,col= 'black')
+plot(df$ts,df$ch4_flux,ylim = c(-1,1));abline(h=-.2, col= 'red');abline(h=0.5, col='red'); abline(h=0,col= 'black')
 ```
 
 Clean based on graphs, create new variable (ch4_flux.limits), and see cleaned product
 
 ```{r}
-ch4_flux.limits = replace(df$ch4_flux,df$ch4_flux > 0.2 | df$ch4_flux < -0.2,NA)
+ch4_flux.limits = replace(df$ch4_flux,df$ch4_flux > 0.5 | df$ch4_flux < -0.2,NA)
 hist(ch4_flux.limits,breaks = 100)
 plot(ch4_flux.limits)
 ```
@@ -263,13 +266,13 @@ Plot H Histogram and plot what we might clean
 ```{r}
 hist(df$H,breaks=100)
 
-plot(df$ts,df$H,ylim = c(-400,475));abline(h=-175, col= 'red');abline(h=380, col='red')
+plot(df$ts,df$H,ylim = c(-400,800));abline(h=-225, col= 'red');abline(h=450, col='red')
 ```
 
 Clean based on graphs, create new variable (H.limits), and see cleaned product
 
 ```{r}
-H.limits = replace(df$H, df$H < -175 | df$H > 380,NA)
+H.limits = replace(df$H, df$H < -225 | df$H > 450,NA)
 hist(H.limits,breaks = 100)
 plot(H.limits)
 ```
@@ -285,13 +288,13 @@ hist(df$LE,breaks=100)
 Plot what we might clean
 
 ```{r}
-plot(df$ts,df$LE,ylim = c(-350,500));abline(h=-210, col= 'red');abline(h=310, col='red')
+plot(df$ts,df$LE,ylim = c(-350,500));abline(h=-170, col= 'red');abline(h=310, col='red')
 ```
 
 Clean based on graphs, create new variable (LE.limits), and see cleaned product
 
 ```{r}
-LE.limits = replace(df$LE, df$LE < -210 | df$LE > 310,NA)
+LE.limits = replace(df$LE, df$LE < -170 | df$LE > 310,NA)
 hist(LE.limits)
 plot(LE.limits)
 ```
@@ -302,7 +305,7 @@ use night-time only flux values and plot
 
 ```{r}
 df$nightCO2 = co2_flux.limits
-df$nightCO2 = replace(df$nightCO2,df$SWIN_1_1_1 > 10,NA)
+df$nightCO2 = replace(df$nightCO2,df$SWIN_1_1_1.c > 10,NA)
 
 plot(df$nightCO2,ylim = c(-20,20))
 ```
@@ -378,6 +381,7 @@ roll.mad[is.na(Flux_filt)] = NA  #make NA values where NAs exist in the real dat
 Graph to see filter and points
 
 ```{r}
+# need to be fixed 
 plot(df$ts,Flux_filt,xlim = as.POSIXct(c('2019-9-1','2022-9-1')),col='red',type = 'l');points(df$ts,df$co2_flux)
 
 plot(df$ts,roll.mad,xlim = as.POSIXct(c('2019-9-1','2022-9-1')),col='red',type = 'l')
@@ -447,10 +451,10 @@ adjust this (N) to tweak how many MADs to be away from the norm, CH4 deserves mo
 N = 6 
 df$ch4_flux.c = ifelse(abs(ch4fluxclean - Flux_filt) > (N * roll.mad),NA,ch4fluxclean)
 
-#plots need to be fixed 
-plot(df$ts,roll.mad,xlim = as.POSIXct(c('2019-9-1','2022-9-15')),col='red',type = 'l')
-
-plot(df$ts,Flux_filt,xlim = as.POSIXct(c('2019-9-1','2022-9-15')),col='red',type = 'l');points(df$ts,df$ch4_flux)
+# #plots need to be fixed 
+# plot(df$ts,roll.mad,xlim = as.POSIXct(c('2019-9-1','2022-9-15')),col='red',type = 'l')
+# 
+# plot(df$ts,Flux_filt,xlim = as.POSIXct(c('2019-9-1','2022-9-15')),col='red',type = 'l');points(df$ts,df$ch4_flux)
 ```
 
 Add clean value to the dataframe (_.c) and compare cleaned vs. uncleaned
@@ -582,7 +586,6 @@ ggplot(data = df)+
 ```
 #Main Plots
 
-Marco's note- During the Fall 22 period, the cleaning code is working extra hard compared to years previous, may need to see if instruments (anemometer specifically) are functioning properly. Cleaned normally, as instructed
 ```{r}
 ggplot(data = df)+theme_bw()+geom_hline(yintercept = 0)+
   geom_point(aes(ts,LE,col='Filt.'))+
@@ -611,17 +614,20 @@ ggplot(data = df)+theme_bw()+geom_hline(yintercept = 0)+
   scale_y_continuous(expression(CH[4]~'flux ('*mu*mol~m^-2~s^-1*')'))+
   scale_color_manual(values = c('black','red'))
 ```
-# Funky Fall Period
 
-Similar to what we see in unburned data set in Dec
+
+# December 
+
+Similar to burned dataset in Fall
 ```{r}
 df$energy <- df$RN_1_1_1 - df$SHF_mean 
 
+## crashing here- something wrong??
 ggplot(data = df)+theme_bw()+geom_hline(yintercept = 0)+
   geom_point(aes(ts,energy,col='RN-G'))+
   geom_point(aes(ts,flux,col='H+LE'))+
   scale_y_continuous(limits = c(-110,400))+
-  scale_x_datetime(limits = as.POSIXct(c('2022-9-3','2022-12-31'),format="%F"))
+  scale_x_datetime(limits = as.POSIXct(c('2022-12-01','2022-12-31'),format="%F"))
 ```
 
 
@@ -701,7 +707,7 @@ ggplot(data = diel)+geom_hline(yintercept = 0)+
 # Save
 
 ```{r}
-write.csv(x = df,file = 'C:/Users/dtrangmoe/Documents/YKD Burned/YKDBurned_Flux_Met_Clean_AmerifluxFormat.csv',row.names = F,quote = F)
+write.csv(x = df,file = 'C:/Users/dtrangmoe/Documents/YKD Unburned/YKDUnburned_Flux_Met_Clean_AmerifluxFormat.csv',row.names = F,quote = F)
 ```
 
 # Monthly Coverage
