@@ -523,6 +523,7 @@ plot(df$TIMESTAMP, co2_flux.limits)
 ggplot(data = df)+geom_hline(yintercept = 0)+
   geom_point(aes(ts,co2_flux),col = 'red')+
   geom_point(aes(ts,co2_flux.limits),col = 'black')+
+  scale_y_continuous(limits = c(-20, 20))+
   scale_x_datetime(limits = as.POSIXct(flux_dates,format="%F"))
 
 ```
