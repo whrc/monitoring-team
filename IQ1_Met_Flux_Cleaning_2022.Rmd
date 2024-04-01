@@ -93,7 +93,7 @@ Windvec and WS variables are all zeroes
 #### Air Temp
 
 
-Doesn't clean anything right how- looks fine
+Doesn't clean anything- looks fine
 ```{r, warning=FALSE}
 ggplot(data = df)+
   geom_point(aes(TIMESTAMP,T_air_HC2S3_Avg),col='black')+
@@ -136,6 +136,7 @@ ggplot(data = df)+
   scale_y_continuous(limits = c(5,100),
                      expression('Relative Humidity ('*percent*')'))+
   scale_x_datetime(limits = as.POSIXct(biomet_dates))
+
 ```
 
 
@@ -235,7 +236,7 @@ roll.mad[is.na(mad_filt)] = NA  #make NA values where NAs exist in the real data
 
 
 #adjust this value (N) to tweak how many MADs to be away from the norm
-N = 3 
+N = 3
 
 #Add clean value to dataframe (_.c)  (change these lines for new site)
 
@@ -345,7 +346,6 @@ ggplot(data = df)+
 ```
 
 #### T Ref Avg
-
 
 ```{r, warning=FALSE}
 
@@ -485,7 +485,17 @@ Initial Cleaning with Limits
 
 hist(df$Tau,breaks=100)
 
-plot(df$ts,df$Tau); abline(h=-1, col= 'red'); abline(h=1, col= 'red'); abline(h=0,col= 'black')
+ggplot(data = df)+geom_hline(yintercept = 0)+
+  geom_point(aes(ts,Tau))+
+  geom_hline(yintercept = 1, col="red")+
+  geom_hline(yintercept = -1, col="red")+
+  scale_x_datetime(limits = as.POSIXct((flux_dates),format="%F"))
+
+ggplot(data = df)+geom_hline(yintercept = 0)+
+  geom_point(aes(ts,Tau))+
+  geom_hline(yintercept = 0.5, col="red")+
+  geom_hline(yintercept = -0.75, col="red")+ scale_x_datetime(limits = as.POSIXct(c('2022-07-01','2022-10-01')))+scale_y_continuous(limits = c(-1.5, 1.5))
+
 
 Tau.limits = replace(df$Tau,df$Tau > 0.5 | df$Tau < -0.75,NA)
 hist(Tau.limits,breaks=100)
@@ -501,13 +511,45 @@ Initial Cleaning w/ Limits
 ```{r, warning=FALSE}
 hist(df$co2_flux,breaks=100)
 
-plot(df$ts,df$co2_flux, abline(h=75, col= 'red')); abline(h=-50, col= 'red'); abline(h=0,col= 'black')
+upper_lim = 10
+lower_lim = -12
+
+ggplot(data = df)+geom_hline(yintercept = 0)+
+  geom_point(aes(x=ts,y=co2_flux))+
+  geom_hline(yintercept = upper_lim, col="red")+
+  geom_hline(yintercept = lower_lim, col="red")+
+  scale_y_continuous(limits = c(-20,20))+
+  scale_x_datetime(limits = as.POSIXct(c('2022-06-13','2022-06-20'),format="%F"))
+
+
+ggplot(data = df)+geom_hline(yintercept = 0)+
+  geom_point(aes(x=ts,y=co2_flux))+
+  geom_hline(yintercept = upper_lim, col="red")+
+  geom_hline(yintercept = lower_lim, col="red")+
+  scale_y_continuous(limits = c(-20,20))+
+  scale_x_datetime(limits = as.POSIXct(c('2022-08-01','2022-08-22'),format="%F"))
+
+ggplot(data = df)+geom_hline(yintercept = 0)+
+  geom_point(aes(x=ts,y=co2_flux))+
+  geom_hline(yintercept = upper_lim, col="red")+
+  geom_hline(yintercept = lower_lim, col="red")+
+  scale_y_continuous(limits = c(-20,20))+
+  scale_x_datetime(limits = as.POSIXct(c('2022-08-22','2022-09-05'),format="%F"))
+
+
+ggplot(data = df)+geom_hline(yintercept = 0)+
+  geom_point(aes(x=ts,y=co2_flux))+
+  geom_hline(yintercept = upper_lim, col="red")+
+  geom_hline(yintercept = lower_lim, col="red")+
+  scale_y_continuous(limits = c(-20,20))+
+  scale_x_datetime(limits = as.POSIXct(c('2022-09-05','2022-09-25'),format="%F"))
  
 
 # Clean based on graphs, create new variable, and see cleaned product
 
 
-co2_flux.limits = replace(df$co2_flux,df$co2_flux > 75 | df$co2_flux < -50,NA)
+co2_flux.limits = replace(df$co2_flux,df$co2_flux > upper_lim | df$co2_flux < lower_lim,NA)
+
 hist(co2_flux.limits,breaks=100)
 plot(df$TIMESTAMP, co2_flux.limits)
 
@@ -515,7 +557,7 @@ plot(df$TIMESTAMP, co2_flux.limits)
 ggplot(data = df)+geom_hline(yintercept = 0)+
   geom_point(aes(x=ts,y=co2_flux),col = 'red')+
   geom_point(aes(x=ts,y=co2_flux.limits),col = 'black')+
-  scale_y_continuous(limits = c(-300,220))+
+  scale_y_continuous(limits = c(-25,25))+
   scale_x_datetime(limits = as.POSIXct(flux_dates,format="%F"))
 ```
 
@@ -528,12 +570,44 @@ Initial Cleaning w/ Limits
 ```{r, warning=FALSE}
 hist(df$h2o_flux,breaks=100)
 
-plot(df$ts,df$h2o_flux);abline(h=-2, col= 'red'); abline(h=8, col= 'red'); abline(h=0,col= 'black')
+upper_lim = 5
+lower_lim = -1.5
+
+ggplot(data = df)+geom_hline(yintercept = 0)+
+  geom_point(aes(x=ts,y=h2o_flux))+
+  geom_hline(yintercept = upper_lim, col="red")+
+  geom_hline(yintercept = lower_lim, col="red")+
+  scale_y_continuous(limits = c(-50,20))+
+  scale_x_datetime(limits = as.POSIXct(c('2022-06-13','2022-06-20'),format="%F"))
+
+
+ggplot(data = df)+geom_hline(yintercept = 0)+
+  geom_point(aes(x=ts,y=h2o_flux))+
+  geom_hline(yintercept = upper_lim, col="red")+
+  geom_hline(yintercept = lower_lim, col="red")+
+  scale_y_continuous(limits = c(-50,20))+
+  scale_x_datetime(limits = as.POSIXct(c('2022-08-01','2022-08-22'),format="%F"))
+
+ggplot(data = df)+geom_hline(yintercept = 0)+
+  geom_point(aes(x=ts,y=h2o_flux))+
+  geom_hline(yintercept = upper_lim, col="red")+
+  geom_hline(yintercept = lower_lim, col="red")+
+  scale_y_continuous(limits = c(-50,20))+
+  scale_x_datetime(limits = as.POSIXct(c('2022-08-22','2022-09-05'),format="%F"))
+
+
+ggplot(data = df)+geom_hline(yintercept = 0)+
+  geom_point(aes(x=ts,y=h2o_flux))+
+  geom_hline(yintercept = upper_lim, col="red")+
+  geom_hline(yintercept = lower_lim, col="red")+
+  scale_y_continuous(limits = c(-50,20))+
+  scale_x_datetime(limits = as.POSIXct(c('2022-09-05','2022-09-25'),format="%F"))
+ 
  
 
 # Clean based on graphs, create new variable, and see cleaned product
 
-h2o_flux.limits = replace(df$h2o_flux,df$h2o_flux < -2 | df$h2o_flux > 8,NA)
+h2o_flux.limits = replace(df$h2o_flux,df$h2o_flux < lower_lim | df$h2o_flux > upper_lim,NA)
 hist(h2o_flux.limits,breaks=100)
 plot(df$TIMESTAMP, h2o_flux.limits)
 
@@ -552,13 +626,45 @@ Initial Cleaning w/ Limits
 ```{r, warning=FALSE}
 hist(df$H,breaks=100)
 
-plot(df$ts,df$H);abline(h=-65, col= 'red');abline(h=350, col= 'red')
+upper_lim = 350
+lower_lim = -100
+
+ggplot(data = df)+geom_hline(yintercept = 0)+
+  geom_point(aes(x=ts,y=H))+
+  geom_hline(yintercept = upper_lim, col="red")+
+  geom_hline(yintercept = lower_lim, col="red")+
+  scale_y_continuous(limits = c(-500,500))+
+  scale_x_datetime(limits = as.POSIXct(c('2022-06-13','2022-06-20'),format="%F"))
+
+
+ggplot(data = df)+geom_hline(yintercept = 0)+
+  geom_point(aes(x=ts,y=H))+
+  geom_hline(yintercept = upper_lim, col="red")+
+  geom_hline(yintercept = lower_lim, col="red")+
+  scale_y_continuous(limits = c(-500,500))+
+  scale_x_datetime(limits = as.POSIXct(c('2022-08-01','2022-08-22'),format="%F"))
+
+ggplot(data = df)+geom_hline(yintercept = 0)+
+  geom_point(aes(x=ts,y=H))+
+  geom_hline(yintercept = upper_lim, col="red")+
+  geom_hline(yintercept = lower_lim, col="red")+
+  scale_y_continuous(limits = c(-500,500))+
+  scale_x_datetime(limits = as.POSIXct(c('2022-08-22','2022-09-05'),format="%F"))
+
+
+ggplot(data = df)+geom_hline(yintercept = 0)+
+  geom_point(aes(x=ts,y=H))+
+  geom_hline(yintercept = upper_lim, col="red")+
+  geom_hline(yintercept = lower_lim, col="red")+
+  scale_y_continuous(limits = c(-500,500))+
+  scale_x_datetime(limits = as.POSIXct(c('2022-09-05','2022-09-25'),format="%F"))
+ 
  
 
 # Clean based on graphs, create new variable (H.limits), and see cleaned product
 
   
-H.limits = replace(df$H, df$H < -65 | df$H > 350,NA)
+H.limits = replace(df$H, df$H < lower_lim | df$H > upper_lim,NA)
 hist(H.limits,breaks = 100)
 
 ggplot(data = df)+geom_hline(yintercept = 0)+
@@ -576,13 +682,44 @@ Initial Cleaning w/ limits
 ```{r, warning=FALSE}
 hist(df$LE,breaks=100)
 
-plot(df$ts,df$LE);abline(h=-75, col= 'red');abline(h=200, col= 'red')
+upper_lim = 175
+lower_lim = -75
+
+ggplot(data = df)+geom_hline(yintercept = 0)+
+  geom_point(aes(x=ts,y=LE))+
+  geom_hline(yintercept = upper_lim, col="red")+
+  geom_hline(yintercept = lower_lim, col="red")+
+  scale_y_continuous(limits = c(-500,500))+
+  scale_x_datetime(limits = as.POSIXct(c('2022-06-13','2022-06-20'),format="%F"))
+
+
+ggplot(data = df)+geom_hline(yintercept = 0)+
+  geom_point(aes(x=ts,y=LE))+
+  geom_hline(yintercept = upper_lim, col="red")+
+  geom_hline(yintercept = lower_lim, col="red")+
+  scale_y_continuous(limits = c(-500,500))+
+  scale_x_datetime(limits = as.POSIXct(c('2022-08-01','2022-08-22'),format="%F"))
+
+ggplot(data = df)+geom_hline(yintercept = 0)+
+  geom_point(aes(x=ts,y=LE))+
+  geom_hline(yintercept = upper_lim, col="red")+
+  geom_hline(yintercept = lower_lim, col="red")+
+  scale_y_continuous(limits = c(-500,500))+
+  scale_x_datetime(limits = as.POSIXct(c('2022-08-22','2022-09-05'),format="%F"))
+
+
+ggplot(data = df)+geom_hline(yintercept = 0)+
+  geom_point(aes(x=ts,y=LE))+
+  geom_hline(yintercept = upper_lim, col="red")+
+  geom_hline(yintercept = lower_lim, col="red")+
+  scale_y_continuous(limits = c(-500,500))+
+  scale_x_datetime(limits = as.POSIXct(c('2022-09-05','2022-09-25'),format="%F"))
  
 
 # Clean based on graphs, create new variable, and see cleaned product
 
   
-LE.limits = replace(df$LE, df$LE < -75 | df$LE > 200,NA)
+LE.limits = replace(df$LE, df$LE < lower_lim | df$LE > upper_lim,NA)
 hist(LE.limits)
 
 ggplot(data = df)+geom_hline(yintercept = 0)+
@@ -597,7 +734,7 @@ ggplot(data = df)+geom_hline(yintercept = 0)+
 #### USTAR - friction velocity (turbulence)
 
 Use night-time only flux values and plot Ustar based on data drop off
-No 4 component radiation- use daytime variable?
+No 4 component radiation- used daytime variable
 ```{r, warning=FALSE}
 df$nightCO2 = co2_flux.limits
 df$nightCO2 = replace(df$nightCO2,df$daytime == 0,NA)
@@ -618,14 +755,10 @@ ggplot(data = df,aes(`u*`,nightCO2))+
 ```
  
 
-Pick threshold and filter based on plots above
+created flag to indicate where u* values are below our threshold- makes cleaning with u* optional but easy when using cleaned data sets
 
 ```{r, warning=FALSE}
-Tau.u  = replace(df$Tau ,df$`u*` < Uthreshold,NA)
-H.u    = replace(df$H   ,df$`u*` < Uthreshold,NA)
-LE.u   = replace(df$LE  ,df$`u*` < Uthreshold,NA)
-co2_flux.u   = replace(df$co2_flux  ,df$`u*` < Uthreshold,NA)
-h2o_flux.u   = replace(df$h2o_flux  ,df$`u*` < Uthreshold,NA)
+df$u_flag = ifelse(df$`u*` < Uthreshold,1,0)
 ```
 
 
@@ -635,11 +768,11 @@ h2o_flux.u   = replace(df$h2o_flux  ,df$`u*` < Uthreshold,NA)
 Investigate the previous limits and combine all to create a new variable (clean), plot to see difference
 
 ```{r, warning=FALSE}
-co2fluxclean = ifelse(is.na(co2_flux.qc) | is.na(co2_flux.limits) | is.na(co2_flux.u),NA,df$co2_flux)
-h2ofluxclean = ifelse(is.na(h2o_flux.qc) | is.na(h2o_flux.limits) | is.na(h2o_flux.u),NA,df$h2o_flux)
-Hclean = ifelse(is.na(H.qc) | is.na(H.limits) | is.na(H.u),NA,df$H)
-LEclean = ifelse(is.na(LE.qc) | is.na(LE.limits) | is.na(LE.u),NA,df$LE)
-Tauclean = ifelse(is.na(Tau.qc) | is.na(Tau.limits) | is.na(Tau.u),NA,df$Tau)
+co2fluxclean = ifelse(is.na(co2_flux.qc) | is.na(co2_flux.limits),NA,df$co2_flux)
+h2ofluxclean = ifelse(is.na(h2o_flux.qc) | is.na(h2o_flux.limits),NA,df$h2o_flux)
+Hclean = ifelse(is.na(H.qc) | is.na(H.limits),NA,df$H)
+LEclean = ifelse(is.na(LE.qc) | is.na(LE.limits),NA,df$LE)
+Tauclean = ifelse(is.na(Tau.qc) | is.na(Tau.limits),NA,df$Tau)
 
 plot(df$ts,co2fluxclean)
 plot(df$ts,h2ofluxclean)
@@ -652,8 +785,7 @@ plot(df$ts,Tauclean)
 ### MAD Filters 
 
 #### NEE
-
-Cutting a lot of data? 
+ 
 
 ```{r, warning=FALSE}
 f = co2fluxclean # first make a new flux vector to apply the above filters
@@ -687,7 +819,7 @@ ggplot(df)+geom_hline(yintercept = 0)+
 
   
 #adjust this value (N) to tweak how many MADs to be away from the norm
-N = 5
+N = 3
 
 #Add clean value to dataframe (_.c)
 
@@ -714,8 +846,8 @@ ggplot(data = df)+
   geom_ribbon(aes(x = ts,ymax = Flux_filt+roll.mad*1,ymin = Flux_filt-roll.mad*1,fill='1'))+
   geom_point(aes(ts,co2fluxclean),col='red')+
   geom_point(aes(ts,co2_flux.c),col='black')+
-  scale_y_continuous(limits = c(-30, 18))+
-  scale_x_datetime(limits = as.POSIXct(c('2022-05-17', '2022-06-25'),format="%F"))
+  scale_y_continuous(limits = c(-10, 10))+
+  scale_x_datetime(limits = as.POSIXct(c('2022-05-17', '2022-06-01'),format="%F"))
 
 
 
@@ -726,8 +858,18 @@ ggplot(data = df)+
   geom_ribbon(aes(x = ts,ymax = Flux_filt+roll.mad*1,ymin = Flux_filt-roll.mad*1,fill='1'))+
   geom_point(aes(ts,co2fluxclean),col='red')+
   geom_point(aes(ts,co2_flux.c),col='black')+
-  scale_y_continuous(limits = c(-50, 50))+
-  scale_x_datetime(limits = as.POSIXct(c('2022-07-20', '2022-09-27'),format="%F"))
+  scale_y_continuous(limits = c(-20, 20))+
+  scale_x_datetime(limits = as.POSIXct(c('2022-09-01', '2022-09-15'),format="%F"))
+
+ggplot(data = df)+
+  geom_ribbon(aes(x = ts,ymax = Flux_filt+roll.mad*6,ymin = Flux_filt-roll.mad*6,fill='6'))+
+  geom_ribbon(aes(x = ts,ymax = Flux_filt+roll.mad*3,ymin = Flux_filt-roll.mad*3,fill='3'))+
+  geom_ribbon(aes(x = ts,ymax = Flux_filt+roll.mad*2,ymin = Flux_filt-roll.mad*2,fill='2'))+
+  geom_ribbon(aes(x = ts,ymax = Flux_filt+roll.mad*1,ymin = Flux_filt-roll.mad*1,fill='1'))+
+  geom_point(aes(ts,co2fluxclean),col='red')+
+  geom_point(aes(ts,co2_flux.c),col='black')+
+  scale_y_continuous(limits = c(-25, 25))+
+  scale_x_datetime(limits = as.POSIXct(flux_dates,format="%F"))
  
 ```
 
@@ -770,7 +912,7 @@ ggplot(df)+geom_hline(yintercept = 0)+
 
   
 #adjust this value (N) to tweak how many MADs to be away from the norm
-N = 5
+N = 4
 
 #Add clean value to dataframe (_.c)
 
@@ -940,7 +1082,7 @@ ggplot(data = df)+
 ggplot(data = df)+theme_bw()+geom_hline(yintercept = 0)+
   geom_point(aes(ts,LE,col='Filt.'))+
   geom_point(aes(ts,LE.c,col='clean'))+
-  scale_y_continuous(expression('LE ('*W~m^-2*')'))+
+  scale_y_continuous(limits = c(-220, 320), expression('LE ('*W~m^-2*')'))+
   scale_color_manual(values = c('black','red'))+
   scale_x_datetime(limits = as.POSIXct(flux_dates))
 
@@ -948,7 +1090,7 @@ ggplot(data = df)+theme_bw()+geom_hline(yintercept = 0)+
 ggplot(data = df)+theme_bw()+geom_hline(yintercept = 0)+
   geom_point(aes(ts,H,col='Filt.'))+
   geom_point(aes(ts,H.c,col='clean'))+
-  scale_y_continuous(expression('H ('*W~m^-2*')'))+
+  scale_y_continuous(limits = c(-150, 450),expression('H ('*W~m^-2*')'))+
   scale_color_manual(values = c('black','red'))+
   scale_x_datetime(limits = as.POSIXct(flux_dates))
 
@@ -956,7 +1098,7 @@ ggplot(data = df)+theme_bw()+geom_hline(yintercept = 0)+
   geom_point(aes(ts,co2_flux,col='Filt.'))+
   geom_point(aes(ts,co2_flux.c,col='clean'))+
   scale_y_continuous (expression('NEE ('*mu*mol~m^-2~s^-1*')'),
-                      limits = c(-10,15))+
+                      limits = c(-20,20))+
   scale_color_manual(values = c('black','red'))+
   scale_x_datetime(limits = as.POSIXct(flux_dates))
 
@@ -964,7 +1106,7 @@ ggplot(data = df)+theme_bw()+geom_hline(yintercept = 0)+
   geom_point(aes(ts,h2o_flux,col='Filt.'))+
   geom_point(aes(ts,h2o_flux.c,col='clean'))+
   scale_y_continuous (expression('H2O Flux'),
-                      limits = c(-10,10))+
+                      limits = c(-8,10))+
   scale_color_manual(values = c('black','red'))+
   scale_x_datetime(limits = as.POSIXct(flux_dates))
 
@@ -1073,7 +1215,7 @@ summary(lm(df$flux_EB.c ~ df$met_EB.c))
 
 
 
-#### R^2^ = `r summary(lm(df$flux_EB.c ~ df$met_EB.c))$r.squared`: much better :)
+#### R^2^ = `r summary(lm(df$flux_EB.c ~ df$met_EB.c))$r.squared`
 
 
 
