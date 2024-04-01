@@ -1,0 +1,290 @@
+---
+title: "Churchill Model Runs"
+output: pdf_document
+date: "2024-02-15"
+---
+
+
+```{r}
+rm(list = ls())
+
+library(data.table)
+library(ggplot2)
+library(cowplot)
+library(openair)
+library(plotrix)
+library(signal)
+library(svMisc)
+library(zoo)
+library(stringr)
+library(plyr)
+library(dplyr)
+library(lubridate)
+library(RColorBrewer)
+```
+## Load DF's 
+```{r}
+h1 = fread('G:/My Drive/Permafrost Pathways/Towers/Churchill/Data/CA_CF3.csv', nrows = 1, skip = 0)
+dat1 = fread('G:/My Drive/Permafrost Pathways/Towers/Churchill/Data/CA_CF3.csv',skip = 1, header = FALSE, na.strings=c('-9999','NA','NaN','NAN'))
+
+h2 = fread('G:/My Drive/Permafrost Pathways/Towers/Churchill/Data/AMF_CA-CF2_BASE_HH_2-5.csv',nrows=1,skip=2)
+dat2 = fread ('G:/My Drive/Permafrost Pathways/Towers/Churchill/Data/AMF_CA-CF2_BASE_HH_2-5.csv',skip = 3,header = FALSE, na.strings=c('-9999','NA','NaN','NAN'))
+
+h3 = fread('G:/My Drive/Permafrost Pathways/Towers/Churchill/Data/AMF_CA-CF1_BASE_HH_2-5.csv',nrows=1,skip=2)
+dat3 = fread ('G:/My Drive/Permafrost Pathways/Towers/Churchill/Data/AMF_CA-CF1_BASE_HH_2-5.csv',skip = 3,header = FALSE, na.strings=c('-9999','NA','NaN','NAN'))
+
+names(dat1) = names(h1)
+names(dat2) = names(h2)
+names(dat3) = names(h3)
+
+CF3= dat1
+CF2 = dat2
+CF1 = dat3
+```
+
+# Timestamps
+```{r}
+
+#CF2
+
+CF2$ts = as.character(CF2$TIMESTAMP_START)
+
+CF2$year = substr(CF2$ts,1,4)
+CF2$month = substr(CF2$ts,5,6)
+CF2$day = substr(CF2$ts,7,8)
+CF2$hour = substr(CF2$ts,9,10)
+CF2$min = substr(CF2$ts,11,12)
+
+
+
+CF2$ts = as.POSIXct(paste(CF2$year,CF2$month,CF2$day,CF2$hour,CF2$min,sep = ''),
+                    format = '%Y%m%d%H%M',
+                    tz = "America/Belize"	
+                    )
+
+CF2$date = as.POSIXct(paste(CF2$year,CF2$month,CF2$day,sep = ''),
+                      format = '%Y%m%d')
+#CF1
+
+CF1$ts = as.character(CF1$TIMESTAMP_START)
+
+CF1$year = substr(CF1$ts,1,4)
+CF1$month = substr(CF1$ts,5,6)
+CF1$day = substr(CF1$ts,7,8)
+CF1$hour = substr(CF1$ts,9,10)
+CF1$min = substr(CF1$ts,11,12)
+
+
+
+CF1$ts = as.POSIXct(paste(CF1$year,CF1$month,CF1$day,CF1$hour,CF1$min,sep = ''),
+                    format = '%Y%m%d%H%M',
+                    tz = "America/Belize"	
+                    )
+
+CF1$date = as.POSIXct(paste(CF1$year,CF1$month,CF1$day,sep = ''),
+                      format = '%Y%m%d')
+
+#CF3
+
+CF3$ts = as.character(CF3$TIMESTAMP_START)
+
+CF3$year = substr(CF3$ts,1,4)
+CF3$month = substr(CF3$ts,5,6)
+CF3$day = substr(CF3$ts,7,8)
+CF3$hour = substr(CF3$ts,9,10)
+CF3$min = substr(CF3$ts,11,12)
+
+
+
+CF3$ts = as.POSIXct(paste(CF3$year,CF3$month,CF3$day,CF3$hour,CF3$min,sep = ''),
+                    format = '%Y%m%d%H%M',
+                    tz = "America/Belize"	
+                    )
+
+
+CF3$date = as.POSIXct(paste(CF3$year,CF3$month,CF3$day,sep = ''),
+                      format = '%Y%m%d')
+
+
+```
+
+# Variable names
+```{r,warning = FALSE}
+
+
+
+ggplot(data = CF3)+theme_bw()+
+  geom_point(aes(ts,TS_4_1_1),color = 'pink')+
+  geom_point(aes(ts,TS_3_1_1),color = 'green')+
+  geom_hline(yintercept = 0)+
+  scale_y_continuous (expression('CH4 Flux ('*n*mol~m^-2~s^-1*')'),
+                      limits = c(-30,35))+
+  scale_x_datetime(limits = as.POSIXct(c('2023-4-26','2023-6-30')))
+
+ggplot(data = CF2)+theme_bw()+
+  geom_point(aes(ts,TS_1_1_1),color = 'blue')+
+  geom_point(aes(ts,TS_2_1_1),color = 'pink')+
+  geom_hline(yintercept = 0)+
+  scale_y_continuous (expression('CH4 Flux ('*n*mol~m^-2~s^-1*')'),
+                      limits = c(-30,35))+
+  scale_x_datetime(limits = as.POSIXct(c('2010-6-26','2010-7-30')))
+
+
+#Open water therms
+
+#Hummock Therms
+
+CF3
+
+#VWC
+
+#Merge
+merged_df = rbind.fill(CF1,CF2,CF3)
+
+merged_df$DOY = yday(merged_df$date)
+
+merged_df$year = substr(merged_df$date,1,4)
+
+
+```
+
+# Daily Average
+```{r}
+
+avg = timeAverage(
+  merged_df,
+  avg.time = 'day',
+  data.thresh = 0,
+  statistic = 'mean',
+  fill = TRUE
+)
+
+
+df = timeAverage(
+  CF3,
+  avg.time = 'day',
+  data.thresh = 0,
+  statistic = 'mean',
+  fill = TRUE
+)
+
+```
+# more time separations 
+```{r}
+avg$year = substr(avg$date,1,4)
+avg$year <- factor(avg$year)
+
+avg$DOY = yday(avg$date)
+avg$DOY <- as.numeric(avg$DOY)
+
+df$year = substr(df$date,1,4)
+df$year <- factor(df$year)
+
+df$DOY = yday(df$date)
+df$DOY <- as.numeric(df$DOY)
+```
+
+# Annual Plot (rough)
+```{r,warning = FALSE}
+
+ggplot(data = avg)+theme_bw()+
+  geom_point(aes(DOY,FCH4,color = year))+
+  geom_hline(yintercept = 0)+
+  scale_x_continuous(limits = c(110,340))+
+  scale_y_continuous (expression('CH4 Flux ('*n*mol~m^-2~s^-1*')'),
+                      limits = c(-10,150))+
+  labs(color='Year')
+
+ggplot(data = df)+theme_bw()+
+  geom_point(aes(DOY,FCH4,color = year))+
+  geom_hline(yintercept = 0)+
+  scale_y_continuous (expression('CH4 Flux ('*n*mol~m^-2~s^-1*')'),
+                      limits = c(-10,150))+
+  labs(color='Year')
+```
+# 5 cm hysteresis
+```{r}
+
+ggplot(data = df)+theme_dark()+
+  geom_point(aes(x = TS_2_05_1, y = FCH4, color = DOY),size = 5.3) +
+  geom_hline(yintercept = 0) +
+  scale_y_continuous(expression('CH4 Flux (' * n * mol ~ m^-2 ~ s^-1 * ')'),
+                     limits = c(-10, 150)) +
+  scale_x_continuous(expression('Temperature (°C)'),
+                     limits = c(-15,18))+
+  labs(color = 'DOY')+
+  scale_color_gradientn(colours = rev(brewer.pal(9,'RdYlBu')))
+
+
+ggplot(data = avg)+theme_bw()+
+  geom_point(aes(x = TS_2_05_1, y = FCH4, color = DOY),size = 5.3) +
+  geom_hline(yintercept = 0) +
+  scale_y_continuous(expression('CH4 Flux (' * n * mol ~ m^-2 ~ s^-1 * ')'),
+                     limits = c(-10, 150)) +
+  scale_x_continuous(expression('Temperature (°C)'),
+                     limits = c(-15,18))+
+  labs(color = 'DOY')+
+  scale_color_gradientn(colours = rev(brewer.pal(9,'RdYlBu')))
+
+```
+
+
+#10 cm Hysteresis 
+```{r}
+df$month = as.numeric(format(df$ts,'%m'))
+
+
+ggplot(data = df)+theme_bw()+
+  geom_point(aes(x = TS_2_1_1, y = FCH4, fill = DOY),pch=21,size = 3,alpha=0.75) +
+  geom_hline(yintercept = 0) +
+  scale_y_continuous(expression('CH4 Flux (' * n * mol ~ m^-2 ~ s^-1 * ')'),
+                     limits = c(-10, 150)) +
+  scale_x_continuous(expression('Temperature (°C)'),
+                     limits = c(-15,15))+
+  labs(color = 'DOY')+
+#  scale_fill_brewer(palette = 'YlOrRd')
+  scale_fill_gradientn(colours = brewer.pal(9,'YlOrRd'))
+
+ggplot(data = df)+theme_bw()+
+  geom_point(aes(x = TS_2_1_1, y = FCH4, fill = month),pch=21,size = 3,alpha=0.75) +
+  geom_hline(yintercept = 0) +
+  scale_y_continuous(expression('CH4 Flux (' * n * mol ~ m^-2 ~ s^-1 * ')'),
+                     limits = c(-10, 150)) +
+  scale_x_continuous(expression('Temperature (°C)'),
+                     limits = c(-15,15))+
+  labs(color = 'DOY')+
+#  scale_fill_brewer(palette = 'YlOrRd')
+  scale_fill_gradientn(colours = brewer.pal(9,'YlOrRd'))
+
+
+ggplot(data = df)+theme_bw()+
+  geom_point(aes(x = TS_2_1_1, y = FCH4, fill = DOY),pch=21,size = 3,alpha=0.75) +
+  geom_hline(yintercept = 0) +
+  scale_y_continuous(expression('CH4 Flux (' * n * mol ~ m^-2 ~ s^-1 * ')'),
+                     limits = c(-10, 150)) +
+  scale_x_continuous(expression('Temperature (°C)'),
+                     limits = c(-15,15))+
+  labs(color = 'DOY')+
+#  scale_fill_brewer(palette = 'YlOrRd')
+  scale_fill_gradientn(colours = brewer.pal(9,'GnBu'))
+
+ggplot(data = df)+theme_bw()+
+  geom_point(aes(x = TS_2_1_1, y = FCH4, fill = month),pch=21,size = 3,alpha=0.75) +
+  geom_hline(yintercept = 0) +
+  scale_y_continuous(expression('CH4 Flux (' * n * mol ~ m^-2 ~ s^-1 * ')'),
+                     limits = c(-10, 150)) +
+  scale_x_continuous(expression('Temperature (°C)'),
+                     limits = c(-15,15))+
+  labs(color = 'DOY')+
+#  scale_fill_brewer(palette = 'YlOrRd')
+  scale_fill_gradientn(colours = brewer.pal(9,'Reds'))
+
+```
+
+```{r}
+display.brewer.all()
+
+```
+
+
+

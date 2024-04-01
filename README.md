@@ -1,3 +1,4 @@
 # monitoring-team
 
-R code for loaidng & cleaning tower data
+R code for loading & cleaning tower data
+

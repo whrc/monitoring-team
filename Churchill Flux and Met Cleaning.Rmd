@@ -19,6 +19,7 @@ Clear Console and add packages
 
 ```{r, warning=FALSE}
 rm(list = ls())
+Sys.setenv(TZ = "UTC")
 
 library(data.table)
 library(ggplot2)
