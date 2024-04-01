@@ -3121,7 +3121,7 @@ ggplot(data = df,aes(`u*`,nightCO2))+
 pick threshold and filter based on plots above, I liked .065
 
 
-created flag to indicate where u* values are below our threshold- makes clenaing with u* optional but easy when using cleaned datasets
+created flag to indicate where u* values are below our threshold- makes cleaning with u* optional but easy when using cleaned data sets
 ```{r, warning=FALSE}
 df$u_flag = ifelse(df$`u*` < Uthreshold,1,0)
 ```
@@ -3146,7 +3146,11 @@ plot(df$ts,ch4fluxclean)
 plot(df$ts,Hclean)
 plot(df$ts,LEclean)
 plot(df$ts,Tauclean)
+```
 
+Add cleaned tau to dataframe (no MAD filter)
+```{r, warning=FALSE}
+df$Tau.c = Tauclean
 ```
 
 # MAD Filter
