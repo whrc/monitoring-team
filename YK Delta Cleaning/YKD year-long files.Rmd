@@ -25,6 +25,9 @@ library(stringr)
 library(plyr)
 library(dplyr)
 library(lubridate)
+library(gridExtra)
+
+
 ```
 
 # YKD Burned 
@@ -107,10 +110,10 @@ ts = as.data.frame(ts)
 #merge with the flux data frame to create NAs where data is missing
 df = merge(ts,df,by = 'ts',all.x = T)
 
-# 
-# # Load in cleaned, merged, tidy file for splitting if possible 
-# 
-# df=fread('C:/Users/dtrangmoe/Documents/YKD Burned/YKDBurned_Flux_Met_Clean_AmerifluxFormat.csv')
+
+# Load in cleaned, merged, tidy file for splitting if possible
+
+df=fread('C:/Users/dtrangmoe/Documents/YKD Burned/YKDBurned_Flux_Met_Clean_AmerifluxFormat.csv')
 ```
 
 ### 2019 File
@@ -169,7 +172,7 @@ plot(df22$ts, df22$co2_flux.c)
 
 # Save df as 2022 file 
 
-write.csv(x = df22,file = 'C:/Users/dtrangmoe/Documents/YKD Burned/Cleaned Data/YKDBurned_Cleaned_Met_Flux_2022_Am.csv',row.names = F,quote = F)
+write.csv(x = df22,file = 'C:/Users/dtrangmoe/Documents/YKD Burned/Cleaned Data/YKDBurned_Cleaned_Met_Flux_2022_Ameriflux.csv',row.names = F,quote = F)
 
 ```
 
@@ -284,7 +287,7 @@ To save off full merged file
 df19 <- df %>%
   filter(year(ts) %in% c(2019))
 
-plot(df19$ts, df19$ch4_flux.c)
+plot(df19$ts, df19$co2_flux.c)
 
 # Save df as 2019 file 
 
@@ -338,7 +341,7 @@ write.csv(x = df22,file = 'C:/Users/dtrangmoe/Documents/YKD Unburned/Cleaned Dat
 ```
 
 
-## Compare old/new files 
+# Compare old/new files 
 
 Load into one df
 ```{r, warning=FASLE}
@@ -425,5 +428,98 @@ newH <- ggplot(data = df, aes(x = ts, y = H.c)) +
 
 # Arrange the plots side by side
 combined_plot <- grid.arrange(newH, oldH, ncol = 2)
+
+```
+
+
+
+# Compare Burned/Unburned- 2020
+
+Load into one df
+```{r, warning=FASLE}
+rm(list = ls())
+
+df_burned = fread('C:/Users/dtrangmoe/Documents/YKD Burned/Cleaned Data/YKDBurned_Cleaned_Met_Flux_2020_Ameriflux.csv')
+
+df_unburned = fread('C:/Users/dtrangmoe/Documents/YKD Unburned/Cleaned Data/YKDUnburned_Cleaned_Met_Flux_2020_Ameriflux.csv')
+
+
+df_ub_renamed <- df_unburned %>% 
+    rename_with(~paste0(., "_ub"), everything())
+
+df_ub_renamed$ts = df_ub_renamed$ts_ub
+
+
+df <- full_join(df_burned, df_ub_renamed, by = 'ts')
+
+```
+
+
+Compare
+
+CH4
+```{r, warning=FASLE}
+
+ch4ub <- ggplot(data = df, aes(x = ts, y = ch4_flux.c_ub)) + 
+  geom_point() +
+  ggtitle("Unburned Data")
+
+ch4b <- ggplot(data = df, aes(x = ts, y = ch4_flux.c)) + 
+  geom_point() +
+  ggtitle("Burned Data")
+
+# Arrange the plots side by side
+combined_plot <- grid.arrange(ch4b, ch4ub, ncol = 2)
+
+## big difference here 
+```
+
+
+CO2
+```{r, warning = FALSE}
+
+ubco2 <- ggplot(data = df, aes(x = ts, y = co2_flux.c_ub)) + 
+  geom_point() +
+  ggtitle("Unburned Data")
+
+bco2 <- ggplot(data = df, aes(x = ts, y = co2_flux.c)) + 
+  geom_point() +
+  ggtitle("Burned Data")
+
+# Arrange the plots side by side
+grid.arrange(bco2, ubco2, ncol = 2)
+```
+
+
+
+LE
+```{r, warning = FALSE}
+ubLE <- ggplot(data = df, aes(x = ts, y = LE.c_ub)) + 
+  geom_point() +
+  ggtitle("Unburned Data")
+
+bLE <- ggplot(data = df, aes(x = ts, y = LE.c)) + 
+  geom_point() +
+  ggtitle("Burned Data")
+
+# Arrange the plots side by side
+grid.arrange(bLE, ubLE, ncol = 2)
+```
+
+
+
+
+H
+```{r, warning=FALSE}
+ubH <- ggplot(data = df, aes(x = ts, y = H.c_ub)) + 
+  geom_point() +
+  ggtitle("Unburned Data")
+
+bH <- ggplot(data = df, aes(x = ts, y = H.c)) + 
+  geom_point() +
+  ggtitle("Burned Data")
+
+# Arrange the plots side by side
+grid.arrange(bH, ubH, ncol = 2)
 
 ```

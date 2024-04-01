@@ -10,7 +10,7 @@ library(dplyr)
 library(lubridate)
 
 #load in the full output flux data ##################
-fp = 'C:/Permafrost Pathways/eddypro/EP_full_output'
+fp = 'C:/Users/dtrangmoe/Documents/Churchill/EP_full_output'
 files = list.files(path = fp,pattern = '*full_output.+csv$',recursive = T,full.names = T)
 
 #load the headers and data into their own lists
@@ -18,6 +18,7 @@ h   = lapply(files, fread,skip = 1,nrow = 0)
 dat = lapply(files, fread,skip = 3,header = F,na.strings=c('-9999'))
 
 ls()
+
 #assign the headers to the data
 for (i in 1:length(h)) {
   names(dat[[i]]) = names(h[[i]])
@@ -33,6 +34,21 @@ for (i in 2:length(dat)) {
 df$ts = as.POSIXct(x = paste(df$date,df$time,sep = ' '),tz = 'UTC')
 df = df[!duplicated(df$ts),]
 
+
+
+## Replace Nov/Dec data with merged ch4/co2 files (if applicable) 
+df_nov=fread('C:/Users/dtrangmoe/Documents/Churchill/ChurchillFlux_Nov23_CO2_CH4_merged.csv')
+df_dec=fread('C:/Users/dtrangmoe/Documents/Churchill/ChurchillFlux_Dec23_CO2_CH4_merged.csv')
+
+#Used to add in merged files 
+df_subset <- subset(df, df$ts < as.POSIXct('2023-11-01 0030'))
+
+# Combine df_subset, df_nov, and df_dec
+df <- bind_rows(df_subset, df_nov, df_dec)
+
+
+
+
 #take the min and max date rounding to the nearest full month
 mindate = floor_date(min(df$ts),unit = 'month')
 maxdate = ceiling_date(max(df$ts),unit = 'month')
@@ -47,7 +63,7 @@ df = merge(ts,df,by = 'ts',all.x = T)
 
 
 #save off flux data
-write.csv(df,'C:/Permafrost Pathways/Data/Churchill_fluxes_merged.csv',row.names = F)
+write.csv(df,'C:/Users/dtrangmoe/Documents/Churchill/Churchill_fluxes_merged.csv',row.names = F)
 
 
 
