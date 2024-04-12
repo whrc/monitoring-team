@@ -42,7 +42,7 @@ library(REddyProc)
   EddyProc.C$sMDSGapFill('H',     FillAll=F) #Fill only the gaps for H'
   EddyProc.C$sMDSGapFill('LE',    FillAll=F) #Fill only the gaps for 'LE'
   EddyProc.C$sMDSGapFill('NEE',   FillAll=F) #Fill all values to estimate flux uncertainties
-  EddyProc.C$sMDSGapFill('CH4',   FillAll=F)  #Fill all values to estimate flux uncertainties
+  EddyProc.C$sMDSGapFill('CH4',   FillAll=F) #Fill all values to estimate flux uncertainties
   
   #+++ Example plots of filled data to screen or to directory \plots
 #  EddyProc.C$sPlotFingerprintY('NEE_f',Year.i = 2015)

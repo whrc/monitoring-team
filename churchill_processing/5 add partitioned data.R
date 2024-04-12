@@ -19,7 +19,7 @@ dif = gf$Hour - hour
 min = dif*60
 time = paste(hour,min,sep = ':')
 date = paste(gf$Year,gf$DoY,sep = '-')
-ts   = as.POSIXct(paste(date,time,sep = ' '),format = '%Y-%j %H:%M',tz='GMT')
+ts   = as.POSIXct(paste(date,time,sep = ' '),format = '%Y-%j %H:%M')
 gf$ts = ts
 
 #reduce the gap filled data set
