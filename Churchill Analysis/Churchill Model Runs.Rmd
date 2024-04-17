@@ -4,7 +4,7 @@ output: pdf_document
 date: "2024-02-15"
 ---
 
-
+# Load Packages
 ```{r}
 rm(list = ls())
 
@@ -21,8 +21,9 @@ library(plyr)
 library(dplyr)
 library(lubridate)
 library(RColorBrewer)
+library(tidyr)
 ```
-## Load DF's 
+# Load DF's 
 ```{r}
 h1 = fread('G:/My Drive/Permafrost Pathways/Towers/Churchill/Data/CA_CF3.csv', nrows = 1, skip = 0)
 dat1 = fread('G:/My Drive/Permafrost Pathways/Towers/Churchill/Data/CA_CF3.csv',skip = 1, header = FALSE, na.strings=c('-9999','NA','NaN','NAN'))
@@ -108,35 +109,49 @@ CF3$date = as.POSIXct(paste(CF3$year,CF3$month,CF3$day,sep = ''),
 
 ```
 
-# Variable names
+## Variable names CF3
 ```{r,warning = FALSE}
 
+#Removing TS_1_1_1, TS_2_1_1, and TS_2_2_1 (choosing to use therm data, not CS655's)
+#Changing TS_3 and TS_4 into TS_2 and TS_1 
+#Changing TS_2_1_1 and TS_2_2_1 into TS_3_0_1 & TS_3_05_1
 
-
-ggplot(data = CF3)+theme_bw()+
-  geom_point(aes(ts,TS_4_1_1),color = 'pink')+
-  geom_point(aes(ts,TS_3_1_1),color = 'green')+
-  geom_hline(yintercept = 0)+
-  scale_y_continuous (expression('CH4 Flux ('*n*mol~m^-2~s^-1*')'),
-                      limits = c(-30,35))+
-  scale_x_datetime(limits = as.POSIXct(c('2023-4-26','2023-6-30')))
-
-ggplot(data = CF2)+theme_bw()+
-  geom_point(aes(ts,TS_1_1_1),color = 'blue')+
-  geom_point(aes(ts,TS_2_1_1),color = 'pink')+
-  geom_hline(yintercept = 0)+
-  scale_y_continuous (expression('CH4 Flux ('*n*mol~m^-2~s^-1*')'),
-                      limits = c(-30,35))+
-  scale_x_datetime(limits = as.POSIXct(c('2010-6-26','2010-7-30')))
+CF3 <- CF3 %>% select(-TS_1_1_1)
+CF3 <- CF3 %>% select(-TS_2_1_1)
+CF3 <- CF3 %>% select(-TS_2_2_1)
 
 
 #Open water therms
+names(CF3)[names(CF3) == "TS_3_1_1"] <- "TS_2_0_1"
+names(CF3)[names(CF3) == "TS_3_2_1"] <- "TS_2_05_1"
+names(CF3)[names(CF3) == "TS_3_3_1"] <- "TS_2_1_1"
+names(CF3)[names(CF3) == "TS_3_4_1"] <- "TS_2_2_1"
+names(CF3)[names(CF3) == "TS_3_5_1"] <- "TS_2_3_1"
+names(CF3)[names(CF3) == "TS_3_6_1"] <- "TS_2_4_1"
+names(CF3)[names(CF3) == "TS_3_7_1"] <- "TS_2_5_1"
+names(CF3)[names(CF3) == "TS_3_8_1"] <- "TS_2_6_1"
+names(CF3)[names(CF3) == "TS_3_9_1"] <- "TS_2_7_1"
+names(CF3)[names(CF3) == "TS_3_10_1"] <- "TS_2_8_1"
+names(CF3)[names(CF3) == "TS_3_11_1"] <- "TS_2_9_1"
+names(CF3)[names(CF3) == "TS_3_12_1"] <- "TS_2_10_1"
 
-#Hummock Therms
+names(CF3)[names(CF3) == "TS_4_1_1"] <- "TS_1_0_1"
+names(CF3)[names(CF3) == "TS_4_2_1"] <- "TS_1_05_1"
+names(CF3)[names(CF3) == "TS_4_3_1"] <- "TS_1_1_1"
+names(CF3)[names(CF3) == "TS_4_4_1"] <- "TS_1_2_1"
+names(CF3)[names(CF3) == "TS_4_5_1"] <- "TS_1_3_1"
+names(CF3)[names(CF3) == "TS_4_6_1"] <- "TS_1_4_1"
+names(CF3)[names(CF3) == "TS_4_7_1"] <- "TS_1_5_1"
+names(CF3)[names(CF3) == "TS_4_8_1"] <- "TS_1_6_1"
+names(CF3)[names(CF3) == "TS_4_9_1"] <- "TS_1_7_1"
+names(CF3)[names(CF3) == "TS_4_10_1"] <- "TS_1_8_1"
+names(CF3)[names(CF3) == "TS_4_11_1"] <- "TS_1_9_1"
+names(CF3)[names(CF3) == "TS_4_12_1"] <- "TS_1_10_1"
 
-CF3
 
-#VWC
+```
+## Merge
+```{r}
 
 #Merge
 merged_df = rbind.fill(CF1,CF2,CF3)
@@ -163,13 +178,14 @@ avg = timeAverage(
 df = timeAverage(
   CF3,
   avg.time = 'day',
-  data.thresh = 0,
+  data.thresh = 40,
   statistic = 'mean',
   fill = TRUE
 )
 
+
 ```
-# more time separations 
+## time separations 
 ```{r}
 avg$year = substr(avg$date,1,4)
 avg$year <- factor(avg$year)
@@ -183,8 +199,8 @@ df$year <- factor(df$year)
 df$DOY = yday(df$date)
 df$DOY <- as.numeric(df$DOY)
 ```
-
-# Annual Plot (rough)
+# Graphs
+## multi-year annual plot (rough)
 ```{r,warning = FALSE}
 
 ggplot(data = avg)+theme_bw()+
@@ -194,42 +210,29 @@ ggplot(data = avg)+theme_bw()+
   scale_y_continuous (expression('CH4 Flux ('*n*mol~m^-2~s^-1*')'),
                       limits = c(-10,150))+
   labs(color='Year')
-
-ggplot(data = df)+theme_bw()+
-  geom_point(aes(DOY,FCH4,color = year))+
-  geom_hline(yintercept = 0)+
-  scale_y_continuous (expression('CH4 Flux ('*n*mol~m^-2~s^-1*')'),
-                      limits = c(-10,150))+
-  labs(color='Year')
 ```
-# 5 cm hysteresis
+# 
 ```{r}
 
-ggplot(data = df)+theme_dark()+
-  geom_point(aes(x = TS_2_05_1, y = FCH4, color = DOY),size = 5.3) +
-  geom_hline(yintercept = 0) +
-  scale_y_continuous(expression('CH4 Flux (' * n * mol ~ m^-2 ~ s^-1 * ')'),
-                     limits = c(-10, 150)) +
-  scale_x_continuous(expression('Temperature (°C)'),
-                     limits = c(-15,18))+
-  labs(color = 'DOY')+
-  scale_color_gradientn(colours = rev(brewer.pal(9,'RdYlBu')))
+ggplot(data = df)+theme_bw()+
+  geom_point(aes(date,FCH4))+
+  geom_line(aes(x = ts, y = TS_2_05_1*4), color = 'blue') + 
+  geom_hline(yintercept = 0)+
+  scale_y_continuous (expression('CH4 Flux ('*n*mol~m^-2~s^-1*')'),
+                      limits = c(-30,140),
+  sec.axis = sec_axis(~./4, name = "Soil Temperature 10cm (°C)")
+  ) 
 
-
-ggplot(data = avg)+theme_bw()+
-  geom_point(aes(x = TS_2_05_1, y = FCH4, color = DOY),size = 5.3) +
-  geom_hline(yintercept = 0) +
-  scale_y_continuous(expression('CH4 Flux (' * n * mol ~ m^-2 ~ s^-1 * ')'),
-                     limits = c(-10, 150)) +
-  scale_x_continuous(expression('Temperature (°C)'),
-                     limits = c(-15,18))+
-  labs(color = 'DOY')+
-  scale_color_gradientn(colours = rev(brewer.pal(9,'RdYlBu')))
 
 ```
 
 
-#10 cm Hysteresis 
+
+
+
+
+## 10 cm Hysteresis 
+### Red
 ```{r}
 df$month = as.numeric(format(df$ts,'%m'))
 
@@ -255,24 +258,40 @@ ggplot(data = df)+theme_bw()+
   labs(color = 'DOY')+
 #  scale_fill_brewer(palette = 'YlOrRd')
   scale_fill_gradientn(colours = brewer.pal(9,'YlOrRd'))
-
+```
+### Blue
+```{r}
 
 ggplot(data = df)+theme_bw()+
   geom_point(aes(x = TS_2_1_1, y = FCH4, fill = DOY),pch=21,size = 3,alpha=0.75) +
   geom_hline(yintercept = 0) +
   scale_y_continuous(expression('CH4 Flux (' * n * mol ~ m^-2 ~ s^-1 * ')'),
                      limits = c(-10, 150)) +
-  scale_x_continuous(expression('Temperature (°C)'),
-                     limits = c(-15,15))+
+  scale_x_continuous(expression('Temperature 10 cm(°C)'),
+                     limits = c(-15,17))+
   labs(color = 'DOY')+
 #  scale_fill_brewer(palette = 'YlOrRd')
   scale_fill_gradientn(colours = brewer.pal(9,'GnBu'))
 
+
+ggplot(data = df)+theme_bw()+
+  geom_point(aes(x = TS_2_05_1, y = FCH4, fill = DOY),pch=21,size = 3,alpha=0.75) +
+  geom_hline(yintercept = 0) +
+  scale_y_continuous(expression('CH4 Flux (' * n * mol ~ m^-2 ~ s^-1 * ')'),
+                     limits = c(-10, 150)) +
+  scale_x_continuous(expression('Temperature 5 cm(°C)'),
+                     limits = c(-15,18))+
+  labs(color = 'DOY')+
+#  scale_fill_brewer(palette = 'YlOrRd')
+  scale_fill_gradientn(colours = brewer.pal(9,'GnBu'))
+```
+
+```{r}
 ggplot(data = df)+theme_bw()+
   geom_point(aes(x = TS_2_1_1, y = FCH4, fill = month),pch=21,size = 3,alpha=0.75) +
   geom_hline(yintercept = 0) +
   scale_y_continuous(expression('CH4 Flux (' * n * mol ~ m^-2 ~ s^-1 * ')'),
-                     limits = c(-10, 150)) +
+                     limits = c(-30, 150)) +
   scale_x_continuous(expression('Temperature (°C)'),
                      limits = c(-15,15))+
   labs(color = 'DOY')+
@@ -280,11 +299,123 @@ ggplot(data = df)+theme_bw()+
   scale_fill_gradientn(colours = brewer.pal(9,'Reds'))
 
 ```
-
+## Soil T CH4 Timeseries
 ```{r}
-display.brewer.all()
+
+
+ggplot(data = df) +
+  theme_bw() +
+  geom_point(aes(x = ts, y = FCH4), color = 'salmon') +
+  geom_line(aes(x = ts, y = TS_2_05_1*4), color = 'blue') +  
+  geom_hline(yintercept = 0) +
+  scale_y_continuous(
+    name = expression('CH4 Flux (' * n * mol ~ m^-2 ~ s^-1 * ')'),
+    limits = c(-20, 95),
+    sec.axis = sec_axis(~./4, name = "Soil Temperature 5cm (°C)")
+  ) +
+  scale_x_datetime(limits = as.POSIXct(c('2023-04-16', '2023-12-23')))
+
+
+ggplot(data = df) +
+  theme_bw() +
+  geom_point(aes(x = ts, y = FCH4), color = 'salmon') +
+  #geom_line(aes(x = ts, y = TS_2_05_1*4), color = 'blue') +  
+  geom_hline(yintercept = 0) +
+  scale_y_continuous(
+    name = expression('CH4 Flux (' * n * mol ~ m^-2 ~ s^-1 * ')'),
+    limits = c(-20, 95),
+    #sec.axis = sec_axis(~./4, name = "Soil Temperature 10cm (°C)")
+  ) +
+  scale_x_datetime(limits = as.POSIXct(c('2023-04-16', '2023-12-23')))
+
+ggplot(data = CF3) +
+  theme_bw() +
+  geom_point(aes(x = ts, y = FCH4), color = 'salmon') +
+  #geom_line(aes(x = ts, y = TS_2_05_1*4), color = 'blue') +  
+  geom_hline(yintercept = 0) +
+  scale_y_continuous(
+    name = expression('CH4 Flux (' * n * mol ~ m^-2 ~ s^-1 * ')'),
+    limits = c(-50, 95),
+    sec.axis = sec_axis(~./4, name = "Soil Temperature 10cm (°C)")
+  ) +
+  scale_x_datetime(limits = as.POSIXct(c('2023-09-16', '2023-12-23')))
+```
+
+# Model Runs 5cm
+```{r}
+min(df$FCH4,na.rm = TRUE)
+max(df$FCH4,na.rm = TRUE)
+
+
+min(df25$FCH4,na.rm = TRUE)
+
+TS5logCH4 = lm(log10(FCH4+5)~TS_2_05_1,data = df25)
+summary((TS5logCH4))
+
 
 ```
+
+
+```{r}
+
+TS10logCH4 = lm(log10(FCH4+5)~TS_2_1_1,data = df)
+summary((TS10logCH4))
+```
+
+# Raster Column format is |Date|SoilT|SoilDepth|
+```{r}
+
+dfnew = df
+dfnew$TS_1_0_1 = dfnew$TS_2_0_1
+
+ras <- dfnew[,c('date',
+            'TS_2_0_1', 
+            'TS_2_1_1', 
+            'TS_2_2_1', 
+            'TS_2_3_1',
+            'TS_2_4_1',
+            'TS_2_5_1', 
+            'TS_2_6_1', 
+            'TS_2_7_1', 
+            'TS_2_8_1',
+            'TS_2_9_1')]
+
+
+# Reshape the data into long format
+ras <- ras %>%
+  pivot_longer(
+    cols = -date,  # Exclude TIMESTAMP column
+    names_to = "SoilDepth",
+    values_to = "SoilTemperature",
+    names_pattern = "TS_2_(\\d+)_1"  # Pattern to extract numeric depth information
+  ) %>%
+  mutate(SoilDepth = as.numeric(gsub("TS_2_", "", SoilDepth)) * 10)  # Convert extracted depth to numeric
+
+# Extract Date from TIMESTAMP column
+ras$date <- as.Date(ras$date)
+
+# Select and reorder columns
+ras <- ras %>%
+  select(date, SoilDepth, SoilTemperature)
+
+library(viridis)
+
+ggplot(ras, aes(x = date, y = SoilDepth, fill = SoilTemperature)) +
+  geom_tile(width = 1, height = 10) +  # Adjust width and height as needed
+  scale_fill_viridis(option = "turbo") +  # Use the "magma" color palette
+  labs(x = "Date", y = "Soil Depth", fill = "Soil Temperature") +
+  scale_y_reverse() +  # Invert the y-axis
+  theme_minimal()
+  
+```
+
+
+
+
+
+
+
+
 
 
 
