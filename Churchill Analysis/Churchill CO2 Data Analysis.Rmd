@@ -1,0 +1,545 @@
+---
+title: "Churchill Data Analysis"
+author: "Dani Trangmoe"
+date: "`r Sys.Date()`"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, dev="png")
+
+#add root directory here for github
+```
+
+
+# Load Data
+
+### CA CF3 Partitioned Data
+
+Using data from bucket for now, maybe switch to ameriflux data for continuity when it's available?
+
+```{r, include=FALSE}
+rm(list = ls())
+
+library(data.table)
+library(ggplot2)
+library(cowplot)
+library(openair)
+library(plotrix)
+library(signal)
+library(svMisc)
+library(zoo)
+library(stringr)
+library(plyr)
+library(viridis)
+library(lubridate)
+library(tidyverse)
+library(gridExtra)
+library(plotly)
+library(RColorBrewer)
+```
+
+
+```{r, warning=FALSE, echo=FALSE}
+df3 = fread('C:/Users/dtrangmoe/Documents/Churchill/CA_CF3.csv', na.strings="-9999")
+```
+
+
+Create usable timestamp variable
+
+```{r, warning=FALSE, echo=FALSE}
+
+df3$TIMESTAMP_END = as.character(df3$TIMESTAMP_END)
+df3$TIMESTAMP_START = as.character(df3$TIMESTAMP_START)
+
+df3$TIMESTAMP_END = as.POSIXct(df3$TIMESTAMP_END, tz="UTC", format = "%Y%m%d%H%M")
+df3$TIMESTAMP_START = as.POSIXct(df3$TIMESTAMP_START, tz="UTC", format = "%Y%m%d%H%M")
+
+```
+
+
+Daily Average Analysis
+
+```{r}
+
+df3$day = as.Date(df3$TIMESTAMP_END)
+
+day = unique(df3$day)
+df3_avg =as.data.frame(day)
+
+
+## average variables by day to create daily average dataframe
+for (i in 1:ncol(df3)) {
+  if (class(df3[[i]])[1] == 'numeric'){
+  
+  colname = colnames(df3)[i]
+  
+  daily_avg_val <- aggregate(df3[[colname]] ~ day, data = df3, FUN = mean, na.action=na.omit)
+  
+  colnames(daily_avg_val)[2] <- colname
+
+df3_avg = left_join(df3_avg, daily_avg_val, by='day')
+
+  }
+  else{
+    next
+  }
+}
+
+
+plot(df3_avg$day, df3_avg$FC_F)
+plot(df3_avg$day, df3_avg$GPP_F)
+plot(df3_avg$day, df3_avg$RECO)
+
+#difference between _DT and non DT partitioned data?
+```
+
+
+Create only 2023 dataframe, color=month (needs work)
+
+```{r}
+
+df3_avg$month = as.numeric(as.yearmon(df3_avg$day))
+
+df3_avg_2023 <- df3_avg %>%
+  filter(year(day) == 2023)
+
+
+#plot 2023 temp. vs co2 flux - higher PAR = higher uptake
+
+ggplot(data=df3_avg_2023)+
+  geom_point(aes(x=TS_3_1_1, y=FC_F, col = PPFD_IN))
+
+ggplot(data=df3_avg_2023)+
+  geom_point(aes(x=TS_3_1_1, y=GPP_F, col = PPFD_IN))
+
+ggplot(data=df3_avg_2023)+
+  geom_point(aes(x=VPD, y=FC_F, col = month))+
+  scale_x_continuous(limits = c(0, 100))
+
+
+
+```
+
+
+
+
+
+### CA CF1 Partitioned Data
+
+
+```{r, warning=FALSE, echo=FALSE}
+df1_F = fread('C:/Users/dtrangmoe/Documents/CA-CF1 FullSet/AMF_CA-CF1_FLUXNET_FULLSET_2007-2008_3-5/AMF_CA-CF1_FLUXNET_FULLSET_HH_2007-2008_3-5.csv', na.strings="-9999")
+```
+
+
+Create usable timestamp variables
+
+```{r, warning=FALSE, echo=FALSE}
+
+df1_F$TIMESTAMP_END = as.character(df1_F$TIMESTAMP_END)
+df1_F$TIMESTAMP_START = as.character(df1_F$TIMESTAMP_START)
+
+df1_F$TIMESTAMP_END = as.POSIXct(df1_F$TIMESTAMP_END, tz="UTC", format = "%Y%m%d%H%M")
+df1_F$TIMESTAMP_START = as.POSIXct(df1_F$TIMESTAMP_START, tz="UTC", format = "%Y%m%d%H%M")
+
+
+```
+
+
+Cut winter data
+
+```{r}
+
+# Set to TRUE to view plots as they're created 
+ViewPlots = TRUE
+
+
+# switch to QC flag = 3 to filter winter data
+# isolate each variable by their QC flag  
+
+
+# full timeseries
+FullSeries <- ggplot(data = subset(df1_F,df1_F$NEE_VUT_REF_QC !=3)) + 
+  geom_point(aes(x = TIMESTAMP_END, y = NEE_VUT_REF, color=NEE_VUT_REF_QC ))+
+  geom_hline(yintercept = 0)+
+  scale_x_datetime(expression('Time'))+
+  scale_y_continuous(expression('NEE'))
+
+if (ViewPlots == TRUE){
+  FullSeries
+}
+
+#start here- qa flags 
+
+
+#Spring '07
+Spring07 <- ggplot(data = df1_F) + 
+  geom_point(aes(x = TIMESTAMP_END, y = NEE_VUT_REF))+
+  geom_hline(yintercept = 0)+
+  geom_vline(xintercept = as.POSIXct('2007-06-19'))+
+  scale_x_datetime(expression('Time'), limits=as.POSIXct(c('2007-06-05','2007-06-30')))+
+  scale_y_continuous(expression('NEE'),limits=c(-2.5, 1))
+
+if (ViewPlots == TRUE){
+  Spring07
+}
+
+
+df1 = filter(df1_F, !(TIMESTAMP_END <= as.POSIXct('2007-06-19')))
+
+
+#Fall '07
+Fall07 <- ggplot(data = df1_F) + 
+  geom_point(aes(x = TIMESTAMP_END, y = NEE_VUT_REF))+
+  geom_hline(yintercept = 0)+
+  geom_vline(xintercept = as.POSIXct(c('2007-09-12','2007-10-01','2007-10-12')))+
+  scale_x_datetime(expression('Time'),limits=as.POSIXct(c('2007-09-01','2007-10-20')))+
+  scale_y_continuous(expression('NEE'),limits=c(-5, 8))
+
+if (ViewPlots == TRUE){
+  Fall07
+}
+
+df1 = filter(df1, !(TIMESTAMP_END >= as.POSIXct('2007-09-12') & TIMESTAMP_END <= as.POSIXct('2007-10-01')))
+
+#Spring '08
+Spring08 <- ggplot(data = df1_F) + 
+  geom_point(aes(x = TIMESTAMP_END, y = NEE_VUT_REF))+
+  geom_hline(yintercept = 0)+
+  geom_vline(xintercept = as.POSIXct('2008-06-06'))+
+  scale_x_datetime(expression('Time'),limits=as.POSIXct(c('2008-05-25','2008-06-20')))+
+  scale_y_continuous(expression('NEE'),limits=c(-5, 8))
+
+if (ViewPlots == TRUE){
+  Spring08
+}
+
+df1 = filter(df1, !(TIMESTAMP_END >= as.POSIXct('2007-10-12') & TIMESTAMP_END <= as.POSIXct('2008-06-06')))
+
+#Fall '08
+Fall08 <- ggplot(data = df1_F) + 
+  geom_point(aes(x = TIMESTAMP_END, y = NEE_VUT_REF))+
+  geom_hline(yintercept = 0)+
+  geom_vline(xintercept = as.POSIXct('2008-10-19'))+
+  scale_x_datetime(expression('Time'),limits=as.POSIXct(c('2008-10-01','2008-11-01')))+
+  scale_y_continuous(expression('NEE'),limits=c(-3, 3))
+
+if (ViewPlots == TRUE){
+  Fall08
+}
+
+df1 = filter(df1, !(TIMESTAMP_END >= as.POSIXct('2008-10-19') ))
+
+FullSeries2 <- ggplot(data = df1) + 
+  geom_point(aes(x = TIMESTAMP_END, y = NEE_VUT_REF))+
+  geom_hline(yintercept = 0)+ scale_x_datetime(expression('Time'))+
+  scale_y_continuous(expression('NEE'))
+
+if (ViewPlots == TRUE){
+  FullSeries2
+}
+
+grid.arrange(FullSeries, FullSeries2, Spring07, Fall07, Spring08, Fall08, nrow=3, ncol=2)
+
+rm(Fall07, Fall08, Spring07, Spring08, FullSeries, FullSeries2, df1_F)
+
+```
+
+
+
+Daily Average & Analysis
+
+```{r}
+
+df1$day = as.Date(df1$TIMESTAMP_END)
+
+day = unique(df1$day)
+df1_avg =as.data.frame(day)
+
+
+## average variables by day to create daily average dataframe
+for (i in 1:ncol(df1)) {
+  if (class(df1[[i]])[1] == 'numeric'){
+  
+  colname = colnames(df1)[i]
+  
+  daily_avg_val <- aggregate(df1[[colname]] ~ day, data = df1, FUN = mean, na.action=na.omit)
+  
+  colnames(daily_avg_val)[2] <- colname
+
+df1_avg = left_join(df1_avg, daily_avg_val, by='day')
+
+  }
+  else{
+    next
+  }
+}
+
+# Daily Average Plots CO2 data
+
+ggplot(data = df1_avg) + 
+  geom_point(aes(x = day, y = RECO_NT_VUT_REF))+
+  geom_hline(yintercept =0)
+
+ggplot(data = df1_avg) + 
+  geom_point(aes(x = day, y = GPP_NT_VUT_REF))+
+  geom_hline(yintercept =0)
+
+ggplot(data = df1_avg) + 
+  geom_point(aes(x = day, y = NEE_VUT_REF))+
+  geom_hline(yintercept =0)
+
+```
+
+Nighttime- uses solar radiation to identify nighttime and isolate respiration, subtracts respiration estimate from daytime NEE to find GPP
+
+compare DT and NT, use nighttime (original NEE values)
+
+```{r}
+
+DT_NEE <- df1_avg$RECO_DT_VUT_REF - df1_avg$GPP_DT_VUT_REF
+
+dtplot <- ggplot(data = df1_avg) + 
+  geom_point(aes(x = NEE_VUT_REF, y = DT_NEE))+
+  geom_abline(intercept=0, slope=1, col='red')
+
+if (ViewPlots == TRUE) {
+  ggplotly(dtplot)
+}
+
+```
+
+### Rename and Merge
+
+```{r}
+
+## Remove data that won't be used, for easy merging
+
+#Daytime partitioned data
+df1 <- select(df1, !all_of(names(df1)[grep("_DT", names(df1))]))
+
+df3 <- select(df3, !all_of(names(df3)[grep("_DT", names(df3))]))
+
+#_TEST
+df3 <- select(df3, !all_of(names(df3)[grep("_TEST$", names(df3))]))
+
+#ERA biomet data
+df1 <- select(df1, !all_of(names(df1)[grep("_ERA", names(df1))]))
+
+#QC flags
+df1 <- select(df1, !all_of(names(df1)[grep("_QC", names(df1))]))
+
+#_POT
+df1 <- select(df1, !all_of(names(df1)[grep("_POT", names(df1))]))
+
+#percentile corrections
+df1 <- select(df1, !all_of(names(df1)[grep("_[0-9]{2}?", names(df1))]))
+
+#USTAR50
+df1 <- select(df1, !all_of(names(df1)[grep("USTAR50", names(df1))]))
+
+## Rename biomet variables to compare, remove other gapfilled biomet
+
+names(df1)[names(df1) == "SW_IN_F"] <- "SW_IN"
+names(df1)[names(df1) == "LW_IN_F"] <- "LW_IN"
+names(df1)[names(df1) == "VPD_F"] <- "VPD"
+names(df1)[names(df1) == "TA_F"] <- "TA"
+
+df1 <- select(df1, !all_of(names(df1)[grep("_F$", names(df1))]))
+
+
+
+
+
+
+df <- rbind.fill(df1, df3)
+
+#once this works- average here instead of each df individually
+
+```
+
+
+
+```{r}
+
+df1_avg$month = as.numeric(as.yearmon(df1_avg$day))
+
+df1_avg_2008 <- df1_avg %>%
+  filter(year(day) == 2008)
+
+
+#plot 2008 temp. vs co2 flux - higher PAR = higher uptake
+
+ggplot(data=df1_avg_2008)+
+  geom_point(aes(x=TS_F_MDS_1, y=GPP_NT_VUT_REF, col = PPFD_IN))
+
+ggplot(data=df1_avg_2008)+
+  geom_point(aes(x=TS_F_MDS_1, y=RECO_NT_VUT_REF, col = PPFD_IN))
+
+ggplot(data=df1_avg_2008)+
+  geom_point(aes(x=VPD_F, y=NEE_VUT_REF, col = month))
+
+
+
+```
+
+
+
+# Analysis
+
+Break into two codes here?
+
+All with old variable names- needs to be redone
+
+```{r, warning=FALSE, echo=FALSE}
+df = fread('C:/Users/dtrangmoe/Documents/Churchill/Churchill_Flux_Met_Clean_Ameriflux_2022_2023.csv')
+```
+
+
+
+``` {r, warning=FALSE}
+ggplot(df, aes_string(x = "TIMESTAMP", y = "co2_flux.c"))+
+    theme_bw()+
+    geom_point()+
+  geom_vline(aes(xintercept= as.POSIXct("2023-05-14")))+
+  geom_vline(aes(xintercept= as.POSIXct("2023-04-10")))+
+    scale_x_datetime(name = 'Date')+
+    scale_y_continuous(name = CO2)
+
+ggplot(df, aes_string(x = "TIMESTAMP", y = "SHF_6_37_1_1_1.c"))+
+    theme_bw()+
+    geom_point()+
+  geom_vline(aes(xintercept= as.POSIXct("2023-05-14")))+
+    scale_x_datetime(name = 'Date')+
+    scale_y_continuous(name = 'SHF1')
+
+ggplot(df, aes_string(x = "TIMESTAMP", y = "SHF_6_37_2_1_1.c"))+
+    theme_bw()+
+    geom_point() +
+  geom_vline(aes(xintercept= as.POSIXct("2023-05-14")))+
+    scale_x_datetime(name = 'Date')+
+    scale_y_continuous(name = 'SHF2')
+
+ggplot(df, aes_string(x = "TIMESTAMP", y = "SD_10_99_1_1_1.c"))+
+    theme_bw()+
+    geom_point() +
+  geom_vline(aes(xintercept= as.POSIXct("2023-05-14")))+
+    scale_x_datetime(name = 'Date')+
+    scale_y_continuous(name = 'Snow Depth')
+
+ggplot(df, aes_string(x = "TIMESTAMP", y = "TA_2_1_1_1_1"))+
+    theme_bw()+
+    geom_point() +
+  geom_vline(aes(xintercept= as.POSIXct("2023-05-14")))+
+  geom_vline(aes(xintercept= as.POSIXct("2023-04-10")))+
+    scale_x_datetime(name = 'Date')+
+    scale_y_continuous(name = 'Air Temp')
+
+ggplot(df, aes_string(x = "TIMESTAMP", y = "ALB_1_1_1.c"))+
+    theme_bw()+
+    geom_point() +
+  geom_vline(aes(xintercept= as.POSIXct("2023-05-14")))+
+    scale_x_datetime(name = 'Date')+
+    scale_y_continuous(name = 'Albedo')
+
+ggplot(df, aes_string(x = "TIMESTAMP", y = "TS_2_38_3_3_1.c"))+
+    theme_bw()+
+    geom_point() +
+  geom_vline(aes(xintercept= as.POSIXct("2023-05-14")))+
+    scale_x_datetime(name = 'Date')+
+    scale_y_continuous(name = 'Random Soil Temp')
+```
+
+change dates for plots here
+```{r}
+dates_22 = c('2022-08-10','2022-11-01')
+
+dates_23 = c('2023-08-10','2023-11-01')
+```
+
+Soil Temperature and CO2 flux- side by side
+
+```{r}
+
+co2_22 <- ggplot(data = df, aes(x = ts, y = co2_flux.c)) + 
+  geom_point() +
+  ggtitle("2022")+
+  scale_x_datetime(limits = as.POSIXct(dates_22))
+
+co2_23 <- ggplot(data = df, aes(x = ts, y = co2_flux.c)) + 
+  geom_point() +
+  ggtitle("2023")+
+  scale_x_datetime(limits = as.POSIXct(dates_23))
+
+soil22 <- ggplot(data = df)+ theme_bw()+
+  geom_hline(yintercept = 0)+
+  geom_line(aes(TIMESTAMP,TS_2_38_3_1_1.c))+
+  geom_line(aes(TIMESTAMP,TS_2_38_3_2_1.c))+
+  geom_line(aes(TIMESTAMP,TS_2_38_3_3_1.c))+
+  geom_line(aes(TIMESTAMP,TS_2_38_3_4_1.c))+  
+  geom_line(aes(TIMESTAMP,TS_2_38_3_5_1.c))+
+  geom_line(aes(TIMESTAMP,TS_2_38_3_6_1.c))+
+  geom_line(aes(TIMESTAMP,TS_2_38_3_7_1.c))+
+  geom_line(aes(TIMESTAMP,TS_2_38_3_8_1.c))+
+  geom_line(aes(TIMESTAMP,TS_2_38_3_9_1.c))+
+  geom_line(aes(TIMESTAMP,TS_2_38_3_10_1.c))+
+  geom_line(aes(TIMESTAMP,TS_2_38_3_11_1.c))+
+  geom_line(aes(TIMESTAMP,TS_2_38_3_12_1.c))+
+  scale_x_datetime(limits=as.POSIXct(dates_22))
+
+soil23 <- ggplot(data = df)+ theme_bw()+
+  geom_hline(yintercept = 0)+
+  geom_line(aes(TIMESTAMP,TS_2_38_3_1_1.c))+
+  geom_line(aes(TIMESTAMP,TS_2_38_3_2_1.c))+
+  geom_line(aes(TIMESTAMP,TS_2_38_3_3_1.c))+
+  geom_line(aes(TIMESTAMP,TS_2_38_3_4_1.c))+  
+  geom_line(aes(TIMESTAMP,TS_2_38_3_5_1.c))+
+  geom_line(aes(TIMESTAMP,TS_2_38_3_6_1.c))+
+  geom_line(aes(TIMESTAMP,TS_2_38_3_7_1.c))+
+  geom_line(aes(TIMESTAMP,TS_2_38_3_8_1.c))+
+  geom_line(aes(TIMESTAMP,TS_2_38_3_9_1.c))+
+  geom_line(aes(TIMESTAMP,TS_2_38_3_10_1.c))+
+  geom_line(aes(TIMESTAMP,TS_2_38_3_11_1.c))+
+  geom_line(aes(TIMESTAMP,TS_2_38_3_12_1.c))+
+  scale_x_datetime(limits=as.POSIXct(dates_23))
+
+# Arrange the plots side by side
+grid.arrange(co2_22, co2_23, soil22, soil23, nrow=2, ncol = 2)
+
+```
+
+
+VPD/CO2/NR Side by Side
+
+```{r}
+
+
+vpd_22 <- ggplot(data = df, aes(x = ts, y = VPD)) + 
+  geom_point() +
+  scale_x_datetime(limits = as.POSIXct(dates_22))+
+  scale_y_continuous(limits = c(-10, 2300))
+
+vpd_23 <- ggplot(data = df, aes(x = ts, y = VPD)) + 
+  geom_point() +
+  scale_x_datetime(limits = as.POSIXct(dates_23))+
+  scale_y_continuous(limits = c(-10, 2300))
+
+rn_22 <- ggplot(data = df, aes(x = ts, y = RN_6_5_1_1_1.c)) + 
+  geom_point() +
+  scale_x_datetime(limits = as.POSIXct(dates_22))+
+  scale_y_continuous(limits = c(-10, 1000))
+
+rn_23 <- ggplot(data = df, aes(x = ts, y = RN_6_5_1_1_1.c)) + 
+  geom_point() +
+  scale_x_datetime(limits = as.POSIXct(dates_23))+
+  scale_y_continuous(limits = c(-10, 1000))
+
+grid.arrange(co2_22, co2_23, vpd_22, vpd_23, rn_22, rn_23, nrow=3, ncol=2)
+
+```
+
+
+
