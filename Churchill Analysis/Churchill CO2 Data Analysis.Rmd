@@ -131,7 +131,7 @@ ggplot(data=df3_avg_2023)+
 
 
 ```{r, warning=FALSE, echo=FALSE}
-df1_F = fread('C:/Users/dtrangmoe/Documents/CA-CF1 FullSet/AMF_CA-CF1_FLUXNET_FULLSET_2007-2008_3-5/AMF_CA-CF1_FLUXNET_FULLSET_HH_2007-2008_3-5.csv', na.strings="-9999")
+df1 = fread('C:/Users/dtrangmoe/Documents/CA-CF1 FullSet/AMF_CA-CF1_FLUXNET_FULLSET_2007-2008_3-5/AMF_CA-CF1_FLUXNET_FULLSET_HH_2007-2008_3-5.csv', na.strings="-9999")
 ```
 
 
@@ -139,180 +139,39 @@ Create usable timestamp variables
 
 ```{r, warning=FALSE, echo=FALSE}
 
-df1_F$TIMESTAMP_END = as.character(df1_F$TIMESTAMP_END)
-df1_F$TIMESTAMP_START = as.character(df1_F$TIMESTAMP_START)
+df1$TIMESTAMP_END = as.character(df1$TIMESTAMP_END)
+df1$TIMESTAMP_START = as.character(df1$TIMESTAMP_START)
 
-df1_F$TIMESTAMP_END = as.POSIXct(df1_F$TIMESTAMP_END, tz="UTC", format = "%Y%m%d%H%M")
-df1_F$TIMESTAMP_START = as.POSIXct(df1_F$TIMESTAMP_START, tz="UTC", format = "%Y%m%d%H%M")
+df1$TIMESTAMP_END = as.POSIXct(df1$TIMESTAMP_END, tz="UTC", format = "%Y%m%d%H%M")
+df1$TIMESTAMP_START = as.POSIXct(df1$TIMESTAMP_START, tz="UTC", format = "%Y%m%d%H%M")
 
 
 ```
 
 
-Cut winter data
+### Cut QC=3 Data from CF1
+
+Removes QC=3 data from poor quality gapfilling. Includes winter NEE data
 
 ```{r}
-
-# Set to TRUE to view plots as they're created 
-ViewPlots = TRUE
-
-
 # switch to QC flag = 3 to filter winter data
 # isolate each variable by their QC flag  
 
+QCFlags <- grep("QC$", names(df1), value = TRUE)
 
-# full timeseries
-FullSeries <- ggplot(data = subset(df1_F,df1_F$NEE_VUT_REF_QC !=3)) + 
-  geom_point(aes(x = TIMESTAMP_END, y = NEE_VUT_REF, color=NEE_VUT_REF_QC ))+
-  geom_hline(yintercept = 0)+
-  scale_x_datetime(expression('Time'))+
-  scale_y_continuous(expression('NEE'))
 
-if (ViewPlots == TRUE){
-  FullSeries
+for (col_QC in QCFlags) {
+  
+col_data <- gsub("\\_QC", "", col_QC)
+
+df1[df1[[col_QC]] == 3, col_data] <- NA
+
 }
-
-#start here- qa flags 
-
-
-#Spring '07
-Spring07 <- ggplot(data = df1_F) + 
-  geom_point(aes(x = TIMESTAMP_END, y = NEE_VUT_REF))+
-  geom_hline(yintercept = 0)+
-  geom_vline(xintercept = as.POSIXct('2007-06-19'))+
-  scale_x_datetime(expression('Time'), limits=as.POSIXct(c('2007-06-05','2007-06-30')))+
-  scale_y_continuous(expression('NEE'),limits=c(-2.5, 1))
-
-if (ViewPlots == TRUE){
-  Spring07
-}
-
-
-df1 = filter(df1_F, !(TIMESTAMP_END <= as.POSIXct('2007-06-19')))
-
-
-#Fall '07
-Fall07 <- ggplot(data = df1_F) + 
-  geom_point(aes(x = TIMESTAMP_END, y = NEE_VUT_REF))+
-  geom_hline(yintercept = 0)+
-  geom_vline(xintercept = as.POSIXct(c('2007-09-12','2007-10-01','2007-10-12')))+
-  scale_x_datetime(expression('Time'),limits=as.POSIXct(c('2007-09-01','2007-10-20')))+
-  scale_y_continuous(expression('NEE'),limits=c(-5, 8))
-
-if (ViewPlots == TRUE){
-  Fall07
-}
-
-df1 = filter(df1, !(TIMESTAMP_END >= as.POSIXct('2007-09-12') & TIMESTAMP_END <= as.POSIXct('2007-10-01')))
-
-#Spring '08
-Spring08 <- ggplot(data = df1_F) + 
-  geom_point(aes(x = TIMESTAMP_END, y = NEE_VUT_REF))+
-  geom_hline(yintercept = 0)+
-  geom_vline(xintercept = as.POSIXct('2008-06-06'))+
-  scale_x_datetime(expression('Time'),limits=as.POSIXct(c('2008-05-25','2008-06-20')))+
-  scale_y_continuous(expression('NEE'),limits=c(-5, 8))
-
-if (ViewPlots == TRUE){
-  Spring08
-}
-
-df1 = filter(df1, !(TIMESTAMP_END >= as.POSIXct('2007-10-12') & TIMESTAMP_END <= as.POSIXct('2008-06-06')))
-
-#Fall '08
-Fall08 <- ggplot(data = df1_F) + 
-  geom_point(aes(x = TIMESTAMP_END, y = NEE_VUT_REF))+
-  geom_hline(yintercept = 0)+
-  geom_vline(xintercept = as.POSIXct('2008-10-19'))+
-  scale_x_datetime(expression('Time'),limits=as.POSIXct(c('2008-10-01','2008-11-01')))+
-  scale_y_continuous(expression('NEE'),limits=c(-3, 3))
-
-if (ViewPlots == TRUE){
-  Fall08
-}
-
-df1 = filter(df1, !(TIMESTAMP_END >= as.POSIXct('2008-10-19') ))
-
-FullSeries2 <- ggplot(data = df1) + 
-  geom_point(aes(x = TIMESTAMP_END, y = NEE_VUT_REF))+
-  geom_hline(yintercept = 0)+ scale_x_datetime(expression('Time'))+
-  scale_y_continuous(expression('NEE'))
-
-if (ViewPlots == TRUE){
-  FullSeries2
-}
-
-grid.arrange(FullSeries, FullSeries2, Spring07, Fall07, Spring08, Fall08, nrow=3, ncol=2)
-
-rm(Fall07, Fall08, Spring07, Spring08, FullSeries, FullSeries2, df1_F)
 
 ```
 
 
-
-Daily Average & Analysis
-
-```{r}
-
-df1$day = as.Date(df1$TIMESTAMP_END)
-
-day = unique(df1$day)
-df1_avg =as.data.frame(day)
-
-
-## average variables by day to create daily average dataframe
-for (i in 1:ncol(df1)) {
-  if (class(df1[[i]])[1] == 'numeric'){
-  
-  colname = colnames(df1)[i]
-  
-  daily_avg_val <- aggregate(df1[[colname]] ~ day, data = df1, FUN = mean, na.action=na.omit)
-  
-  colnames(daily_avg_val)[2] <- colname
-
-df1_avg = left_join(df1_avg, daily_avg_val, by='day')
-
-  }
-  else{
-    next
-  }
-}
-
-# Daily Average Plots CO2 data
-
-ggplot(data = df1_avg) + 
-  geom_point(aes(x = day, y = RECO_NT_VUT_REF))+
-  geom_hline(yintercept =0)
-
-ggplot(data = df1_avg) + 
-  geom_point(aes(x = day, y = GPP_NT_VUT_REF))+
-  geom_hline(yintercept =0)
-
-ggplot(data = df1_avg) + 
-  geom_point(aes(x = day, y = NEE_VUT_REF))+
-  geom_hline(yintercept =0)
-
-```
-
-Nighttime- uses solar radiation to identify nighttime and isolate respiration, subtracts respiration estimate from daytime NEE to find GPP
-
-compare DT and NT, use nighttime (original NEE values)
-
-```{r}
-
-DT_NEE <- df1_avg$RECO_DT_VUT_REF - df1_avg$GPP_DT_VUT_REF
-
-dtplot <- ggplot(data = df1_avg) + 
-  geom_point(aes(x = NEE_VUT_REF, y = DT_NEE))+
-  geom_abline(intercept=0, slope=1, col='red')
-
-if (ViewPlots == TRUE) {
-  ggplotly(dtplot)
-}
-
-```
-
-### Rename and Merge
+# Rename and Merge
 
 ```{r}
 
@@ -386,6 +245,135 @@ ggplot(data=df1_avg_2008)+
 
 ```
 
+
+
+
+
+
+# Daily Average & Analysis
+
+```{r}
+
+df1$day = as.Date(df1$TIMESTAMP_END)
+
+day = unique(df1$day)
+df1_avg =as.data.frame(day)
+
+
+## average variables by day to create daily average dataframe
+for (i in 1:ncol(df1)) {
+  if (class(df1[[i]])[1] == 'numeric'){
+  
+  colname = colnames(df1)[i]
+  
+  daily_avg_val <- aggregate(df1[[colname]] ~ day, data = df1, FUN = mean, na.action=na.omit)
+  
+  colnames(daily_avg_val)[2] <- colname
+
+df1_avg = left_join(df1_avg, daily_avg_val, by='day')
+
+  }
+  else{
+    next
+  }
+}
+
+# Daily Average Plots CO2 data
+
+ggplot(data = df1_avg) + 
+  geom_point(aes(x = day, y = RECO_NT_VUT_REF))+
+  geom_hline(yintercept =0)
+
+ggplot(data = df1_avg) + 
+  geom_point(aes(x = day, y = GPP_NT_VUT_REF))+
+  geom_hline(yintercept =0)
+
+ggplot(data = df1_avg) + 
+  geom_point(aes(x = day, y = NEE_VUT_REF))+
+  geom_hline(yintercept =0)
+
+```
+
+Nighttime- uses solar radiation to identify nighttime and isolate respiration, subtracts respiration estimate from daytime NEE to find GPP
+
+compare DT and NT, use nighttime (original NEE values)
+
+```{r}
+
+DT_NEE <- df1_avg$RECO_DT_VUT_REF - df1_avg$GPP_DT_VUT_REF
+
+dtplot <- ggplot(data = df1_avg) + 
+  geom_point(aes(x = NEE_VUT_REF, y = DT_NEE))+
+  geom_abline(intercept=0, slope=1, col='red')
+
+if (ViewPlots == TRUE) {
+  ggplotly(dtplot)
+}
+
+```
+
+
+Daily Average & Analysis
+
+```{r}
+
+df1$day = as.Date(df1$TIMESTAMP_END)
+
+day = unique(df1$day)
+df1_avg =as.data.frame(day)
+
+
+## average variables by day to create daily average dataframe
+for (i in 1:ncol(df1)) {
+  if (class(df1[[i]])[1] == 'numeric'){
+  
+  colname = colnames(df1)[i]
+  
+  daily_avg_val <- aggregate(df1[[colname]] ~ day, data = df1, FUN = mean, na.action=na.omit)
+  
+  colnames(daily_avg_val)[2] <- colname
+
+df1_avg = left_join(df1_avg, daily_avg_val, by='day')
+
+  }
+  else{
+    next
+  }
+}
+
+# Daily Average Plots CO2 data
+
+ggplot(data = df1_avg) + 
+  geom_point(aes(x = day, y = RECO_NT_VUT_REF))+
+  geom_hline(yintercept =0)
+
+ggplot(data = df1_avg) + 
+  geom_point(aes(x = day, y = GPP_NT_VUT_REF))+
+  geom_hline(yintercept =0)
+
+ggplot(data = df1_avg) + 
+  geom_point(aes(x = day, y = NEE_VUT_REF))+
+  geom_hline(yintercept =0)
+
+```
+
+Nighttime- uses solar radiation to identify nighttime and isolate respiration, subtracts respiration estimate from daytime NEE to find GPP
+
+compare DT and NT, use nighttime (original NEE values)
+
+```{r}
+
+DT_NEE <- df1_avg$RECO_DT_VUT_REF - df1_avg$GPP_DT_VUT_REF
+
+dtplot <- ggplot(data = df1_avg) + 
+  geom_point(aes(x = NEE_VUT_REF, y = DT_NEE))+
+  geom_abline(intercept=0, slope=1, col='red')
+
+if (ViewPlots == TRUE) {
+  ggplotly(dtplot)
+}
+
+```
 
 
 # Analysis
