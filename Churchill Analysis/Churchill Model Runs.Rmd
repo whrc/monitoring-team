@@ -169,7 +169,7 @@ merged_df$year = substr(merged_df$date,1,4)
 avg = timeAverage(
   merged_df,
   avg.time = 'day',
-  data.thresh = 0,
+  data.thresh = 40,
   statistic = 'mean',
   fill = TRUE
 )
@@ -198,6 +198,8 @@ df$year <- factor(df$year)
 
 df$DOY = yday(df$date)
 df$DOY <- as.numeric(df$DOY)
+
+df$month = as.numeric(format(df$ts,'%m'))
 ```
 # Graphs
 ## multi-year annual plot (rough)
@@ -231,34 +233,7 @@ ggplot(data = df)+theme_bw()+
 
 
 
-## 10 cm Hysteresis 
-### Red
-```{r}
-df$month = as.numeric(format(df$ts,'%m'))
-
-
-ggplot(data = df)+theme_bw()+
-  geom_point(aes(x = TS_2_1_1, y = FCH4, fill = DOY),pch=21,size = 3,alpha=0.75) +
-  geom_hline(yintercept = 0) +
-  scale_y_continuous(expression('CH4 Flux (' * n * mol ~ m^-2 ~ s^-1 * ')'),
-                     limits = c(-10, 150)) +
-  scale_x_continuous(expression('Temperature (°C)'),
-                     limits = c(-15,15))+
-  labs(color = 'DOY')+
-#  scale_fill_brewer(palette = 'YlOrRd')
-  scale_fill_gradientn(colours = brewer.pal(9,'YlOrRd'))
-
-ggplot(data = df)+theme_bw()+
-  geom_point(aes(x = TS_2_1_1, y = FCH4, fill = month),pch=21,size = 3,alpha=0.75) +
-  geom_hline(yintercept = 0) +
-  scale_y_continuous(expression('CH4 Flux (' * n * mol ~ m^-2 ~ s^-1 * ')'),
-                     limits = c(-10, 150)) +
-  scale_x_continuous(expression('Temperature (°C)'),
-                     limits = c(-15,15))+
-  labs(color = 'DOY')+
-#  scale_fill_brewer(palette = 'YlOrRd')
-  scale_fill_gradientn(colours = brewer.pal(9,'YlOrRd'))
-```
+## 5,10 cm Hysteresis 
 ### Blue
 ```{r}
 
@@ -285,14 +260,14 @@ ggplot(data = df)+theme_bw()+
 #  scale_fill_brewer(palette = 'YlOrRd')
   scale_fill_gradientn(colours = brewer.pal(9,'GnBu'))
 ```
-
+### Red
 ```{r}
 ggplot(data = df)+theme_bw()+
   geom_point(aes(x = TS_2_1_1, y = FCH4, fill = month),pch=21,size = 3,alpha=0.75) +
   geom_hline(yintercept = 0) +
   scale_y_continuous(expression('CH4 Flux (' * n * mol ~ m^-2 ~ s^-1 * ')'),
                      limits = c(-30, 150)) +
-  scale_x_continuous(expression('Temperature (°C)'),
+  scale_x_continuous(expression('Temperature 10cm(°C)'),
                      limits = c(-15,15))+
   labs(color = 'DOY')+
 #  scale_fill_brewer(palette = 'YlOrRd')
@@ -340,33 +315,133 @@ ggplot(data = CF3) +
   ) +
   scale_x_datetime(limits = as.POSIXct(c('2023-09-16', '2023-12-23')))
 ```
-
-# Model Runs 5cm
+# Model Runs
+## LM Runs 0, 5, 10 cm
 ```{r}
-min(df$FCH4,na.rm = TRUE)
-max(df$FCH4,na.rm = TRUE)
+#0 cm (R-squared 0.73)
+TS0logCH4 = lm(log10(FCH4+5)~TS_1_0_1,data = df)
+summary((TS0logCH4))
 
 
-min(df25$FCH4,na.rm = TRUE)
-
-TS5logCH4 = lm(log10(FCH4+5)~TS_2_05_1,data = df25)
+#5cm (R-squared 0.76)
+TS5logCH4 = lm(log10(FCH4+5)~TS_2_05_1,data = df)
 summary((TS5logCH4))
 
-
-```
-
-
-```{r}
-
+#5cm (R-squared 0.72)
 TS10logCH4 = lm(log10(FCH4+5)~TS_2_1_1,data = df)
 summary((TS10logCH4))
+
+```
+## Trendline 5 cm
+```{r}
+# Define the exponential trend function
+exponential_trend_5 <- function(x) {
+  10^(1.155294 + 0.050221 * x) - 5
+}
+
+# Determine the number of rows in your original dataframe df
+num_rows_df <- nrow(df)
+
+# Create the new dataframe with the same number of rows as df, removing NA values
+new_data <- data.frame(TS_2_05_1 = seq(min(na.omit(df$TS_2_05_1)), max(na.omit(df$TS_2_05_1)), length.out = num_rows_df))
+new_data$predicted <- exponential_trend(new_data$TS_2_05_1)
+new_data$lower <- new_data$predicted - 1.96 * 0.001482  # Use SE to calculate 95% CI
+new_data$upper <- new_data$predicted + 1.96 * 0.001482
+
+ggplot(data = df) +
+  theme_bw() +
+  geom_point(aes(x = TS_2_05_1, y = FCH4, fill = month), pch = 21, size = 3, alpha = 0.75) +
+  geom_hline(yintercept = 0) +
+  geom_ribbon(data = new_data, aes(x = TS_2_05_1, ymin = lower, ymax = upper), alpha = 0.5, fill = "blue") +
+  geom_line(aes(x = TS_2_05_1, y = exponential_trend_5(TS_2_05_1)), color = "black", size = 1.3) +
+  scale_y_continuous(expression('CH4 Flux (' * n * mol ~ m^-2 ~ s^-1 * ')'),
+                     limits = c(-8, 150)) +
+  scale_x_continuous(expression('Temperature 5 cm (°C)'),
+                     limits = c(-15, 20)) +
+  labs(color = 'DOY') +
+  scale_fill_gradientn(colours = brewer.pal(9, 'Reds'))
+
+ggplot(data = new_data) +
+  theme_bw() +
+  geom_line(aes(x = TS_2_05_1), alpha = 0.5, fill = "blue") +
+  scale_y_continuous(expression('CH4 Flux (' * n * mol ~ m^-2 ~ s^-1 * ')'),
+                     limits = c(-8, 150)) +
+  scale_x_continuous(expression('Temperature 5 cm (°C)'),
+                     limits = range(new_data$TS_2_05_1)) +  # Adjust x-axis limits
+  labs(color = 'DOY') +
+  theme(legend.position = "none")
+
 ```
 
-# Raster Column format is |Date|SoilT|SoilDepth|
+
+## LM Runs GPP
+```{r}
+#GPP_DT (R-squared 0.66)
+GPP_DTCH4 = lm(FCH4~GPP_DT,data = df)
+summary((GPP_DTCH4))
+
+#GPP_F (R-squared 0.76) (feels sketch using this bc gap-filled)
+GPP_FCH4 = lm(FCH4~GPP_F,data = df)
+summary((GPP_FCH4))
+```
+## Time lag 
+```{r}
+#Rain
+ccf(df$P,df$FCH4, na.action = na.pass)
+#Soil T
+ccf(df$TS_2_05_1,df$FCH4, na.action = na.pass)
+#VWC
+ccf(df$SWC_2_1_1,df$FCH4, na.action = na.pass)
+#GPP
+ccf(df$GPP_F,df$FCH4, na.action = na.pass)
+
+
+
+```
+
+## Seasons breakdown
+```{r}
+ggplot(data = df) +
+  theme_bw() +
+  geom_point(aes(x = ts, y = PPFD_IN), color = 'salmon') +
+  geom_point(aes(x = ts, y = PPFD_OUT), color = 'blue') +
+  geom_hline(yintercept = 0) +
+  scale_y_continuous(
+    name = expression('PPFD (' * PAR * ')'),
+    limits = c(-20, 795),
+    #sec.axis = sec_axis(~./4, name = "Soil Temperature 10cm (°C)")
+  ) +
+  scale_x_datetime(limits = as.POSIXct(c('2022-08-6', '2023-12-31')))
+
+albedo = df$PPFD_OUT/df$PPFD_IN
+
+plot(df$ts,albedo)
+ALB = albedo
+ALB = ifelse(albedo > 1 ,NA,ALB)
+plot(ALB)
+
+ts = df$ts
+
+ggplot ()+
+  theme_bw() +
+  geom_point(aes(x = ts, y = albedo), color = 'red') +
+  geom_point(aes(x = ts, y = ALB), color = 'black') +
+  geom_hline(yintercept = 0) +
+  scale_y_continuous(
+    name = expression('ALBEDO (' * PAR * ')'),
+    limits = c(-.1, 1.25),
+    #sec.axis = sec_axis(~./4, name = "Soil Temperature 10cm (°C)")
+  ) +
+  scale_x_datetime(limits = as.POSIXct(c('2023-10-28', '2023-11-1')))
+```
+
+# Raster Column 
+format is |Date|SoilT|SoilDepth|
 ```{r}
 
 dfnew = df
-dfnew$TS_1_0_1 = dfnew$TS_2_0_1
+dfnew$TS_2_0_1 = dfnew$TS_2_05_1
+
 
 ras <- dfnew[,c('date',
             'TS_2_0_1', 
@@ -384,14 +459,14 @@ ras <- dfnew[,c('date',
 # Reshape the data into long format
 ras <- ras %>%
   pivot_longer(
-    cols = -date,  # Exclude TIMESTAMP column
+    cols = -date, 
     names_to = "SoilDepth",
     values_to = "SoilTemperature",
-    names_pattern = "TS_2_(\\d+)_1"  # Pattern to extract numeric depth information
+    names_pattern = "TS_2_(\\d+)_1" 
   ) %>%
-  mutate(SoilDepth = as.numeric(gsub("TS_2_", "", SoilDepth)) * 10)  # Convert extracted depth to numeric
+  mutate(SoilDepth = as.numeric(gsub("TS_2_", "", SoilDepth)) * 10) 
 
-# Extract Date from TIMESTAMP column
+# Extract Date from column
 ras$date <- as.Date(ras$date)
 
 # Select and reorder columns
@@ -401,7 +476,7 @@ ras <- ras %>%
 library(viridis)
 
 ggplot(ras, aes(x = date, y = SoilDepth, fill = SoilTemperature)) +
-  geom_tile(width = 1, height = 10) +  # Adjust width and height as needed
+  geom_raster()+
   scale_fill_viridis(option = "turbo") +  # Use the "magma" color palette
   labs(x = "Date", y = "Soil Depth", fill = "Soil Temperature") +
   scale_y_reverse() +  # Invert the y-axis
