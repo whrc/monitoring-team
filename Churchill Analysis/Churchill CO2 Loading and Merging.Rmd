@@ -1,0 +1,235 @@
+---
+title: "Churchill CO2 Loading and Merging"
+author: "Dani Trangmoe"
+date: "`r Sys.Date()`"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, dev="png")
+
+#add root directory here for github
+```
+
+
+# Load Data
+
+### CA CF3 Partitioned Data
+
+Using data from bucket for now, maybe switch to ameriflux data for continuity when it's available?
+
+```{r, include=FALSE}
+rm(list = ls())
+
+library(data.table)
+library(ggplot2)
+library(cowplot)
+library(openair)
+library(plotrix)
+library(signal)
+library(svMisc)
+library(zoo)
+library(stringr)
+library(plyr)
+library(viridis)
+library(lubridate)
+library(tidyverse)
+library(gridExtra)
+library(plotly)
+library(RColorBrewer)
+```
+
+
+```{r, warning=FALSE, echo=FALSE}
+df3 = fread('C:/Users/dtrangmoe/Documents/Churchill/CA_CF3.csv', na.strings="-9999")
+```
+
+
+Create usable timestamp variable
+
+```{r, warning=FALSE, echo=FALSE}
+
+df3$TIMESTAMP_END = as.character(df3$TIMESTAMP_END)
+df3$TIMESTAMP_START = as.character(df3$TIMESTAMP_START)
+
+df3$TIMESTAMP_END = as.POSIXct(df3$TIMESTAMP_END, tz="UTC", format = "%Y%m%d%H%M")
+df3$TIMESTAMP_START = as.POSIXct(df3$TIMESTAMP_START, tz="UTC", format = "%Y%m%d%H%M")
+
+```
+
+
+### CA CF1 Partitioned Data
+
+
+```{r, warning=FALSE, echo=FALSE}
+df1 = fread('C:/Users/dtrangmoe/Documents/CA-CF1 FullSet/AMF_CA-CF1_FLUXNET_FULLSET_2007-2008_3-5/AMF_CA-CF1_FLUXNET_FULLSET_HH_2007-2008_3-5.csv', na.strings="-9999")
+```
+
+
+Create usable timestamp variables
+
+```{r, warning=FALSE, echo=FALSE}
+
+df1$TIMESTAMP_END = as.character(df1$TIMESTAMP_END)
+df1$TIMESTAMP_START = as.character(df1$TIMESTAMP_START)
+
+df1$TIMESTAMP_END = as.POSIXct(df1$TIMESTAMP_END, tz="UTC", format = "%Y%m%d%H%M")
+df1$TIMESTAMP_START = as.POSIXct(df1$TIMESTAMP_START, tz="UTC", format = "%Y%m%d%H%M")
+
+
+```
+
+
+#### Cut QC=3 Data from CF1
+
+Removes QC=3 data from poor quality gapfilling. Includes winter NEE data
+
+```{r}
+# switch to QC flag = 3 to filter winter data
+# isolate each variable by their QC flag  
+
+QCFlags <- grep("QC$", names(df1), value = TRUE)
+
+
+for (col_QC in QCFlags) {
+  
+col_data <- gsub("\\_QC", "", col_QC)
+
+df1[df1[[col_QC]] == 3, col_data] <- NA
+
+}
+
+```
+
+
+# Remove unused variables
+
+```{r}
+
+## Remove data that won't be used, for easy merging
+
+#Daytime partitioned data
+df1 <- select(df1, !all_of(names(df1)[grep("_DT", names(df1))]))
+
+df3 <- select(df3, !all_of(names(df3)[grep("_DT", names(df3))]))
+
+#Methane
+df3 <- select(df3, !all_of(names(df3)[grep("CH4", names(df3))]))
+
+#_TEST
+df3 <- select(df3, !all_of(names(df3)[grep("_TEST$", names(df3))]))
+
+#ERA biomet data
+df1 <- select(df1, !all_of(names(df1)[grep("_ERA", names(df1))]))
+
+#QC flags
+df1 <- select(df1, !all_of(names(df1)[grep("_QC", names(df1))]))
+
+#Random Uncertainty
+df1 <- select(df1, !all_of(names(df1)[grep("RANDUNC", names(df1))]))
+
+#Standard error
+df1 <- select(df1, !all_of(names(df1)[grep("_SE", names(df1))]))
+
+#_POT
+df1 <- select(df1, !all_of(names(df1)[grep("_POT", names(df1))]))
+
+#percentile corrections
+df1 <- select(df1, !all_of(names(df1)[grep("_[0-9]{2}?", names(df1))]))
+
+#USTAR50
+df1 <- select(df1, !all_of(names(df1)[grep("USTAR50", names(df1))]))
+
+#EBC
+df1 <- select(df1, !all_of(names(df1)[grep("EBC", names(df1))]))
+
+#JOINTUNC
+df1 <- select(df1, !all_of(names(df1)[grep("JOINTUNC", names(df1))]))
+
+#Mean
+df1 <- select(df1, !all_of(names(df1)[grep("_MEAN$", names(df1))]))
+```
+
+# Rename and Merge
+
+```{r}
+
+
+#Biomet
+names(df1)[names(df1) == "SW_IN_F"] <- "SW_IN"
+names(df1)[names(df1) == "LW_IN_F"] <- "LW_IN"
+names(df1)[names(df1) == "VPD_F"] <- "VPD"
+names(df1)[names(df1) == "TA_F"] <- "TA"
+
+
+#removes unused biomet (delete?)
+df1 <- select(df1, !all_of(names(df1)[grep("_F$", names(df1))]))
+
+#Flux
+
+names(df1)[names(df1) == "GPP_NT_VUT_REF"] <- "GPP_F"
+names(df1)[names(df1) == "CO2_F_MDS"] <- "FC_F"
+names(df1)[names(df1) == "RECO_NT_VUT_REF"] <- "RECO"
+names(df1)[names(df1) == "LE_F_MDS"] <- "LE"
+names(df1)[names(df1) == "H_F_MDS"] <- "H"
+
+
+
+
+
+
+df <- rbind.fill(df1, df3)
+
+#once this works- average here instead of each df individually
+
+```
+
+
+# Plots
+
+```{r}
+
+df$day = as.Date(df$TIMESTAMP_END)
+
+day = unique(df$day)
+df_avg = as.data.frame(day)
+
+
+## average variables by day to create daily average dataframe
+for (i in 1:ncol(df)) {
+  if (class(df[[i]])[1] == 'numeric'){
+
+  colname = colnames(df)[i]
+
+  daily_avg_val <- aggregate(df[[colname]] ~ day, data = df, FUN = mean, na.action=na.omit)
+
+  colnames(daily_avg_val)[2] <- colname
+
+df_avg = left_join(df_avg, daily_avg_val, by='day')
+
+  }
+  else{
+    next
+  }
+}
+
+
+plot(df_avg$day, df_avg$FC_F)
+plot(df_avg$day, df_avg$GPP_F)
+plot(df_avg$day, df_avg$RECO)
+
+
+```
+
+
+# Save Data
+
+```{r}
+
+write.csv(x = df,file = 'C:/Users/dtrangmoe/Documents/Churchill/Churchill_Merged_CF1_CF3.csv',row.names = F,quote = F)
+
+write.csv(x = df_avg,file = 'C:/Users/dtrangmoe/Documents/Churchill/Churchill_Merged_Avg_CF1_CF3.csv',row.names = F,quote = F)
+
+```

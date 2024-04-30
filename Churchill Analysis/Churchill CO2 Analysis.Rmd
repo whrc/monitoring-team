@@ -1,0 +1,220 @@
+---
+title: "Churchill CO2 Data Analysis"
+author: "Dani Trangmoe"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+# add root directory here for github
+```
+
+
+```{r, include=FALSE}
+rm(list = ls())
+
+library(data.table)
+library(ggplot2)
+library(cowplot)
+library(openair)
+library(plotrix)
+library(signal)
+library(svMisc)
+library(zoo)
+library(stringr)
+library(plyr)
+library(viridis)
+library(lubridate)
+library(tidyverse)
+library(gridExtra)
+library(plotly)
+library(RColorBrewer)
+```
+
+# Load data
+```{r}
+
+df = fread('C:/Users/dtrangmoe/Documents/Churchill/Churchill_Merged_CF1_CF3.csv',na.strings = c('-9999','NA','NaN','NAN','-7999'))
+
+df_avg = fread('C:/Users/dtrangmoe/Documents/Churchill/Churchill_Merged_Avg_CF1_CF3.csv',na.strings = c('-9999','NA','NaN','NAN','-7999'))
+
+```
+
+#### Create only 2023 dataframe, color=month (needs work)
+
+```{r}
+
+df_avg$month = as.numeric(as.yearmon(df_avg$day))
+
+df_avg_2023 <- df_avg %>%
+  filter(year(day) == 2023)
+
+
+#plot 2023 temp. vs co2 flux - higher PAR = higher uptake
+
+ggplot(data=df_avg_2023)+
+  geom_point(aes(x=TS_3_1_1, y=FC_F, col = PPFD_IN))
+
+ggplot(data=df_avg_2023)+
+  geom_point(aes(x=TS_3_1_1, y=GPP_F, col = PPFD_IN))
+
+ggplot(data=df_avg_2023)+
+  geom_point(aes(x=VPD, y=FC_F, col = month))+
+  scale_x_continuous(limits = c(0, 100))
+
+
+
+```
+
+
+# Analysis
+
+All with old variable names- needs to be redone
+
+
+``` {r, warning=FALSE}
+ggplot(df, aes_string(x = "TIMESTAMP", y = "co2_flux.c"))+
+    theme_bw()+
+    geom_point()+
+  geom_vline(aes(xintercept= as.POSIXct("2023-05-14")))+
+  geom_vline(aes(xintercept= as.POSIXct("2023-04-10")))+
+    scale_x_datetime(name = 'Date')+
+    scale_y_continuous(name = CO2)
+
+ggplot(df, aes_string(x = "TIMESTAMP", y = "SHF_6_37_1_1_1.c"))+
+    theme_bw()+
+    geom_point()+
+  geom_vline(aes(xintercept= as.POSIXct("2023-05-14")))+
+    scale_x_datetime(name = 'Date')+
+    scale_y_continuous(name = 'SHF1')
+
+ggplot(df, aes_string(x = "TIMESTAMP", y = "SHF_6_37_2_1_1.c"))+
+    theme_bw()+
+    geom_point() +
+  geom_vline(aes(xintercept= as.POSIXct("2023-05-14")))+
+    scale_x_datetime(name = 'Date')+
+    scale_y_continuous(name = 'SHF2')
+
+ggplot(df, aes_string(x = "TIMESTAMP", y = "SD_10_99_1_1_1.c"))+
+    theme_bw()+
+    geom_point() +
+  geom_vline(aes(xintercept= as.POSIXct("2023-05-14")))+
+    scale_x_datetime(name = 'Date')+
+    scale_y_continuous(name = 'Snow Depth')
+
+ggplot(df, aes_string(x = "TIMESTAMP", y = "TA_2_1_1_1_1"))+
+    theme_bw()+
+    geom_point() +
+  geom_vline(aes(xintercept= as.POSIXct("2023-05-14")))+
+  geom_vline(aes(xintercept= as.POSIXct("2023-04-10")))+
+    scale_x_datetime(name = 'Date')+
+    scale_y_continuous(name = 'Air Temp')
+
+ggplot(df, aes_string(x = "TIMESTAMP", y = "ALB_1_1_1.c"))+
+    theme_bw()+
+    geom_point() +
+  geom_vline(aes(xintercept= as.POSIXct("2023-05-14")))+
+    scale_x_datetime(name = 'Date')+
+    scale_y_continuous(name = 'Albedo')
+
+ggplot(df, aes_string(x = "TIMESTAMP", y = "TS_2_38_3_3_1.c"))+
+    theme_bw()+
+    geom_point() +
+  geom_vline(aes(xintercept= as.POSIXct("2023-05-14")))+
+    scale_x_datetime(name = 'Date')+
+    scale_y_continuous(name = 'Random Soil Temp')
+```
+
+change dates for plots here
+```{r}
+dates_22 = c('2022-08-10','2022-11-01')
+
+dates_23 = c('2023-08-10','2023-11-01')
+```
+
+Soil Temperature and CO2 flux- side by side
+
+```{r}
+
+co2_22 <- ggplot(data = df, aes(x = ts, y = co2_flux.c)) + 
+  geom_point() +
+  ggtitle("2022")+
+  scale_x_datetime(limits = as.POSIXct(dates_22))
+
+co2_23 <- ggplot(data = df, aes(x = ts, y = co2_flux.c)) + 
+  geom_point() +
+  ggtitle("2023")+
+  scale_x_datetime(limits = as.POSIXct(dates_23))
+
+soil22 <- ggplot(data = df)+ theme_bw()+
+  geom_hline(yintercept = 0)+
+  geom_line(aes(TIMESTAMP,TS_2_38_3_1_1.c))+
+  geom_line(aes(TIMESTAMP,TS_2_38_3_2_1.c))+
+  geom_line(aes(TIMESTAMP,TS_2_38_3_3_1.c))+
+  geom_line(aes(TIMESTAMP,TS_2_38_3_4_1.c))+  
+  geom_line(aes(TIMESTAMP,TS_2_38_3_5_1.c))+
+  geom_line(aes(TIMESTAMP,TS_2_38_3_6_1.c))+
+  geom_line(aes(TIMESTAMP,TS_2_38_3_7_1.c))+
+  geom_line(aes(TIMESTAMP,TS_2_38_3_8_1.c))+
+  geom_line(aes(TIMESTAMP,TS_2_38_3_9_1.c))+
+  geom_line(aes(TIMESTAMP,TS_2_38_3_10_1.c))+
+  geom_line(aes(TIMESTAMP,TS_2_38_3_11_1.c))+
+  geom_line(aes(TIMESTAMP,TS_2_38_3_12_1.c))+
+  scale_x_datetime(limits=as.POSIXct(dates_22))
+
+soil23 <- ggplot(data = df)+ theme_bw()+
+  geom_hline(yintercept = 0)+
+  geom_line(aes(TIMESTAMP,TS_2_38_3_1_1.c))+
+  geom_line(aes(TIMESTAMP,TS_2_38_3_2_1.c))+
+  geom_line(aes(TIMESTAMP,TS_2_38_3_3_1.c))+
+  geom_line(aes(TIMESTAMP,TS_2_38_3_4_1.c))+  
+  geom_line(aes(TIMESTAMP,TS_2_38_3_5_1.c))+
+  geom_line(aes(TIMESTAMP,TS_2_38_3_6_1.c))+
+  geom_line(aes(TIMESTAMP,TS_2_38_3_7_1.c))+
+  geom_line(aes(TIMESTAMP,TS_2_38_3_8_1.c))+
+  geom_line(aes(TIMESTAMP,TS_2_38_3_9_1.c))+
+  geom_line(aes(TIMESTAMP,TS_2_38_3_10_1.c))+
+  geom_line(aes(TIMESTAMP,TS_2_38_3_11_1.c))+
+  geom_line(aes(TIMESTAMP,TS_2_38_3_12_1.c))+
+  scale_x_datetime(limits=as.POSIXct(dates_23))
+
+# Arrange the plots side by side
+grid.arrange(co2_22, co2_23, soil22, soil23, nrow=2, ncol = 2)
+
+```
+
+
+VPD/CO2/NR Side by Side
+
+```{r}
+
+
+vpd_22 <- ggplot(data = df, aes(x = ts, y = VPD)) + 
+  geom_point() +
+  scale_x_datetime(limits = as.POSIXct(dates_22))+
+  scale_y_continuous(limits = c(-10, 2300))
+
+vpd_23 <- ggplot(data = df, aes(x = ts, y = VPD)) + 
+  geom_point() +
+  scale_x_datetime(limits = as.POSIXct(dates_23))+
+  scale_y_continuous(limits = c(-10, 2300))
+
+rn_22 <- ggplot(data = df, aes(x = ts, y = RN_6_5_1_1_1.c)) + 
+  geom_point() +
+  scale_x_datetime(limits = as.POSIXct(dates_22))+
+  scale_y_continuous(limits = c(-10, 1000))
+
+rn_23 <- ggplot(data = df, aes(x = ts, y = RN_6_5_1_1_1.c)) + 
+  geom_point() +
+  scale_x_datetime(limits = as.POSIXct(dates_23))+
+  scale_y_continuous(limits = c(-10, 1000))
+
+grid.arrange(co2_22, co2_23, vpd_22, vpd_23, rn_22, rn_23, nrow=3, ncol=2)
+
+```
+
+
+
+
