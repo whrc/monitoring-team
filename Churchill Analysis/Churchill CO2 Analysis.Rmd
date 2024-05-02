@@ -11,6 +11,10 @@ knitr::opts_chunk$set(echo = TRUE)
 # add root directory here for github
 ```
 
+Questions:
+
+Where did Hanis et al get 2010 & 2011 data? 
+
 
 ```{r, include=FALSE}
 rm(list = ls())
@@ -46,21 +50,22 @@ df_avg = fread('C:/Users/dtrangmoe/Documents/Churchill/Churchill_Merged_Avg_CF1_
 
 ```{r}
 
+
+plot(df_avg$day, df_avg$FC_F)
+plot(df_avg$day, df_avg$GPP_F)
+plot(df_avg$day, df_avg$RECO)
+
+
 df_avg$month = as.numeric(as.yearmon(df_avg$day))
 
-df_avg_2023 <- df_avg %>%
-  filter(year(day) == 2023)
 
-
-#plot 2023 temp. vs co2 flux - higher PAR = higher uptake
-
-ggplot(data=df_avg_2023)+
+ggplot(data=df_avg)+
   geom_point(aes(x=TS_3_1_1, y=FC_F, col = PPFD_IN))
 
-ggplot(data=df_avg_2023)+
+ggplot(data=df_avg)+
   geom_point(aes(x=TS_3_1_1, y=GPP_F, col = PPFD_IN))
 
-ggplot(data=df_avg_2023)+
+ggplot(data=df_avg)+
   geom_point(aes(x=VPD, y=FC_F, col = month))+
   scale_x_continuous(limits = c(0, 100))
 
@@ -75,27 +80,20 @@ All with old variable names- needs to be redone
 
 
 ``` {r, warning=FALSE}
-ggplot(df, aes_string(x = "TIMESTAMP", y = "co2_flux.c"))+
+
+ggplot(df, aes_string(x = "TIMESTAMP_END", y = "FC_F"))+
     theme_bw()+
     geom_point()+
-  geom_vline(aes(xintercept= as.POSIXct("2023-05-14")))+
-  geom_vline(aes(xintercept= as.POSIXct("2023-04-10")))+
     scale_x_datetime(name = 'Date')+
     scale_y_continuous(name = CO2)
 
-ggplot(df, aes_string(x = "TIMESTAMP", y = "SHF_6_37_1_1_1.c"))+
+ggplot(df, aes_string(x = "TIMESTAMP_END", y = "G_1_1_1"))+
     theme_bw()+
     geom_point()+
   geom_vline(aes(xintercept= as.POSIXct("2023-05-14")))+
     scale_x_datetime(name = 'Date')+
     scale_y_continuous(name = 'SHF1')
 
-ggplot(df, aes_string(x = "TIMESTAMP", y = "SHF_6_37_2_1_1.c"))+
-    theme_bw()+
-    geom_point() +
-  geom_vline(aes(xintercept= as.POSIXct("2023-05-14")))+
-    scale_x_datetime(name = 'Date')+
-    scale_y_continuous(name = 'SHF2')
 
 ggplot(df, aes_string(x = "TIMESTAMP", y = "SD_10_99_1_1_1.c"))+
     theme_bw()+
@@ -126,6 +124,8 @@ ggplot(df, aes_string(x = "TIMESTAMP", y = "TS_2_38_3_3_1.c"))+
     scale_x_datetime(name = 'Date')+
     scale_y_continuous(name = 'Random Soil Temp')
 ```
+
+
 
 change dates for plots here
 ```{r}

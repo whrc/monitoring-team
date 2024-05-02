@@ -150,6 +150,9 @@ df1 <- select(df1, !all_of(names(df1)[grep("JOINTUNC", names(df1))]))
 
 #Mean
 df1 <- select(df1, !all_of(names(df1)[grep("_MEAN$", names(df1))]))
+
+#SHF- no data in this column
+df1 <- select(df1, !all_of(names(df1)[grep("G_F_MDS", names(df1))]))
 ```
 
 # Rename and Merge
@@ -157,7 +160,7 @@ df1 <- select(df1, !all_of(names(df1)[grep("_MEAN$", names(df1))]))
 ```{r}
 
 
-#Biomet
+#Biomet: using gap filled and not gap filled in the same column?
 names(df1)[names(df1) == "SW_IN_F"] <- "SW_IN"
 names(df1)[names(df1) == "LW_IN_F"] <- "LW_IN"
 names(df1)[names(df1) == "VPD_F"] <- "VPD"
@@ -182,7 +185,6 @@ names(df1)[names(df1) == "H_F_MDS"] <- "H"
 
 df <- rbind.fill(df1, df3)
 
-#once this works- average here instead of each df individually
 
 ```
 
