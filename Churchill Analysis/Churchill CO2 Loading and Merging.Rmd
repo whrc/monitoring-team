@@ -170,7 +170,7 @@ df1 <- select(df1, !all_of(names(df1)[grep("_F$", names(df1))]))
 #Flux
 
 names(df1)[names(df1) == "GPP_NT_VUT_REF"] <- "GPP_F"
-names(df1)[names(df1) == "CO2_F_MDS"] <- "FC_F"
+names(df1)[names(df1) == "NEE_VUT_REF"] <- "FC_F"
 names(df1)[names(df1) == "RECO_NT_VUT_REF"] <- "RECO"
 names(df1)[names(df1) == "LE_F_MDS"] <- "LE"
 names(df1)[names(df1) == "H_F_MDS"] <- "H"
