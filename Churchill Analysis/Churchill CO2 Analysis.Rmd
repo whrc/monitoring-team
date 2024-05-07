@@ -35,6 +35,7 @@ library(tidyverse)
 library(gridExtra)
 library(plotly)
 library(RColorBrewer)
+library(pracma)
 ```
 
 # Load data
@@ -44,12 +45,27 @@ df = fread('C:/Users/dtrangmoe/Documents/Churchill/Churchill_Merged_CF1_CF3.csv'
 
 df_avg = fread('C:/Users/dtrangmoe/Documents/Churchill/Churchill_Merged_Avg_CF1_CF3.csv',na.strings = c('-9999','NA','NaN','NAN','-7999'))
 
+
+df$TIMESTAMP = df$TIMESTAMP_END
+
 ```
 
-#### Create only 2023 dataframe, color=month (needs work)
+#### Create yearly dataframes
+
+```{r}
+df_2023 = subset(df, format(TIMESTAMP, "%Y") == "2023")
+df_2022 = subset(df, format(TIMESTAMP, "%Y") == "2022")
+df_2008 = subset(df, format(TIMESTAMP, "%Y") == "2008")
+df_2007 = subset(df, format(TIMESTAMP, "%Y") == "2007")
+```
+
+
 
 ```{r}
 
+#create TIMESTAMP variable that is = to TIMESTAMP_END
+
+df$TIMESTAMP = df$TIMESTAMP_END
 
 plot(df_avg$day, df_avg$FC_F)
 plot(df_avg$day, df_avg$GPP_F)
@@ -58,12 +74,11 @@ plot(df_avg$day, df_avg$RECO)
 
 df_avg$month = as.numeric(as.yearmon(df_avg$day))
 
+ggplot(data=df_avg)+
+  geom_point(aes(x=TS_2_0_1, y=FC_F, col = PPFD_IN))
 
 ggplot(data=df_avg)+
-  geom_point(aes(x=TS_3_1_1, y=FC_F, col = PPFD_IN))
-
-ggplot(data=df_avg)+
-  geom_point(aes(x=TS_3_1_1, y=GPP_F, col = PPFD_IN))
+  geom_point(aes(x=TS_2_0_1, y=GPP_F, col = PPFD_IN))
 
 ggplot(data=df_avg)+
   geom_point(aes(x=VPD, y=FC_F, col = month))+
@@ -76,9 +91,10 @@ ggplot(data=df_avg)+
 
 # Analysis
 
-All with old variable names- needs to be redone
 
+## Biomet variables
 
+Used to figure out what data is here
 ``` {r, warning=FALSE}
 
 ggplot(df, aes_string(x = "TIMESTAMP_END", y = "FC_F"))+
@@ -87,6 +103,7 @@ ggplot(df, aes_string(x = "TIMESTAMP_END", y = "FC_F"))+
     scale_x_datetime(name = 'Date')+
     scale_y_continuous(name = CO2)
 
+#only soil heat flux in CF3 dataset
 ggplot(df, aes_string(x = "TIMESTAMP_END", y = "G_1_1_1"))+
     theme_bw()+
     geom_point()+
@@ -94,15 +111,15 @@ ggplot(df, aes_string(x = "TIMESTAMP_END", y = "G_1_1_1"))+
     scale_x_datetime(name = 'Date')+
     scale_y_continuous(name = 'SHF1')
 
-
-ggplot(df, aes_string(x = "TIMESTAMP", y = "SD_10_99_1_1_1.c"))+
+#onlyl snow depth in CF3 dataset
+ggplot(df, aes_string(x = "TIMESTAMP_END", y = "D_SNOW"))+
     theme_bw()+
     geom_point() +
   geom_vline(aes(xintercept= as.POSIXct("2023-05-14")))+
     scale_x_datetime(name = 'Date')+
     scale_y_continuous(name = 'Snow Depth')
 
-ggplot(df, aes_string(x = "TIMESTAMP", y = "TA_2_1_1_1_1"))+
+ggplot(df, aes_string(x = "TIMESTAMP_END", y = "TA"))+
     theme_bw()+
     geom_point() +
   geom_vline(aes(xintercept= as.POSIXct("2023-05-14")))+
@@ -110,14 +127,15 @@ ggplot(df, aes_string(x = "TIMESTAMP", y = "TA_2_1_1_1_1"))+
     scale_x_datetime(name = 'Date')+
     scale_y_continuous(name = 'Air Temp')
 
-ggplot(df, aes_string(x = "TIMESTAMP", y = "ALB_1_1_1.c"))+
+# only CACF3 data here
+ggplot(df, aes_string(x = "TIMESTAMP_END", y = "ALB"))+
     theme_bw()+
     geom_point() +
   geom_vline(aes(xintercept= as.POSIXct("2023-05-14")))+
     scale_x_datetime(name = 'Date')+
     scale_y_continuous(name = 'Albedo')
 
-ggplot(df, aes_string(x = "TIMESTAMP", y = "TS_2_38_3_3_1.c"))+
+ggplot(df, aes_string(x = "TIMESTAMP_END", y = "TS_2_4_1"))+
     theme_bw()+
     geom_point() +
   geom_vline(aes(xintercept= as.POSIXct("2023-05-14")))+
@@ -127,86 +145,138 @@ ggplot(df, aes_string(x = "TIMESTAMP", y = "TS_2_38_3_3_1.c"))+
 
 
 
-change dates for plots here
+### Date ranges for plots
 ```{r}
+dates_07 = c('2007-06-19','2007-10-07')
+
+dates_08 = c('2008-06-19','2008-10-07')
+
 dates_22 = c('2022-08-10','2022-11-01')
 
 dates_23 = c('2023-08-10','2023-11-01')
 ```
 
-Soil Temperature and CO2 flux- side by side
 
+## Soil Temperature/CO2 flux- side by side
+
+2022/2023
 ```{r}
 
-co2_22 <- ggplot(data = df, aes(x = ts, y = co2_flux.c)) + 
+co2_22 <- ggplot(data = df, aes(x = TIMESTAMP, y = FC_F)) + 
   geom_point() +
   ggtitle("2022")+
   scale_x_datetime(limits = as.POSIXct(dates_22))
 
-co2_23 <- ggplot(data = df, aes(x = ts, y = co2_flux.c)) + 
+co2_23 <- ggplot(data = df, aes(x = TIMESTAMP, y = FC_F)) + 
   geom_point() +
   ggtitle("2023")+
   scale_x_datetime(limits = as.POSIXct(dates_23))
 
 soil22 <- ggplot(data = df)+ theme_bw()+
   geom_hline(yintercept = 0)+
-  geom_line(aes(TIMESTAMP,TS_2_38_3_1_1.c))+
-  geom_line(aes(TIMESTAMP,TS_2_38_3_2_1.c))+
-  geom_line(aes(TIMESTAMP,TS_2_38_3_3_1.c))+
-  geom_line(aes(TIMESTAMP,TS_2_38_3_4_1.c))+  
-  geom_line(aes(TIMESTAMP,TS_2_38_3_5_1.c))+
-  geom_line(aes(TIMESTAMP,TS_2_38_3_6_1.c))+
-  geom_line(aes(TIMESTAMP,TS_2_38_3_7_1.c))+
-  geom_line(aes(TIMESTAMP,TS_2_38_3_8_1.c))+
-  geom_line(aes(TIMESTAMP,TS_2_38_3_9_1.c))+
-  geom_line(aes(TIMESTAMP,TS_2_38_3_10_1.c))+
-  geom_line(aes(TIMESTAMP,TS_2_38_3_11_1.c))+
-  geom_line(aes(TIMESTAMP,TS_2_38_3_12_1.c))+
-  scale_x_datetime(limits=as.POSIXct(dates_22))
+  geom_line(aes(TIMESTAMP,TS_2_0_1))+
+  geom_line(aes(TIMESTAMP,TS_2_05_1))+
+  geom_line(aes(TIMESTAMP,TS_2_1_1))+
+  geom_line(aes(TIMESTAMP,TS_2_2_1))+  
+  geom_line(aes(TIMESTAMP,TS_2_3_1))+
+  geom_line(aes(TIMESTAMP,TS_2_4_1))+
+  geom_line(aes(TIMESTAMP,TS_2_5_1))+
+  geom_line(aes(TIMESTAMP,TS_2_6_1))+
+  geom_line(aes(TIMESTAMP,TS_2_7_1))+
+  geom_line(aes(TIMESTAMP,TS_2_8_1))+
+  geom_line(aes(TIMESTAMP,TS_2_9_1))+
+  geom_line(aes(TIMESTAMP,TS_2_10_1))+
+  scale_x_datetime(limits=as.POSIXct(dates_22))+
+  scale_y_continuous(limits=c(-5, 20))
 
 soil23 <- ggplot(data = df)+ theme_bw()+
   geom_hline(yintercept = 0)+
-  geom_line(aes(TIMESTAMP,TS_2_38_3_1_1.c))+
-  geom_line(aes(TIMESTAMP,TS_2_38_3_2_1.c))+
-  geom_line(aes(TIMESTAMP,TS_2_38_3_3_1.c))+
-  geom_line(aes(TIMESTAMP,TS_2_38_3_4_1.c))+  
-  geom_line(aes(TIMESTAMP,TS_2_38_3_5_1.c))+
-  geom_line(aes(TIMESTAMP,TS_2_38_3_6_1.c))+
-  geom_line(aes(TIMESTAMP,TS_2_38_3_7_1.c))+
-  geom_line(aes(TIMESTAMP,TS_2_38_3_8_1.c))+
-  geom_line(aes(TIMESTAMP,TS_2_38_3_9_1.c))+
-  geom_line(aes(TIMESTAMP,TS_2_38_3_10_1.c))+
-  geom_line(aes(TIMESTAMP,TS_2_38_3_11_1.c))+
-  geom_line(aes(TIMESTAMP,TS_2_38_3_12_1.c))+
-  scale_x_datetime(limits=as.POSIXct(dates_23))
+  geom_line(aes(TIMESTAMP,TS_2_0_1))+
+  geom_line(aes(TIMESTAMP,TS_2_05_1))+
+  geom_line(aes(TIMESTAMP,TS_2_1_1))+
+  geom_line(aes(TIMESTAMP,TS_2_2_1))+  
+  geom_line(aes(TIMESTAMP,TS_2_3_1))+
+  geom_line(aes(TIMESTAMP,TS_2_4_1))+
+  geom_line(aes(TIMESTAMP,TS_2_5_1))+
+  geom_line(aes(TIMESTAMP,TS_2_6_1))+
+  geom_line(aes(TIMESTAMP,TS_2_7_1))+
+  geom_line(aes(TIMESTAMP,TS_2_8_1))+
+  geom_line(aes(TIMESTAMP,TS_2_9_1))+
+  geom_line(aes(TIMESTAMP,TS_2_10_1))+
+  scale_x_datetime(limits=as.POSIXct(dates_23))+
+  scale_y_continuous(limits=c(-5, 20))
 
 # Arrange the plots side by side
 grid.arrange(co2_22, co2_23, soil22, soil23, nrow=2, ncol = 2)
 
 ```
 
+2007/2008
+```{r}
 
-VPD/CO2/NR Side by Side
+co2_07 <- ggplot(data = df, aes(x = TIMESTAMP, y = FC_F)) + 
+  geom_point() +
+  ggtitle("2007")+
+  scale_x_datetime(limits = as.POSIXct(dates_07))
 
+co2_08 <- ggplot(data = df, aes(x = TIMESTAMP, y = FC_F)) + 
+  geom_point() +
+  ggtitle("2008")+
+  scale_x_datetime(limits = as.POSIXct(dates_08))
+
+soil07 <- ggplot(data = df)+ theme_bw()+
+  geom_hline(yintercept = 0)+
+  geom_line(aes(TIMESTAMP,TS_F_MDS_1))+
+  geom_line(aes(TIMESTAMP,TS_F_MDS_2))+
+  geom_line(aes(TIMESTAMP,TS_F_MDS_3))+
+  geom_line(aes(TIMESTAMP,TS_F_MDS_4))+  
+  geom_line(aes(TIMESTAMP,TS_F_MDS_5))+
+  geom_line(aes(TIMESTAMP,TS_F_MDS_6))+
+  scale_x_datetime(limits=as.POSIXct(dates_07))+
+  scale_y_continuous(limits=c(-5, 20))
+
+soil08 <- ggplot(data = df)+ theme_bw()+
+  geom_hline(yintercept = 0)+
+  geom_line(aes(TIMESTAMP,TS_F_MDS_1))+
+  geom_line(aes(TIMESTAMP,TS_F_MDS_2))+
+  geom_line(aes(TIMESTAMP,TS_F_MDS_3))+
+  geom_line(aes(TIMESTAMP,TS_F_MDS_4))+  
+  geom_line(aes(TIMESTAMP,TS_F_MDS_5))+
+  geom_line(aes(TIMESTAMP,TS_F_MDS_6))+
+  scale_x_datetime(limits=as.POSIXct(dates_08))+
+  scale_y_continuous(limits=c(-5, 20))
+
+# Arrange the plots side by side
+grid.arrange(co2_07, co2_08, soil07, soil08, nrow=2, ncol = 2)
+
+```
+
+
+
+
+##VPD/CO2/NR Side by Side
+Rescale VPD
+
+2022/2023
 ```{r}
 
 
-vpd_22 <- ggplot(data = df, aes(x = ts, y = VPD)) + 
+vpd_22 <- ggplot(data = df, aes(x = TIMESTAMP, y = VPD)) + 
   geom_point() +
   scale_x_datetime(limits = as.POSIXct(dates_22))+
   scale_y_continuous(limits = c(-10, 2300))
 
-vpd_23 <- ggplot(data = df, aes(x = ts, y = VPD)) + 
+vpd_23 <- ggplot(data = df, aes(x = TIMESTAMP, y = VPD)) + 
   geom_point() +
   scale_x_datetime(limits = as.POSIXct(dates_23))+
   scale_y_continuous(limits = c(-10, 2300))
 
-rn_22 <- ggplot(data = df, aes(x = ts, y = RN_6_5_1_1_1.c)) + 
+rn_22 <- ggplot(data = df, aes(x = TIMESTAMP, y = NETRAD)) + 
   geom_point() +
   scale_x_datetime(limits = as.POSIXct(dates_22))+
   scale_y_continuous(limits = c(-10, 1000))
 
-rn_23 <- ggplot(data = df, aes(x = ts, y = RN_6_5_1_1_1.c)) + 
+rn_23 <- ggplot(data = df, aes(x = TIMESTAMP, y = NETRAD)) + 
   geom_point() +
   scale_x_datetime(limits = as.POSIXct(dates_23))+
   scale_y_continuous(limits = c(-10, 1000))
@@ -214,6 +284,150 @@ rn_23 <- ggplot(data = df, aes(x = ts, y = RN_6_5_1_1_1.c)) +
 grid.arrange(co2_22, co2_23, vpd_22, vpd_23, rn_22, rn_23, nrow=3, ncol=2)
 
 ```
+
+2007/2008
+```{r}
+
+
+vpd_07 <- ggplot(data = df, aes(x = TIMESTAMP, y = VPD)) + 
+  geom_point() +
+  scale_x_datetime(limits = as.POSIXct(dates_07))+
+  scale_y_continuous(limits = c(-10, 2300))
+
+vpd_08 <- ggplot(data = df, aes(x = TIMESTAMP, y = VPD)) + 
+  geom_point() +
+  scale_x_datetime(limits = as.POSIXct(dates_08))+
+  scale_y_continuous(limits = c(-10, 2300))
+
+rn_07 <- ggplot(data = df, aes(x = TIMESTAMP, y = NETRAD)) + 
+  geom_point() +
+  scale_x_datetime(limits = as.POSIXct(dates_07))+
+  scale_y_continuous(limits = c(-10, 1000))
+
+rn_08 <- ggplot(data = df, aes(x = TIMESTAMP, y = NETRAD)) + 
+  geom_point() +
+  scale_x_datetime(limits = as.POSIXct(dates_08))+
+  scale_y_continuous(limits = c(-10, 1000))
+
+grid.arrange(co2_07, co2_08, vpd_07, vpd_08, rn_07, rn_08, nrow=3, ncol=2)
+
+```
+
+
+## Cumulative Sum
+
+```{r}
+
+ggplot(data = df_2007, aes(x = TIMESTAMP, y = FC_F))+
+  geom_point()+
+  ggtitle("2007")+
+  scale_x_datetime(limits = as.POSIXct(dates_07))
+
+#create new columns with NA's as zeros to sum
+df_2007$FC_F_no_NAs <- ifelse(is.na(df_2007$FC_F), 0, df_2007$FC_F)
+
+
+# this is wrong when compared to figure 2 of paper; why? try 2008 too
+df_2007$cumulative_sum <- cumsum(df_2007$FC_F_no_NAs)
+
+ggplot(data = df_2007, aes(x = TIMESTAMP, y = cumulative_sum))+
+  geom_point()+
+  ggtitle("2007")+
+  scale_x_datetime(limits = as.POSIXct(dates_07))
+
+# this is wrong when compared to figure 2 of paper; why? try 2008 too
+
+
+#create new columns with NA's as zeros to sum
+df_avg$FC_F_no_NAs <- ifelse(is.na(df_avg$FC_F), 0, df_avg$FC_F)
+
+df_avg$cumulative_sum <- cumsum(df_avg$FC_F_no_NAs)
+
+ggplot(data = df_avg, aes(x = day, y = cumulative_sum))+
+  geom_point()+
+  ggtitle("2007")
+
+```
+
+
+# Integral
+
+Gets net emissions from given yr
+
+### 2007
+```{r}
+
+df_avg_2007 = subset(df_avg, format(day, "%Y") == "2007")
+
+df_avg_2007$day_as_POSIXct <- as.POSIXct(df_avg_2007$day)
+
+df_avg_2007$DOY <- as.numeric(format(df_avg_2007$day_as_POSIXct, "%j"))
+
+df_avg_2007 <- subset(df_avg_2007, select = -c(day_as_POSIXct))
+
+df_avg_2007$FC_F_no_NAs <- ifelse(is.na(df_avg_2007$FC_F), 0, df_avg_2007$FC_F)
+
+trapz(df_avg_2007$DOY, df_avg_2007$FC_F_no_NAs)
+
+```
+
+
+
+
+
+### 2008
+```{r}
+
+df_avg_2008 = subset(df_avg, format(day, "%Y") == "2008")
+
+df_avg_2008$day_as_POSIXct <- as.POSIXct(df_avg_2008$day)
+
+df_avg_2008$DOY <- as.numeric(format(df_avg_2008$day_as_POSIXct, "%j"))
+
+df_avg_2008 <- subset(df_avg_2008, select = -c(day_as_POSIXct))
+
+df_avg_2008$FC_F_no_NAs <- ifelse(is.na(df_avg_2008$FC_F), 0, df_avg_2008$FC_F)
+
+trapz(df_avg_2008$DOY, df_avg_2008$FC_F_no_NAs)
+
+```
+
+
+### 2022
+```{r}
+
+df_avg_2022 = subset(df_avg, format(day, "%Y") == "2022")
+
+df_avg_2022$day_as_POSIXct <- as.POSIXct(df_avg_2022$day)
+
+df_avg_2022$DOY <- as.numeric(format(df_avg_2022$day_as_POSIXct, "%j"))
+
+df_avg_2022 <- subset(df_avg_2022, select = -c(day_as_POSIXct))
+
+df_avg_2022$FC_F_no_NAs <- ifelse(is.na(df_avg_2022$FC_F), 0, df_avg_2022$FC_F)
+
+trapz(df_avg_2022$DOY, df_avg_2022$FC_F_no_NAs)
+
+```
+
+
+### 2023
+```{r}
+
+df_avg_2023 = subset(df_avg, format(day, "%Y") == "2023")
+
+df_avg_2023$day_as_POSIXct <- as.POSIXct(df_avg_2023$day)
+
+df_avg_2023$DOY <- as.numeric(format(df_avg_2023$day_as_POSIXct, "%j"))
+
+df_avg_2023 <- subset(df_avg_2023, select = -c(day_as_POSIXct))
+
+df_avg_2023$FC_F_no_NAs <- ifelse(is.na(df_avg_2023$FC_F), 0, df_avg_2023$FC_F)
+
+trapz(df_avg_2023$DOY, df_avg_2023$FC_F_no_NAs)
+
+```
+
 
 
 
