@@ -344,16 +344,14 @@ num_rows_df <- nrow(df)
 
 # Create the new dataframe with the same number of rows as df, removing NA values
 new_data <- data.frame(TS_2_05_1 = seq(min(na.omit(df$TS_2_05_1)), max(na.omit(df$TS_2_05_1)), length.out = num_rows_df))
-new_data$predicted <- exponential_trend(new_data$TS_2_05_1)
-new_data$lower <- new_data$predicted - 1.96 * 0.001482  # Use SE to calculate 95% CI
-new_data$upper <- new_data$predicted + 1.96 * 0.001482
+new_data$predicted <- exponential_trend_5(new_data$TS_2_05_1)
+
 
 ggplot(data = df) +
   theme_bw() +
   geom_point(aes(x = TS_2_05_1, y = FCH4, fill = month), pch = 21, size = 3, alpha = 0.75) +
   geom_hline(yintercept = 0) +
-  geom_ribbon(data = new_data, aes(x = TS_2_05_1, ymin = lower, ymax = upper), alpha = 0.5, fill = "blue") +
-  geom_line(aes(x = TS_2_05_1, y = exponential_trend_5(TS_2_05_1)), color = "black", size = 1.3) +
+  geom_point(aes(x = TS_2_05_1, y = exponential_trend_5(TS_2_05_1)), color = "black", size = 1.3) +
   scale_y_continuous(expression('CH4 Flux (' * n * mol ~ m^-2 ~ s^-1 * ')'),
                      limits = c(-8, 150)) +
   scale_x_continuous(expression('Temperature 5 cm (°C)'),
@@ -370,8 +368,58 @@ ggplot(data = new_data) +
                      limits = range(new_data$TS_2_05_1)) +  # Adjust x-axis limits
   labs(color = 'DOY') +
   theme(legend.position = "none")
+min(df$FCH4,na.rm = TRUE)
+```
+## LM 5 model
+```{r}
+
+# Extract the predicted log10(FCH4 + 5) values from the model
+predicted_FCH4 <- predict(TS5logCH4)
+
+# Exponentiate the predicted log10(FCH4 + 5) values to obtain predicted FCH4 values
+p_FCH4 <- 10^predicted_FCH4 - 5
+
+df$p_FCH4 = p_FCH4
+
+# Plot the predicted FCH4 values against the actual FCH4 values
+plot(p_FCH4, pch = 16, col = "blue", xlab = "Actual FCH4", ylab = "Predicted FCH4", main = "Predicted vs Actual FCH4")
+abline(0, 1, col = "red")  # Add a reference line with slope 1 and intercept 0 for comparison
+
+
+
+# Extract the subset of observations used for fitting the model
+df_subset <- df[!is.na(df$TS_2_05_1), ]
+
+# Predict CH4 values for the subset of observations
+predicted_FCH4_subset <- 10^predict(TS5logCH4, newdata = df_subset) - 5
+
+# Add the predicted CH4 values to your dataframe df_subset
+df_subset$Predicted_CH4 <- predicted_FCH4_subset
+
+# Merge the predicted CH4 values back to the original dataframe df
+df <- merge(df, df_subset[, c("ts", "Predicted_CH4")], by = "ts", all.x = TRUE)
+
+# Check the structure of your dataframe to confirm that the new column has been added
+str(df)
+
+
+plot(df$FCH4,df$Predicted_CH4)
+
+
+ggplot(data = df) +
+  theme_bw() +
+  geom_point(aes(x = ts, y = FCH4, color = "Observed CH4"), alpha = 0.5) +
+  geom_point(aes(x = ts, y = Predicted_CH4, color = "Predicted CH4"), alpha = 0.5) +
+  geom_hline(yintercept = 0) +
+  scale_y_continuous(expression('CH4 Flux (' * n * mol ~ m^-2 ~ s^-1 * ')'), limits = c(-6, 135)) +
+  scale_x_datetime(limits = as.POSIXct(c('2022-08-6', '2023-12-31'))) +
+  labs(color = "CH4 Values") +
+  scale_color_manual(values = c("Observed CH4" = "salmon", "Predicted CH4" = "blue")) +
+  guides(color = guide_legend(title = "CH4 Values"))
 
 ```
+
+
 
 
 ## LM Runs GPP
@@ -383,7 +431,12 @@ summary((GPP_DTCH4))
 #GPP_F (R-squared 0.76) (feels sketch using this bc gap-filled)
 GPP_FCH4 = lm(FCH4~GPP_F,data = df)
 summary((GPP_FCH4))
+
+
+
 ```
+
+
 ## Time lag 
 ```{r}
 #Rain
@@ -434,6 +487,9 @@ ggplot ()+
   ) +
   scale_x_datetime(limits = as.POSIXct(c('2023-10-28', '2023-11-1')))
 ```
+
+
+
 
 # Raster Column 
 format is |Date|SoilT|SoilDepth|
