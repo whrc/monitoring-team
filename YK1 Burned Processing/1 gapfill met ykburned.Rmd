@@ -1,0 +1,254 @@
+---
+title: "Prep for Ameriflux - YK1 Burned"
+author: "Kyle Arndt"
+date: "2024-02-15"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_knit$set(root.dir = 'C:/Users/karndt.WHRC/Desktop/sites/YKD/Ameriflux YK/burned/') #use this to set your directory
+```
+
+Libraries
+```{r}
+rm(list = ls())
+library(data.table)
+library(ggplot2)
+library(zoo)
+Sys.setenv(TZ = "UTC")
+```
+
+Load Data
+```{r}
+c19 = fread(input = "./YKDBurned_Cleaned_Met_Flux_2019_Ameriflux.csv")
+c20 = fread(input = "./YKDBurned_Cleaned_Met_Flux_2020_Ameriflux.csv")
+c21 = fread(input = "./YKDBurned_Cleaned_Met_Flux_2021_Ameriflux.csv")
+c22 = fread(input = "./YKDBurned_Cleaned_Met_Flux_2022_Ameriflux.csv")
+
+df = rbind(c19,c20,c21,c22,fill=T)
+
+#check timestamp
+ggplot(data = df)+
+  geom_point(aes(ts,SWIN_1_1_1))+
+  scale_x_datetime(limits = as.POSIXct(c("2022-07-01","2022-07-03")))
+
+#remove duplicated timestamp rows
+df = df[!duplicated(df$ts),]
+```
+
+
+gap fill short gaps in the met data first
+```{r}
+gap = 3
+
+#energy fluxes ###########################
+df$SHF_1_1_1.c = na.spline(df$SHF_1_1_1.c,maxgap = gap)
+df$SHF_2_1_1.c = na.spline(df$SHF_2_1_1.c,maxgap = gap)
+df$SHF_3_1_1.c = na.spline(df$SHF_3_1_1.c,maxgap = gap)
+
+#meteorology and weather #################################
+df$TA_1_1_1.c  = na.spline(df$TA_1_1_1.c-273.15,maxgap = gap)
+df$RH_1_1_1.c  = na.spline(df$RH_1_1_1.c,maxgap = gap)
+
+#Radiation #####################################
+df$LWIN_1_1_1.c  = na.spline(df$LWIN_1_1_1.c,maxgap = gap)
+df$LWOUT_1_1_1.c = na.spline(df$LWOUT_1_1_1.c,maxgap = gap)
+df$SWIN_1_1_1.c  = na.spline(df$SWIN_1_1_1.c,maxgap = gap)
+df$SWOUT_1_1_1.c = na.spline(df$SWOUT_1_1_1.c,maxgap = gap)
+
+df$RN_1_1_1.c = na.spline(df$RN_1_1_1.c,maxgap = gap)
+
+df$PPFD_1_1_1.c = na.spline(df$PPFD_1_1_1.c,maxgap = gap)
+
+df$ALB_1_1_1.c = na.spline(df$ALB_1_1_1.c,maxgap = gap)
+
+#Soil factors ###################################
+#all swc in %
+df$SWC_1_1_1.c = na.spline(df$SWC_1_1_1.c*100,maxgap = gap)
+df$SWC_2_1_1.c = na.spline(df$SWC_2_1_1.c*100,maxgap = gap)
+df$SWC_3_1_1.c = na.spline(df$SWC_3_1_1.c*100,maxgap = gap)
+
+#all soil temps deg C
+df$TS_1_1_1.c = na.spline(df$TS_1_1_1.c-273.15,maxgap = gap)
+df$TS_2_1_1.c = na.spline(df$TS_2_1_1.c-273.15,maxgap = gap)
+df$TS_3_1_1.c = na.spline(df$TS_3_1_1.c-273.15,maxgap = gap)
+```
+
+
+Filter out Known CO2 issue
+```{r}
+ggplot(data = df)+
+  geom_point(aes(ts,co2_flux.c))
+
+ggplot(data = df)+
+  geom_point(aes(ts,co2_flux.c))+
+  scale_x_datetime(limits = as.POSIXct(c("2021-10-1","2021-12-1")))
+
+df$co2_flux.c = ifelse(df$ts > as.POSIXct("2021-11-15") & df$ts < as.POSIXct("2021-11-30"),NA,df$co2_flux.c)
+
+ggplot(data = df)+
+  geom_point(aes(ts,co2_flux.c))
+
+ggplot(data = df)+
+  geom_point(aes(ts,co2_flux.c))+
+  scale_x_datetime(limits = as.POSIXct(c("2021-10-1","2021-12-1")))
+```
+
+
+
+```{r}
+write.csv(x = df,file = "./ykd_burned_2019_2022.csv",row.names = F)
+```
+
+Add ERA5 data
+```{r}
+era = fread('./era5_ykd_burned.csv')
+
+df$date = df$ts
+
+#merge together
+all = merge(era,df,by = 'date',all = T)
+all = all[!duplicated(all$date),]
+```
+
+
+RH
+```{r}
+rh.mod = lm(formula = all$RH_1_1_1.c ~ all$rh)
+summary(rh.mod)
+
+all$rh.eramod = all$rh*rh.mod$coefficients[2] + rh.mod$coefficients[1]   
+
+ggplot(data = all)+
+  geom_point(aes(date,rh,col='ERA5'))+
+  geom_point(aes(date,RH_1_1_1.c,col='Site'))
+
+ggplot(data = all,aes(rh,RH_1_1_1.c))+
+  geom_point()+
+  geom_smooth(method = 'lm')+
+  geom_abline(slope = 1,intercept = 0,col='red',lty=2)
+```
+
+
+#AirT
+```{r}
+ggplot(data = all)+
+  geom_point(aes(date,airt,col='ERA5'))+
+  geom_point(aes(date,all$TA_1_1_1.c,col='Site'))
+
+airt.mod = lm(formula = all$TA_1_1_1.c ~ all$airt)
+summary(airt.mod)
+
+all$airt.eramod = all$airt*airt.mod$coefficients[2] + airt.mod$coefficients[1]     
+
+ggplot(data = all,aes(airt,TA_1_1_1.c))+theme_bw()+
+  geom_point()+
+  geom_smooth(method = 'lm')+
+  geom_abline(slope = 1,intercept = 0,col='red',lty=2)
+```
+
+
+#SoilT
+```{r}
+ggplot(data = all)+
+  geom_point(aes(date,st1,col='ERA5.1'))+
+  geom_point(aes(date,st2,col='ERA5.2'))+
+  geom_point(aes(date,all$TS_1_1_1.c,col='Site1'))+
+  geom_point(aes(date,all$TS_2_1_1.c,col='Site2'))+
+  geom_point(aes(date,all$TS_3_1_1.c,col='Site3'))
+
+soilt.mod = lm(formula = all$TS_2_1_1.c ~ all$st2)
+all$tsoil.eramod = all$st2*soilt.mod$coefficients[2] + soilt.mod$coefficients[1]           
+
+ggplot(data = all)+
+  geom_point(aes(date,st2,col='ERA5'))+
+  geom_point(aes(date,TS_2_1_1.c,col='Site'))+
+  geom_point(aes(date,tsoil.eramod,col='Lin. Reg.'))
+```
+
+
+#Rg
+```{r}
+ggplot(data = all)+
+  geom_point(aes(date,rad,col='ERA5'))+
+  geom_point(aes(date,all$SWIN_1_1_1.c,col='Site'))
+
+ggplot(data = all)+
+  geom_point(aes(date,rad,col='ERA5'))+
+  geom_point(aes(date,SWIN_1_1_1.c,col='Site'))+
+  scale_x_datetime(limits = as.POSIXct(c('2020-06-20','2020-07-1')))
+
+rad.mod = lm(formula = all$SWIN_1_1_1.c ~ all$rad)
+summary(rad.mod)
+
+all$rad.eramod = all$rad*rad.mod$coefficients[2] + rad.mod$coefficients[1]   
+
+ggplot(data = all,aes(rad,SWIN_1_1_1.c))+theme_bw()+
+  geom_point()+
+  geom_smooth(method = 'lm')+
+  geom_abline(slope = 1,intercept = 0,col='red',lty=2)
+```
+
+#ws
+```{r}
+ggplot(data = all)+
+  geom_point(aes(date,ws,col='ERA5'))+
+  geom_point(aes(date,all$wind_speed,col='Site'))
+
+ws.mod = lm(formula = all$wind_speed ~ all$ws)
+summary(ws.mod)
+
+all$ws.eramod = all$ws*ws.mod$coefficients[2] + ws.mod$coefficients[1]    
+
+ggplot(data = all,aes(ws,wind_speed))+theme_bw()+
+  geom_point()+
+  geom_smooth(method = 'lm')+
+  geom_abline(slope = 1,intercept = 0,col='red',lty=2)
+```
+
+```{r}
+ggplot(data = all)+
+  geom_point(aes(date,le,col='ERA5'))+
+  geom_point(aes(date,LE.c,col='Site'))
+
+le.mod = lm(formula = all$LE.c ~ all$le)
+summary(le.mod)
+
+all$le.eramod = all$le*le.mod$coefficients[2] + le.mod$coefficients[1]    
+
+ggplot(data = all,aes(le,LE.c))+theme_bw()+
+  geom_point()+
+  geom_smooth(method = 'lm')+
+  geom_abline(slope = 1,intercept = 0,col='red',lty=2)
+```
+
+```{r}
+ggplot(data = all)+
+  geom_point(aes(date,h,col='ERA5'))+
+  geom_point(aes(date,H.c,col='Site'))
+
+h.mod = lm(formula = all$H.c ~ all$h)
+summary(h.mod)
+
+all$h.eramod = all$h*h.mod$coefficients[2] + h.mod$coefficients[1]    
+
+ggplot(data = all,aes(h,H.c))+theme_bw()+
+  geom_point()+
+  geom_smooth(method = 'lm')+
+  geom_abline(slope = 1,intercept = 0,col='red',lty=2)
+```
+
+
+#reduce down to churchill size and add to final data set
+```{r}
+eras = all[,c('date','rh.eramod','airt.eramod','ws.eramod','rad.eramod','tsoil.eramod','le.eramod','h.eramod')]
+
+df = df[!duplicated(df$date),]
+df = merge(df,eras,by = 'date',all.x = T)
+
+write.csv(x = df,file = './ykd_burned_2019_2022_era.csv',row.names = F,quote = F)
+```
+
+
+
