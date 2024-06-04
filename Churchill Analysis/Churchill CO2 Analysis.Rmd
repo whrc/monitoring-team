@@ -370,7 +370,8 @@ trapz(df_avg_2007$DOY, df_avg_2007$FC_F_no_NAs)
 ggplot(data = df_avg_2007, aes(x=DOY, y=cumulative))+
   geom_point()+
   scale_x_continuous(lim = c(160, 290))+
-  geom_hline(yintercept=0, col="blue")
+  geom_hline(yintercept=0, col="blue")+
+  scale_y_continuous(expression('Cumulative NEE ('*m*mol~m^-2~s^-1*')'))
 
 ```
 
@@ -392,7 +393,8 @@ trapz(df_avg_2008$DOY, df_avg_2008$FC_F_no_NAs)
 ggplot(data = df_avg_2008, aes(x=DOY, y=cumulative))+
   geom_point()+
   scale_x_continuous(lim = c(160, 290))+
-  geom_hline(yintercept=0, col="blue")
+  geom_hline(yintercept=0, col="blue")+
+  scale_y_continuous(expression('Cumulative NEE ('*m*mol~m^-2~s^-1*')'))
 
 ```
 
@@ -415,7 +417,8 @@ trapz(df_avg_2022$DOY, df_avg_2022$FC_F_no_NAs)
 ggplot(data = df_avg_2022, aes(x=DOY, y=cumulative))+
   geom_point()+
   scale_x_continuous(lim = c(160, 290))+
-  geom_hline(yintercept=0, col="blue")
+  geom_hline(yintercept=0, col="blue")+
+  scale_y_continuous(expression('Cumulative NEE ('*m*mol~m^-2~s^-1*')'))
 
 ```
 
@@ -437,8 +440,39 @@ trapz(df_avg_2023$DOY, df_avg_2023$FC_F_no_NAs)
 ggplot(data = df_avg_2023, aes(x=DOY, y=cumulative))+
   geom_point()+
   scale_x_continuous(lim = c(160, 290))+
-  geom_hline(yintercept=0, col="blue")
+  geom_hline(yintercept=0, col="blue")+
+  scale_y_continuous(expression('Cumulative NEE ('*m*mol~m^-2~s^-1*')'))
 
 ```
 
+
+# GPP & ER
+
+```{r}
+
+ggplot(data = df_avg_2007, aes(x=DOY))+
+  geom_point(aes(y = GPP_F, color = "GPP")) +
+  geom_point(aes(y = RECO, color = "ER")) +
+  geom_hline(yintercept=0, col="black")+
+  scale_y_continuous(expression('CO'[2] * '('*m*mol~m^-2~s^-1*')'))+ labs(title = "2007 GPP & ER")
+
+ggplot(data = df_avg_2008, aes(x=DOY))+
+  geom_point(aes(y = GPP_F, color = "GPP")) +
+  geom_point(aes(y = RECO, color = "ER")) +
+  geom_hline(yintercept=0, col="black")+
+  scale_y_continuous(expression('CO'[2] * '('*m*mol~m^-2~s^-1*')'))+ labs(title = "2008 GPP & ER")
+
+ggplot(data = df_avg_2022, aes(x=DOY))+
+  geom_point(aes(y = GPP_F, color = "GPP")) +
+  geom_point(aes(y = RECO, color = "ER")) +
+  geom_hline(yintercept=0, col="black")+
+  scale_y_continuous(expression('CO'[2] * '('*m*mol~m^-2~s^-1*')'))+ labs(title = "2022 GPP & ER")
+
+ggplot(data = df_avg_2023, aes(x=DOY))+
+  geom_point(aes(y = GPP_F, color = "GPP")) +
+  geom_point(aes(y = RECO, color = "ER")) +
+  geom_hline(yintercept=0, col="black")+
+  scale_y_continuous(expression('CO'[2] * '('*m*mol~m^-2~s^-1*')'))+ labs(title = "2023 GPP & ER")
+
+```
 
