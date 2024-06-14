@@ -20,6 +20,7 @@ library(stringr)
 library(plyr)
 library(dplyr)
 library(lubridate)
+library(tidyverse)
 library(RColorBrewer)
 library(tidyr)
 ```
@@ -200,298 +201,12 @@ df$DOY = yday(df$date)
 df$DOY <- as.numeric(df$DOY)
 
 df$month = as.numeric(format(df$ts,'%m'))
-```
-# Graphs
-## multi-year annual plot (rough)
-```{r,warning = FALSE}
-
-ggplot(data = avg)+theme_bw()+
-  geom_point(aes(DOY,FCH4,color = year))+
-  geom_hline(yintercept = 0)+
-  scale_x_continuous(limits = c(110,340))+
-  scale_y_continuous (expression('CH4 Flux ('*n*mol~m^-2~s^-1*')'),
-                      limits = c(-10,150))+
-  labs(color='Year')
-```
-# 
-```{r}
-
-ggplot(data = df)+theme_bw()+
-  geom_point(aes(date,FCH4))+
-  geom_line(aes(x = ts, y = TS_2_05_1*4), color = 'blue') + 
-  geom_hline(yintercept = 0)+
-  scale_y_continuous (expression('CH4 Flux ('*n*mol~m^-2~s^-1*')'),
-                      limits = c(-30,140),
-  sec.axis = sec_axis(~./4, name = "Soil Temperature 10cm (°C)")
-  ) 
 
 
 ```
 
 
-
-
-
-
-## 5,10 cm Hysteresis 
-### Blue
-```{r}
-
-ggplot(data = df)+theme_bw()+
-  geom_point(aes(x = TS_2_1_1, y = FCH4, fill = DOY),pch=21,size = 3,alpha=0.75) +
-  geom_hline(yintercept = 0) +
-  scale_y_continuous(expression('CH4 Flux (' * n * mol ~ m^-2 ~ s^-1 * ')'),
-                     limits = c(-10, 150)) +
-  scale_x_continuous(expression('Temperature 10 cm(°C)'),
-                     limits = c(-15,17))+
-  labs(color = 'DOY')+
-#  scale_fill_brewer(palette = 'YlOrRd')
-  scale_fill_gradientn(colours = brewer.pal(9,'GnBu'))
-
-
-ggplot(data = df)+theme_bw()+
-  geom_point(aes(x = TS_2_05_1, y = FCH4, fill = DOY),pch=21,size = 3,alpha=0.75) +
-  geom_hline(yintercept = 0) +
-  scale_y_continuous(expression('CH4 Flux (' * n * mol ~ m^-2 ~ s^-1 * ')'),
-                     limits = c(-10, 150)) +
-  scale_x_continuous(expression('Temperature 5 cm(°C)'),
-                     limits = c(-15,18))+
-  labs(color = 'DOY')+
-#  scale_fill_brewer(palette = 'YlOrRd')
-  scale_fill_gradientn(colours = brewer.pal(9,'GnBu'))
-```
-### Red
-```{r}
-ggplot(data = df)+theme_bw()+
-  geom_point(aes(x = TS_2_1_1, y = FCH4, fill = month),pch=21,size = 3,alpha=0.75) +
-  geom_hline(yintercept = 0) +
-  scale_y_continuous(expression('CH4 Flux (' * n * mol ~ m^-2 ~ s^-1 * ')'),
-                     limits = c(-30, 150)) +
-  scale_x_continuous(expression('Temperature 10cm(°C)'),
-                     limits = c(-15,15))+
-  labs(color = 'DOY')+
-#  scale_fill_brewer(palette = 'YlOrRd')
-  scale_fill_gradientn(colours = brewer.pal(9,'Reds'))
-
-```
-## Soil T CH4 Timeseries
-```{r}
-
-
-ggplot(data = df) +
-  theme_bw() +
-  geom_point(aes(x = ts, y = FCH4), color = 'salmon') +
-  geom_line(aes(x = ts, y = TS_2_05_1*4), color = 'blue') +  
-  geom_hline(yintercept = 0) +
-  scale_y_continuous(
-    name = expression('CH4 Flux (' * n * mol ~ m^-2 ~ s^-1 * ')'),
-    limits = c(-20, 95),
-    sec.axis = sec_axis(~./4, name = "Soil Temperature 5cm (°C)")
-  ) +
-  scale_x_datetime(limits = as.POSIXct(c('2023-04-16', '2023-12-23')))
-
-
-ggplot(data = df) +
-  theme_bw() +
-  geom_point(aes(x = ts, y = FCH4), color = 'salmon') +
-  #geom_line(aes(x = ts, y = TS_2_05_1*4), color = 'blue') +  
-  geom_hline(yintercept = 0) +
-  scale_y_continuous(
-    name = expression('CH4 Flux (' * n * mol ~ m^-2 ~ s^-1 * ')'),
-    limits = c(-20, 95),
-    #sec.axis = sec_axis(~./4, name = "Soil Temperature 10cm (°C)")
-  ) +
-  scale_x_datetime(limits = as.POSIXct(c('2023-04-16', '2023-12-23')))
-
-ggplot(data = CF3) +
-  theme_bw() +
-  geom_point(aes(x = ts, y = FCH4), color = 'salmon') +
-  #geom_line(aes(x = ts, y = TS_2_05_1*4), color = 'blue') +  
-  geom_hline(yintercept = 0) +
-  scale_y_continuous(
-    name = expression('CH4 Flux (' * n * mol ~ m^-2 ~ s^-1 * ')'),
-    limits = c(-50, 95),
-    sec.axis = sec_axis(~./4, name = "Soil Temperature 10cm (°C)")
-  ) +
-  scale_x_datetime(limits = as.POSIXct(c('2023-09-16', '2023-12-23')))
-```
-# Model Runs
-## LM Runs 0, 5, 10 cm
-```{r}
-#0 cm (R-squared 0.73)
-TS0logCH4 = lm(log10(FCH4+5)~TS_1_0_1,data = df)
-summary((TS0logCH4))
-
-
-#5cm (R-squared 0.76)
-TS5logCH4 = lm(log10(FCH4+5)~TS_2_05_1,data = df)
-summary((TS5logCH4))
-
-#5cm (R-squared 0.72)
-TS10logCH4 = lm(log10(FCH4+5)~TS_2_1_1,data = df)
-summary((TS10logCH4))
-
-```
-## Trendline 5 cm
-```{r}
-# Define the exponential trend function
-exponential_trend_5 <- function(x) {
-  10^(1.155294 + 0.050221 * x) - 5
-}
-
-# Determine the number of rows in your original dataframe df
-num_rows_df <- nrow(df)
-
-# Create the new dataframe with the same number of rows as df, removing NA values
-new_data <- data.frame(TS_2_05_1 = seq(min(na.omit(df$TS_2_05_1)), max(na.omit(df$TS_2_05_1)), length.out = num_rows_df))
-new_data$predicted <- exponential_trend_5(new_data$TS_2_05_1)
-
-
-ggplot(data = df) +
-  theme_bw() +
-  geom_point(aes(x = TS_2_05_1, y = FCH4, fill = month), pch = 21, size = 3, alpha = 0.75) +
-  geom_hline(yintercept = 0) +
-  geom_point(aes(x = TS_2_05_1, y = exponential_trend_5(TS_2_05_1)), color = "black", size = 1.3) +
-  scale_y_continuous(expression('CH4 Flux (' * n * mol ~ m^-2 ~ s^-1 * ')'),
-                     limits = c(-8, 150)) +
-  scale_x_continuous(expression('Temperature 5 cm (°C)'),
-                     limits = c(-15, 20)) +
-  labs(color = 'DOY') +
-  scale_fill_gradientn(colours = brewer.pal(9, 'Reds'))
-
-ggplot(data = new_data) +
-  theme_bw() +
-  geom_line(aes(x = TS_2_05_1), alpha = 0.5, fill = "blue") +
-  scale_y_continuous(expression('CH4 Flux (' * n * mol ~ m^-2 ~ s^-1 * ')'),
-                     limits = c(-8, 150)) +
-  scale_x_continuous(expression('Temperature 5 cm (°C)'),
-                     limits = range(new_data$TS_2_05_1)) +  # Adjust x-axis limits
-  labs(color = 'DOY') +
-  theme(legend.position = "none")
-min(df$FCH4,na.rm = TRUE)
-```
-## LM 5 model
-```{r}
-
-# Extract the predicted log10(FCH4 + 5) values from the model
-predicted_FCH4 <- predict(TS5logCH4)
-
-# Exponentiate the predicted log10(FCH4 + 5) values to obtain predicted FCH4 values
-p_FCH4 <- 10^predicted_FCH4 - 5
-
-df$p_FCH4 = p_FCH4
-
-# Plot the predicted FCH4 values against the actual FCH4 values
-plot(p_FCH4, pch = 16, col = "blue", xlab = "Actual FCH4", ylab = "Predicted FCH4", main = "Predicted vs Actual FCH4")
-abline(0, 1, col = "red")  # Add a reference line with slope 1 and intercept 0 for comparison
-
-
-
-# Extract the subset of observations used for fitting the model
-df_subset <- df[!is.na(df$TS_2_05_1), ]
-
-# Predict CH4 values for the subset of observations
-predicted_FCH4_subset <- 10^predict(TS5logCH4, newdata = df_subset) - 5
-
-# Add the predicted CH4 values to your dataframe df_subset
-df_subset$Predicted_CH4 <- predicted_FCH4_subset
-
-# Merge the predicted CH4 values back to the original dataframe df
-df <- merge(df, df_subset[, c("ts", "Predicted_CH4")], by = "ts", all.x = TRUE)
-
-# Check the structure of your dataframe to confirm that the new column has been added
-str(df)
-
-
-plot(df$FCH4,df$Predicted_CH4)
-
-
-ggplot(data = df) +
-  theme_bw() +
-  geom_point(aes(x = ts, y = FCH4, color = "Observed CH4"), alpha = 0.5) +
-  geom_point(aes(x = ts, y = Predicted_CH4, color = "Predicted CH4"), alpha = 0.5) +
-  geom_hline(yintercept = 0) +
-  scale_y_continuous(expression('CH4 Flux (' * n * mol ~ m^-2 ~ s^-1 * ')'), limits = c(-6, 135)) +
-  scale_x_datetime(limits = as.POSIXct(c('2022-08-6', '2023-12-31'))) +
-  labs(color = "CH4 Values") +
-  scale_color_manual(values = c("Observed CH4" = "salmon", "Predicted CH4" = "blue")) +
-  guides(color = guide_legend(title = "CH4 Values"))
-
-```
-
-
-
-
-## LM Runs GPP
-```{r}
-#GPP_DT (R-squared 0.66)
-GPP_DTCH4 = lm(FCH4~GPP_DT,data = df)
-summary((GPP_DTCH4))
-
-#GPP_F (R-squared 0.76) (feels sketch using this bc gap-filled)
-GPP_FCH4 = lm(FCH4~GPP_F,data = df)
-summary((GPP_FCH4))
-
-
-
-```
-
-
-## Time lag 
-```{r}
-#Rain
-ccf(df$P,df$FCH4, na.action = na.pass)
-#Soil T
-ccf(df$TS_2_05_1,df$FCH4, na.action = na.pass)
-#VWC
-ccf(df$SWC_2_1_1,df$FCH4, na.action = na.pass)
-#GPP
-ccf(df$GPP_F,df$FCH4, na.action = na.pass)
-
-
-
-```
-
-## Seasons breakdown
-```{r}
-ggplot(data = df) +
-  theme_bw() +
-  geom_point(aes(x = ts, y = PPFD_IN), color = 'salmon') +
-  geom_point(aes(x = ts, y = PPFD_OUT), color = 'blue') +
-  geom_hline(yintercept = 0) +
-  scale_y_continuous(
-    name = expression('PPFD (' * PAR * ')'),
-    limits = c(-20, 795),
-    #sec.axis = sec_axis(~./4, name = "Soil Temperature 10cm (°C)")
-  ) +
-  scale_x_datetime(limits = as.POSIXct(c('2022-08-6', '2023-12-31')))
-
-albedo = df$PPFD_OUT/df$PPFD_IN
-
-plot(df$ts,albedo)
-ALB = albedo
-ALB = ifelse(albedo > 1 ,NA,ALB)
-plot(ALB)
-
-ts = df$ts
-
-ggplot ()+
-  theme_bw() +
-  geom_point(aes(x = ts, y = albedo), color = 'red') +
-  geom_point(aes(x = ts, y = ALB), color = 'black') +
-  geom_hline(yintercept = 0) +
-  scale_y_continuous(
-    name = expression('ALBEDO (' * PAR * ')'),
-    limits = c(-.1, 1.25),
-    #sec.axis = sec_axis(~./4, name = "Soil Temperature 10cm (°C)")
-  ) +
-  scale_x_datetime(limits = as.POSIXct(c('2023-10-28', '2023-11-1')))
-```
-
-
-
-
-# Raster Column 
+# Raster Column (Not going to work right now because I removed the date column)
 format is |Date|SoilT|SoilDepth|
 ```{r}
 
@@ -538,6 +253,515 @@ ggplot(ras, aes(x = date, y = SoilDepth, fill = SoilTemperature)) +
   scale_y_reverse() +  # Invert the y-axis
   theme_minimal()
   
+```
+removing date bc of conflict with ts column 
+```{r}
+
+df <- df %>% select(-date)
+```
+# Graphs
+## multi-year annual plot (rough)
+```{r,warning = FALSE}
+
+ggplot(data = avg)+theme_bw()+
+  geom_point(aes(DOY,FCH4,color = year))+
+  geom_hline(yintercept = 0)+
+  scale_x_continuous(limits = c(110,340))+
+  scale_y_continuous (expression('CH4 Flux ('*n*mol~m^-2~s^-1*')'),
+                      limits = c(-10,150))+
+  labs(color='Year')
+```
+# Met Timeseries
+```{r}
+#Soil T
+ggplot(data = df)+theme_bw()+
+  geom_point(aes(ts,FCH4))+
+  geom_line(aes(x = ts, y = TS_2_05_1*4), color = 'blue') + 
+  geom_hline(yintercept = 0)+
+  scale_y_continuous (expression('CH4 Flux ('*n*mol~m^-2~s^-1*')'),
+                      limits = c(-30,140),
+  sec.axis = sec_axis(~./4, name = "Soil Temperature 10cm (°C)")
+  ) 
+#SWC
+ggplot(data = df)+theme_bw()+
+  geom_point(aes(ts,FCH4))+
+  geom_line(aes(x = ts, y = SWC_2_1_1), color = 'blue') + 
+  geom_hline(yintercept = 0)+
+  scale_y_continuous (expression('CH4 Flux ('*n*mol~m^-2~s^-1*')'),
+                      limits = c(-30,140),
+  sec.axis = sec_axis(~., name = "Soil Temperature 10cm (°C)")
+  ) 
+#Rain
+ggplot(data = df)+theme_bw()+
+  geom_point(aes(ts,FCH4))+
+  geom_line(aes(x = ts, y = P*48*2), color = 'blue') + 
+  geom_hline(yintercept = 0)+
+  scale_y_continuous (expression('CH4 Flux ('*n*mol~m^-2~s^-1*')'),
+                      limits = c(-30,140),
+  sec.axis = sec_axis(~./2, name = "Precip (mm)")
+  )
+```
+
+## Soil T CH4 Timeseries
+```{r}
+
+
+ggplot(data = df) +
+  theme_bw() +
+  geom_point(aes(x = ts, y = FCH4), color = 'salmon') +
+  geom_line(aes(x = ts, y = TS_2_05_1*4), color = 'blue') +  
+  geom_hline(yintercept = 0) +
+  scale_y_continuous(
+    name = expression('CH4 Flux (' * n * mol ~ m^-2 ~ s^-1 * ')'),
+    limits = c(-20, 95),
+    sec.axis = sec_axis(~./4, name = "Soil Temperature 5cm (°C)")
+  ) +
+  scale_x_datetime(limits = as.POSIXct(c('2023-04-16', '2023-12-23')))
+
+
+ggplot(data = df) +
+  theme_bw() +
+  geom_point(aes(x = ts, y = FCH4), color = 'salmon') +
+  #geom_line(aes(x = ts, y = TS_2_05_1*4), color = 'blue') +  
+  geom_hline(yintercept = 0) +
+  scale_y_continuous(
+    name = expression('CH4 Flux (' * n * mol ~ m^-2 ~ s^-1 * ')'),
+    limits = c(-20, 95),
+    #sec.axis = sec_axis(~./4, name = "Soil Temperature 10cm (°C)")
+  ) +
+  scale_x_datetime(limits = as.POSIXct(c('2023-04-16', '2023-12-23')))
+
+ggplot(data = CF3) +
+  theme_bw() +
+  geom_point(aes(x = ts, y = FCH4), color = 'salmon') +
+  #geom_line(aes(x = ts, y = TS_2_05_1*4), color = 'blue') +  
+  geom_hline(yintercept = 0) +
+  scale_y_continuous(
+    name = expression('CH4 Flux (' * n * mol ~ m^-2 ~ s^-1 * ')'),
+    limits = c(-50, 95),
+    sec.axis = sec_axis(~./4, name = "Soil Temperature 10cm (°C)")
+  ) +
+  scale_x_datetime(limits = as.POSIXct(c('2023-09-16', '2023-12-23')))
+```
+
+## 5,10 cm Hysteresis 
+### Blue
+```{r}
+
+ggplot(data = df)+theme_bw()+
+  geom_point(aes(x = TS_2_1_1, y = FCH4, fill = DOY),pch=21,size = 3,alpha=0.75) +
+  geom_hline(yintercept = 0) +
+  scale_y_continuous(expression('CH4 Flux (' * n * mol ~ m^-2 ~ s^-1 * ')'),
+                     limits = c(-10, 150)) +
+  scale_x_continuous(expression('Temperature 10 cm(°C)'),
+                     limits = c(-15,17))+
+  labs(color = 'DOY')+
+#  scale_fill_brewer(palette = 'YlOrRd')
+  scale_fill_gradientn(colours = brewer.pal(9,'GnBu'))
+
+
+ggplot(data = df)+theme_bw()+
+  geom_point(aes(x = TS_2_05_1, y = FCH4, fill = DOY),pch=21,size = 3,alpha=0.75) +
+  geom_hline(yintercept = 0) +
+  scale_y_continuous(expression('CH4 Flux (' * n * mol ~ m^-2 ~ s^-1 * ')'),
+                     limits = c(-10, 150)) +
+  scale_x_continuous(expression('Temperature 5 cm(°C)'),
+                     limits = c(-15,18))+
+  labs(color = 'DOY')+
+#  scale_fill_brewer(palette = 'YlOrRd')
+  scale_fill_gradientn(colours = brewer.pal(9,'GnBu'))
+```
+
+# Model Runs
+## LM Runs 0, 5, 10 cm
+```{r}
+#0 cm (R-squared 0.73)
+TS0logCH4 = lm(log10(FCH4+5)~TS_1_0_1,data = df)
+summary((TS0logCH4))
+
+
+#5cm (R-squared 0.76)
+TS5logCH4 = lm(log10(FCH4+5)~TS_2_05_1,data = df)
+summary((TS5logCH4))
+
+#5cm (R-squared 0.72)
+TS10logCH4 = lm(log10(FCH4+5)~TS_2_1_1,data = df)
+summary((TS10logCH4))
+
+```
+## Trendline 5 cm
+```{r}
+# Define the exponential trend function
+exponential_trend_5 <- function(x) {
+  10^(1.155294 + 0.050221 * x) - 5
+}
+
+# Determine the number of rows in your original dataframe df
+num_rows_df <- nrow(df)
+
+# Create the new dataframe with the same number of rows as df, removing NA values
+new_data <- data.frame(TS_2_05_1 = seq(min(na.omit(df$TS_2_05_1)), max(na.omit(df$TS_2_05_1)), length.out = num_rows_df))
+new_data$predicted <- exponential_trend_5(new_data$TS_2_05_1)
+
+
+ggplot(data = df) +
+  theme_bw() +
+  geom_point(aes(x = TS_2_05_1, y = FCH4, fill = month), pch = 21, size = 3, alpha = 0.75) +
+  geom_hline(yintercept = 0) +
+  geom_line(aes(x = TS_2_05_1, y = exponential_trend_5(TS_2_05_1)), color = "black", size = 1.3) +
+  scale_y_continuous(expression('CH4 Flux (' * n * mol ~ m^-2 ~ s^-1 * ')'),
+                     limits = c(-8, 150)) +
+  scale_x_continuous(expression('Temperature 5 cm (°C)'),
+                     limits = c(-15, 20)) +
+  labs(color = 'DOY') +
+  scale_fill_gradientn(colours = brewer.pal(9, 'Reds'))
+
+ggplot(data = new_data) +
+  theme_bw() +
+  geom_line(aes(x = TS_2_05_1, y = predicted), alpha = 0.5, fill = "blue") +
+  scale_y_continuous(expression('CH4 Flux (' * n * mol ~ m^-2 ~ s^-1 * ')'),
+                     limits = c(-8, 150)) +
+  scale_x_continuous(expression('Temperature 5 cm (°C)'),
+                     limits = range(new_data$TS_2_05_1)) +  # Adjust x-axis limits
+  labs(color = 'DOY') +
+  theme(legend.position = "none")
+min(df$FCH4,na.rm = TRUE)
+```
+## Trendline 0 cm
+```{r}
+# Define the exponential trend function
+exponential_trend_0 <- function(x) {
+  10^(1.20111 + 0.04328664 * x) - 5
+}
+
+# Determine the number of rows in your original dataframe df
+num_rows_df <- nrow(df)
+
+# Create the new dataframe with the same number of rows as df, removing NA values
+new_data <- data.frame(TS_1_0_1 = seq(min(na.omit(df$TS_1_0_1)), max(na.omit(df$TS_1_0_1)), length.out = num_rows_df))
+new_data$predicted <- exponential_trend_0(new_data$TS_1_0_1)
+
+
+```
+
+## LM 0 model
+```{r}
+# Extract the predicted log10(FCH4 + 5) values from the model
+predicted_FCH4_0 <- predict(TS0logCH4)
+
+# Exponentiate the predicted log10(FCH4 + 5) values to obtain predicted FCH4 values
+p_FCH4_0 <- 10^predicted_FCH4_0 - 5
+
+# Plot the predicted FCH4 values against the actual FCH4 values
+plot(p_FCH4_0,pch = 16, col = "blue", xlab = "Actual FCH4", ylab = "Predicted FCH4", main = "Predicted vs Actual FCH4")
+```
+
+## LM 5 model
+```{r, warning=FALSE}
+
+# Extract the predicted log10(FCH4 + 5) values from the model
+predicted_FCH4 <- predict(TS5logCH4)
+
+# Exponentiate the predicted log10(FCH4 + 5) values to obtain predicted FCH4 values
+p_FCH4 <- 10^predicted_FCH4 - 5
+
+# Plot the predicted FCH4 values against the actual FCH4 values
+plot(p_FCH4, pch = 16, col = "blue", xlab = "Actual FCH4", ylab = "Predicted FCH4", main = "Predicted vs Actual FCH4")
+
+
+
+
+# Extract the subset of observations used for fitting the model
+df_subset <- df[!is.na(df$TS_2_05_1), ]
+
+# Predict CH4 values for the subset of observations
+predicted_FCH4_subset <- 10^predict(TS5logCH4, newdata = df_subset) - 5
+
+# Add the predicted CH4 values to your dataframe df_subset
+df_subset$Predicted_CH4 <- predicted_FCH4_subset
+
+# Merge the predicted CH4 values back to the original dataframe df
+df <- merge(df, df_subset[, c("ts", "Predicted_CH4")], by = "ts", all.x = TRUE)
+
+# Check the structure of your dataframe to confirm that the new column has been added
+str(df)
+
+
+plot(df$FCH4,df$Predicted_CH4)
+
+
+ggplot(data = df) +
+  theme_bw() +
+  geom_point(aes(x = ts, y = FCH4, color = "Observed CH4"), alpha = 0.5) +
+  geom_smooth(aes(x = ts, y = FCH4, color = "Observed CH4"), method = 'loess',span = 0.25)+
+  geom_point(aes(x = ts, y = Predicted_CH4, color = "Predicted CH4"), alpha = 0.5) +
+  geom_smooth(aes(x = ts, y = Predicted_CH4, color = "Predicted CH4"), method = 'loess',span = 0.25)+
+  geom_hline(yintercept = 0) +
+  scale_y_continuous(expression('CH4 Flux (' * n * mol ~ m^-2 ~ s^-1 * ')'), limits = c(-6, 135)) +
+  scale_x_datetime(limits = as.POSIXct(c('2022-08-6', '2023-12-31'))) +
+  labs(color = "CH4 Values") +
+  scale_color_manual(values = c("Observed CH4" = "salmon", "Predicted CH4" = "blue")) +
+  guides(color = guide_legend(title = "CH4 Values"))
+
+
+ggplot(data = df) +
+  theme_bw() +
+  geom_point(aes(x = TS_2_05_1, y = FCH4, fill = month), pch = 21, size = 3, alpha = 0.75) +
+  geom_hline(yintercept = 0) +
+  geom_line(aes(x = TS_2_05_1, y = exponential_trend_5(TS_2_05_1)), color = "black", size = 1.3) +
+  scale_y_continuous(expression('CH4 Flux (' * n * mol ~ m^-2 ~ s^-1 * ')'),
+                     limits = c(-8, 150)) +
+  scale_x_continuous(expression('Temperature 5 cm (°C)'),
+                     limits = c(-15, 20)) +
+  labs(color = 'DOY') +
+  scale_fill_gradientn(colours = brewer.pal(9, 'Reds'))
+
+```
+
+
+
+
+## LM Runs GPP
+
+
+```{r}
+# Consider using ifelse statement for when there is real CO2 data available to have the more accurate data product
+
+#GPP_DT (R-squared 0.66)
+GPP_DTCH4 = lm(FCH4~GPP_DT,data = df)
+summary((GPP_DTCH4))
+
+#GPP_F (R-squared 0.76) (feels sketch using this bc gap-filled)
+GPP_FCH4 = lm(FCH4~GPP_F,data = df)
+summary((GPP_FCH4))
+
+
+
+```
+# Modelled GPP plot 
+
+```{r}
+
+# Extract the predicted FCH4 values from the model
+predicted_FCH4 <- predict(GPP_FCH4)
+
+
+# Plot the predicted FCH4 values against the actual FCH4 values
+plot(predicted_FCH4, pch = 16, col = "blue", xlab = "Actual FCH4", ylab = "Predicted FCH4", main = "Predicted vs Actual FCH4")
+
+
+
+
+# Extract the subset of observations used for fitting the model
+df_subset <- df[!is.na(df$GPP_F), ]
+
+# Predict CH4 values for the subset of observations
+predicted_FCH4_subset <- predict(GPP_FCH4, newdata = df_subset) 
+
+# Add the predicted CH4 values to your dataframe df_subset
+df_subset$Predicted_CH4 <- predicted_FCH4_subset
+
+# Merge the predicted CH4 values back to the original dataframe df
+df <- merge(df, df_subset[, c("ts", "Predicted_CH4")], by = "ts", all.x = TRUE)
+
+# Check the structure of your dataframe to confirm that the new column has been added
+str(df)
+
+
+
+ggplot(data = df) +
+  theme_bw() +
+  geom_point(aes(x = ts, y = FCH4, color = "Observed CH4"), alpha = 0.5) +
+  geom_smooth(aes(x = ts, y = FCH4, color = "Observed CH4"), method = 'loess',span = 0.25)+
+  geom_point(aes(x = ts, y = Predicted_CH4, color = "Predicted CH4"), alpha = 0.5) +
+  geom_smooth(aes(x = ts, y = Predicted_CH4, color = "Predicted CH4"), method = 'loess',span = 0.25)+
+  geom_hline(yintercept = 0) +
+  scale_y_continuous(expression('CH4 Flux (' * n * mol ~ m^-2 ~ s^-1 * ')'), limits = c(-6, 135)) +
+  scale_x_datetime(limits = as.POSIXct(c('2022-08-6', '2023-12-31'))) +
+  labs(color = "CH4 Values") +
+  scale_color_manual(values = c("Observed CH4" = "salmon", "Predicted CH4" = "blue")) +
+  guides(color = guide_legend(title = "CH4 Values"))
+
+#if FC is NA then make GPP NA
+#use GPP as a residual analysis 
+```
+
+
+## Time lag 
+```{r}
+#Rain
+ccf(df$P,df$FCH4, na.action = na.pass)
+#Soil T
+ccf(df$TS_2_05_1,df$FCH4, na.action = na.pass)
+#VWC
+ccf(df$SWC_2_1_1,df$FCH4, na.action = na.pass)
+#GPP
+ccf(df$GPP_F,df$FCH4, na.action = na.pass)
+
+
+
+```
+
+## Seasons breakdown 
+Our onset of melt is DOY 126, theirs is 166
+Our onset and their onset of fall is similar (DOY 305-315)
+```{r}
+
+```
+
+
+
+
+# seasonal change
+Fall (260-320) split down the middle with pre and post freeze
+Spring (113-153) melt is: 123-132 few different endings
+```{r,warning = FALSE}
+ggplot(data = avg) +
+  theme_bw() +
+  geom_line(aes(x = ts, y = G_1_1_1), color = 'red') +  
+  geom_line(aes(x = ts, y = TA*10), color = 'blue') +  
+  geom_line(aes(x = ts, y = PPFD_OUT/10), color = 'green') +
+  geom_line(aes(x = ts, y = D_SNOW), color = 'pink') +
+  geom_vline(xintercept = as.POSIXct('2023-5-12'), linetype = 'dotdash')+
+  geom_vline(xintercept = as.POSIXct('2023-5-3'), linetype = 'dotdash')+
+  geom_hline(yintercept = 0) +
+  scale_y_continuous(
+    name = expression('CH4 Flux (' * n * mol ~ m^-2 ~ s^-1 * ')'),
+    limits = c(-50, 200))+
+  scale_x_datetime(limits = as.POSIXct(c('2023-4-20', '2023-6-16')))
+
+ggplot(data = avg) +
+  theme_bw() +
+  geom_point(aes(x = ts, y = FCH4), color = 'salmon') +
+  geom_line(aes(x = ts, y = TS_2_05_1*4), color = 'blue') +  
+  geom_hline(yintercept = 0) +
+  scale_y_continuous(
+    name = expression('CH4 Flux (' * n * mol ~ m^-2 ~ s^-1 * ')'),
+    limits = c(-50, 95),
+    sec.axis = sec_axis(~./4, name = "Soil Temperature 10cm (°C)")
+  ) +
+  scale_x_datetime(limits = as.POSIXct(c('2022-09-17', '2022-11-16')))
+
+
+ggplot(data = df) +
+  theme_bw() +
+  geom_point(aes(x = ts, y = FCH4), color = 'salmon') +
+  geom_smooth(aes(x = ts, y = FCH4, color = "FCH4"), method = 'loess',span = 0.15)+
+  geom_line(aes(x = ts, y = TS_2_05_1*4), color = 'blue') +  
+  geom_vline(xintercept = as.POSIXct('2023-6-23'), linetype = 'dotted')+
+  geom_hline(yintercept = 0) +
+  scale_y_continuous(
+    name = expression('CH4 Flux (' * n * mol ~ m^-2 ~ s^-1 * ')'),
+    limits = c(-20, 95),
+    sec.axis = sec_axis(~./4, name = "Soil Temperature 10cm (°C)")
+  ) +
+  scale_x_datetime(limits = as.POSIXct(c('2023-05-1', '2023-6-30')))
+```
+# Spring differences 
+```{r,warning=FALSE}
+ggplot(data = df) +
+  theme_bw() +
+  geom_point(aes(x = ts, y = FCH4_F*1000), color = 'salmon') +
+  geom_point(aes(x = ts, y = Predicted_CH4), color = '#00BFC4') +
+  geom_line(aes(x = ts, y = TS_2_05_1*5), color = 'blue') +  
+  geom_smooth(aes(x = ts, y = FCH4, color = "FCH4"), method = 'loess',span = 0.115)+
+  geom_smooth(aes(x = ts, y = Predicted_CH4, color = "Log 5 CH4"), method = 'loess',span = 0.115)+
+  geom_vline(xintercept = as.POSIXct('2023-4-23'))+
+  geom_vline(xintercept = as.POSIXct('2023-5-12'), linetype = 'longdash')+
+  geom_vline(xintercept = as.POSIXct('2023-5-3'), linetype = 'longdash')+
+  geom_vline(xintercept = as.POSIXct('2023-6-15'))+
+  geom_hline(yintercept = 0) +
+  scale_y_continuous(
+    name = expression('CH4 Flux (' * n * mol ~ m^-2 ~ s^-1 * ')'),
+    limits = c(-25, 95),
+    sec.axis = sec_axis(~./5, name = "Soil Temperature 10cm (°C)")
+  ) +
+  scale_x_datetime(limits = as.POSIXct(c('2023-04-11', '2023-7-14')))
+
+```
+# Winter comparison
+```{r}
+ggplot(data = df) +
+  theme_bw() +
+  geom_point(aes(x = ts, y = FCH4_F*1000), color = 'salmon') +
+  geom_point(aes(x = ts, y = Predicted_CH4), color = '#00BFC4') +
+  geom_smooth(aes(x = ts, y = FCH4, color = "FCH4"), method = 'loess',span = 0.115)+
+  geom_smooth(aes(x = ts, y = Predicted_CH4, color = "Log 5 CH4"), method = 'loess',span = 0.115)+
+  geom_vline(xintercept = as.POSIXct('2023-4-23'))+
+  geom_vline(xintercept = as.POSIXct('2023-5-12'), linetype = 'longdash')+
+  geom_vline(xintercept = as.POSIXct('2023-5-3'), linetype = 'longdash')+
+  geom_vline(xintercept = as.POSIXct('2023-6-15'))+
+  geom_vline(xintercept = as.POSIXct('2023-6-23'), linetype = 'dotted')+
+  geom_hline(yintercept = 0) +
+  scale_y_continuous(
+    name = expression('CH4 Flux (' * n * mol ~ m^-2 ~ s^-1 * ')'),
+    limits = c(-25, 15),
+    sec.axis = sec_axis(~./5, name = "Soil Temperature 10cm (°C)")
+  ) +
+  scale_x_datetime(limits = as.POSIXct(c('2023-01-1', '2023-4-30')))
+```
+
+
+
+## Separations and plots
+```{r}
+
+df23 <- df %>%
+  mutate(
+      season = case_when(
+      (DOY >= 260 & DOY <= 320) ~ 'fall',
+      (DOY >= 113 & DOY <= 166) ~ 'spring',
+      (DOY >= 167 & DOY <= 259) ~ 'summer',
+      (DOY >= 321 | DOY <= 112) ~ 'winter',
+      TRUE ~ NA_character_
+    )
+  ) %>%
+  filter(year == 2023)
+    
+seasonal_cumulative <- df23 %>%
+  group_by(season) %>%
+  summarize(
+    cumulative_FCH_F = sum(FCH4_F, na.rm = TRUE),
+    cumulative_Predicted_CH4 = sum(Predicted_CH4, na.rm = TRUE)
+  )
+
+print(seasonal_cumulative)
+
+
+ggplot(data = df23) +
+  theme_bw() +
+  geom_point(aes(x = ts, y = FCH4), color = 'salmon') +
+  geom_point(aes(x = ts, y = Predicted_CH4), color = '#00BFC4') +
+  geom_smooth(aes(x = ts, y = FCH4, color = "FCH4"), method = 'loess',span = 0.115)+
+  geom_smooth(aes(x = ts, y = Predicted_CH4, color = "Log 5 CH4"), method = 'loess',span = 0.115)+
+  geom_vline(xintercept = as.POSIXct('2023-4-23'))+
+  geom_vline(xintercept = as.POSIXct('2023-5-12'), linetype = 'longdash')+
+  geom_vline(xintercept = as.POSIXct('2023-5-3'), linetype = 'longdash')+
+  geom_vline(xintercept = as.POSIXct('2023-6-15'))+
+  geom_hline(yintercept = 0) +
+  scale_y_continuous(
+    name = expression('CH4 Flux (' * n * mol ~ m^-2 ~ s^-1 * ')'),
+    limits = c(-25, 95),
+    sec.axis = sec_axis(~./5, name = "Soil Temperature 10cm (°C)")
+  ) +
+  scale_x_datetime(limits = as.POSIXct(c('2023-04-11', '2023-7-14')))
+
+
+
+seasonal_cumulative$cumulative_FCH_F = seasonal_cumulative$cumulative_FCH_F*1000
+
+# Reshape the data for plotting
+seasonal_cumulative_long <- seasonal_cumulative %>%
+  pivot_longer(cols = c(cumulative_FCH_F, cumulative_Predicted_CH4), 
+               names_to = "type", values_to = "cumulative_value")
+
+# Create the bar chart
+ggplot(seasonal_cumulative_long, aes(x = season, y = cumulative_value, fill = type)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  labs(title = "Cumulative CH4 Values by Season",
+       x = "Season", y = "Cumulative Value",
+       fill = "Type") +
+  theme_minimal()
 ```
 
 
