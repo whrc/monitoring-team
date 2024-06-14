@@ -564,16 +564,12 @@ for (i in 1:length(h)) {
 
 df = dat[[1]] 
 
-# #make all the lists into one dataframe - only for more than one file
-# for (i in 2:length(dat)) {
-#  df = rbind.fill(df,dat[[i]])
-# }
 
 #create a timestamp from the date and time
 df$ts = as.POSIXct(x = paste(df$date,df$time,sep = ' '),tz = 'UTC')
 
 #take the min and max date rounding to the nearest full month
-## create NAs for beginning & end of partial months: add unit='months'
+
 mindate = floor_date(min(df$ts))
 maxdate = ceiling_date(max(df$ts))
 
@@ -587,7 +583,7 @@ df = merge(ts,df,by = 'ts',all.x = T)
 
 
 #save off flux data
-write.csv(df, 'C:/Users/dtrangmoe/Documents/Churchill/ChurchillFlux_Jan24_CO2_CH4_merged.csv',row.names = F)
+write.csv(df, 'C:/Users/dtrangmoe/Documents/Churchill/ChurchillFlux_Feb24_CO2_CH4_merged.csv',row.names = F)
 
 
 ```
@@ -703,170 +699,3 @@ rm(list = ls())
 
 ```
 
-
-
-# Mar 24
-
-### Load file - co2 and methane
-
-```{r, warning=FALSE}
-
-rm(list = ls())
-
-
-#load in the full output flux data ##################
-fp = 'C:/Users/dtrangmoe/Documents/Churchill/Processed Mar 24 - CO2 and Methane'
-files = list.files(path = fp,pattern = '*full_output.+csv$',recursive = T,full.names = T)
-
-#load the headers and data into their own lists
-h   = lapply(files, fread,skip = 1,nrow = 0)
-dat = lapply(files, fread,skip = 3,header = F,na.strings=c('-9999'))
-
-ls()
-
-
-#assign the headers to the data
-for (i in 1:length(h)) {
-  names(dat[[i]]) = names(h[[i]])
-}
-
-df = dat[[1]] 
-
-# #make all the lists into one dataframe - only for more than one file
-# for (i in 2:length(dat)) {
-#  df = rbind.fill(df,dat[[i]])
-# }
-
-#create a timestamp from the date and time
-df$ts = as.POSIXct(x = paste(df$date,df$time,sep = ' '),tz = 'UTC')
-
-#take the min and max date rounding to the nearest full month
-## create NAs for beginning & end of partial months: add unit='months'
-mindate = floor_date(min(df$ts))
-maxdate = ceiling_date(max(df$ts))
-
-#create a timestamp variable every half hour
-ts = seq(from = mindate,to = maxdate,by = 60*30)
-ts = as.data.frame(ts)
-
-
-#merge with the flux data frame to create NAs where data is missing
-df = merge(ts,df,by = 'ts',all.x = T)
-
-
-#save off flux data
-write.csv(df, 'C:/Users/dtrangmoe/Documents/Churchill/ChurchillFlux_Mar24_CO2_CH4_merged.csv',row.names = F)
-
-
-```
-
-
-
-### Load file - methane only
-
-```{r, warning=FALSE}
-
-#load in the full output flux data ##################
-fp = 'C:/Users/dtrangmoe/Documents/Churchill/Processed Mar 24 - Methane Only'
-files = list.files(path = fp,pattern = '*full_output.+csv$',recursive = T,full.names = T)
-
-#load the headers and data into their own lists
-h   = lapply(files, fread,skip = 1,nrow = 0)
-dat = lapply(files, fread,skip = 3,header = F,na.strings=c('-9999'))
-
-ls()
-
-
-#assign the headers to the data
-for (i in 1:length(h)) {
-  names(dat[[i]]) = names(h[[i]])
-}
-
-df = dat[[1]] 
-
-# #make all the lists into one dataframe - only for more than one file
-# for (i in 2:length(dat)) {
-#  df = rbind.fill(df,dat[[i]])
-# }
-
-#create a timestamp from the date and time
-df$ts = as.POSIXct(x = paste(df$date,df$time,sep = ' '),tz = 'UTC')
-
-#take the min and max date rounding to the nearest full month
-## create NAs for beginning & end of partial months: add unit='months'
-mindate = floor_date(min(df$ts))
-maxdate = ceiling_date(max(df$ts))
-
-#create a timestamp variable every half hour
-ts = seq(from = mindate,to = maxdate,by = 60*30)
-ts = as.data.frame(ts)
-
-
-#merge with the flux data frame to create NAs where data is missing
-df = merge(ts,df,by = 'ts',all.x = T)
-
-
-#save off flux data
-write.csv(df, 'C:/Users/dtrangmoe/Documents/Churchill/ChurchillFlux_Mar24_CH4only_merged.csv',row.names = F)
-
-```
-
-
-### Merge
-
-Merge two files to include co2 and methane data when available, and include only methane otherwise
-
-```{r, warning=FALSE}
-
-df_both = fread('C:/Users/dtrangmoe/Documents/Churchill/ChurchillFlux_Mar24_CO2_CH4_merged.csv')
-
-df_ch4 = fread('C:/Users/dtrangmoe/Documents/Churchill/ChurchillFlux_Mar24_CH4only_merged.csv')
-
-
-df = full_join(df_both, df_ch4, by = 'ts', suffix=c('', '.ch4'))
-
-#plot to show ch4 data consistent between data frames, and check if gaps are present in 'both' data
-ggplot(df)+
-  geom_point(aes(ts,ch4_flux.ch4, col = 'CH4'))+
-  geom_point(aes(ts,ch4_flux, col = 'Both'))
-
-ggplot(df)+
-  geom_point(aes(ts,ch4_flux, col = 'Both'))+
-  geom_point(aes(ts,ch4_flux.ch4, col = 'CH4'))
-
-plot(df$ch4_flux, df$ch4_flux.ch4)
-
-ch4_columns <- names(df)[grep("\\.ch4$", names(df))]
-
-
-## scans all rows in df, and if co2 is not available data in the "both" columns of the data frame is replaced by corresponding data from "ch4" data frame
-
-for(i in 1:length(ch4_columns)) {
-
-  col_to_reference = ch4_columns[i]
-  col_to_replace = sub(".ch4$", "", ch4_columns[i])
-
-  for (j in 1:nrow(df)) {
-    if (is.na(df[j,co2_flux])) {
-
-      df[j, col_to_replace] <- df[j, ..col_to_reference]
-
-    }
-  }
-}
-
-# not that necessary for this month
-ggplot(df)+
-  geom_point(aes(ts,ch4_flux.ch4, col = 'CH4'))+
-  geom_point(aes(ts,ch4_flux, col = 'Both'))
-
-# creates logical vector indicating with columns to keep, then removes all others (removes duplicates)
-
-df_cols_to_keep <- df[, !names(df) %in% ch4_columns]
-df = subset(df, select = df_cols_to_keep)
-
-write.csv(df, 'C:/Users/dtrangmoe/Documents/Churchill/ChurchillFlux_Mar24_merged.csv',row.names = F)
-
-rm(list = ls())
-
-```
