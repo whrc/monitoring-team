@@ -11,10 +11,17 @@ knitr::opts_chunk$set(echo = TRUE)
 # add root directory here for github
 ```
 
-Questions:
+Notes:
 
-Where did Hanis et al get 2010 & 2011 data? 
-Add piping
+create integral function
+
+Controls and general patterns
+separate seasons (annual data- lose 60% of sink)
+don’t worry about error bar for now
+
+
+
+
 
 ```{r, include=FALSE}
 rm(list = ls())
@@ -73,20 +80,40 @@ dates_08 = c('2008-06-19','2008-10-07')
 
 dates_22 = c('2022-08-10','2022-11-01')
 
-dates_23 = c('2023-08-10','2023-11-01')
+dates_23 = c('2023-05-10','2023-11-01')
 ```
 
 
 # Analysis
 
 
-## Flux variable plots
+## Energy Balance
 ```{r}
 
+energy_balance <- function(df) {
+  
+  # Create the plot
+  df$Met <- df$NETRAD
+  
+  df$Flux <- df$LE + df$H
+  
+   plot <- ggplot(data = df, aes(x = Met, y = Flux))+ 
+    geom_point()+
+    geom_abline(slope=1, intercept=0, colour = "red")+
+  scale_x_continuous(lim = c(-100, 600))+
+  scale_y_continuous(lim = c(-100, 600))
+  
+  return(plot)
+}
 
-plot(df_avg$day, df_avg$FC_F)
-plot(df_avg$day, df_avg$GPP_F)
-plot(df_avg$day, df_avg$RECO)
+eb07 <- energy_balance(df_2007)
+eb08 <- energy_balance(df_2008)
+eb22 <- energy_balance(df_2022)
+eb23 <- energy_balance(df_2023)
+
+grid.arrange(eb07, eb08, eb22, eb23, nrow=2, ncol=2)
+
+summary(lm(df_2023$Flux ~ df_2023$Met))
 
 
 ```
@@ -113,7 +140,7 @@ ggplot(df, aes_string(x = "TIMESTAMP_END", y = "G_1_1_1"))+
     scale_x_datetime(name = 'Date')+
     scale_y_continuous(name = 'SHF1')
 
-#onlyl snow depth in CF3 dataset
+#only snow depth in CF3 dataset
 ggplot(df, aes_string(x = "TIMESTAMP_END", y = "D_SNOW"))+
     theme_bw()+
     geom_point() +
@@ -138,6 +165,22 @@ ggplot(df, aes_string(x = "TIMESTAMP_END", y = "ALB"))+
     scale_y_continuous(name = 'Albedo')
 
 ggplot(df, aes_string(x = "TIMESTAMP_END", y = "TS_2_4_1"))+
+    theme_bw()+
+    geom_point() +
+  geom_vline(aes(xintercept= as.POSIXct("2023-05-14")))+
+    scale_x_datetime(name = 'Date')+
+    scale_y_continuous(name = 'Random Soil Temp')
+
+
+# Only CF1 soil temps
+ggplot(df, aes_string(x = "TIMESTAMP_END", y = "TS_F_MDS_1"))+
+    theme_bw()+
+    geom_point() +
+  geom_vline(aes(xintercept= as.POSIXct("2023-05-14")))+
+    scale_x_datetime(name = 'Date')+
+    scale_y_continuous(name = 'Random Soil Temp')
+
+ggplot(df, aes_string(x = "TIMESTAMP_END", y = "TS_F_MDS_2"))+
     theme_bw()+
     geom_point() +
   geom_vline(aes(xintercept= as.POSIXct("2023-05-14")))+
@@ -264,8 +307,7 @@ rm(co2_07, co2_08, soil07, soil08)
 
 
 
-##VPD/CO2/NR Side by Side
-Rescale VPD
+##CO2/NR Side by Side
 
 2022/2023
 ```{r}
@@ -280,16 +322,6 @@ co2_23 <- ggplot(data = df, aes(x = TIMESTAMP, y = FC_F)) +
   ggtitle("2023")+
   scale_x_datetime(limits = as.POSIXct(dates_23))
 
-vpd_22 <- ggplot(data = df, aes(x = TIMESTAMP, y = VPD)) + 
-  geom_point() +
-  scale_x_datetime(limits = as.POSIXct(dates_22))+
-  scale_y_continuous(limits = c(-10, 2300))
-
-vpd_23 <- ggplot(data = df, aes(x = TIMESTAMP, y = VPD)) + 
-  geom_point() +
-  scale_x_datetime(limits = as.POSIXct(dates_23))+
-  scale_y_continuous(limits = c(-10, 2300))
-
 rn_22 <- ggplot(data = df, aes(x = TIMESTAMP, y = NETRAD)) + 
   geom_point() +
   scale_x_datetime(limits = as.POSIXct(dates_22))+
@@ -300,9 +332,9 @@ rn_23 <- ggplot(data = df, aes(x = TIMESTAMP, y = NETRAD)) +
   scale_x_datetime(limits = as.POSIXct(dates_23))+
   scale_y_continuous(limits = c(-10, 1000))
 
-grid.arrange(co2_22, co2_23, vpd_22, vpd_23, rn_22, rn_23, nrow=3, ncol=2)
+grid.arrange(co2_22, co2_23, rn_22, rn_23, nrow=3, ncol=2)
 
-rm(co2_22, co2_23, vpd_22, vpd_23, rn_22, rn_23)
+rm(co2_22, co2_23, rn_22, rn_23)
 
 ```
 
@@ -347,10 +379,124 @@ rm(co2_07, co2_08, vpd_07, vpd_08, rn_07, rn_08)
 ```
 
 
+
+##CO2/Air Temp Side by Side
+
+2022/2023
+```{r}
+
+co2_22 <- ggplot(data = df, aes(x = TIMESTAMP, y = FC_F)) + 
+  geom_point() +
+  ggtitle("2022")+
+  scale_x_datetime(limits = as.POSIXct(dates_22))
+
+co2_23 <- ggplot(data = df, aes(x = TIMESTAMP, y = FC_F)) + 
+  geom_point() +
+  ggtitle("2023")+
+  scale_x_datetime(limits = as.POSIXct(dates_23))
+
+ta_22 <- ggplot(data = df, aes(x = TIMESTAMP, y = TA)) + 
+  geom_point() +
+  scale_x_datetime(limits = as.POSIXct(dates_22))+
+  scale_y_continuous(limits = c(-25, 40))
+
+ta_23 <- ggplot(data = df, aes(x = TIMESTAMP, y = TA)) + 
+  geom_point() +
+  scale_x_datetime(limits = as.POSIXct(dates_23))+
+  scale_y_continuous(limits = c(-25, 40))
+
+grid.arrange(co2_22, co2_23, ta_22, ta_23, nrow=2, ncol=2)
+
+rm(co2_22, co2_23, ta_22, ta_23)
+
+## add partitioned data here
+```
+
+### July 2023 peak
+```{r}
+
+peak_plot <- function(y_var, df = df_2023, vline_date = "2023-07-02") {
+  # Convert y_var to symbol
+  y_var <- sym(y_var)
+  
+  # Fixed start and end dates
+  start_date <- "2023-06-20"
+  end_date <- "2023-07-10"
+  
+  # Create the plot
+  plot <- ggplot(data = df, aes(x = TIMESTAMP, y = !!y_var)) + 
+    geom_point() +
+    scale_x_datetime(limits = as.POSIXct(c(start_date, end_date))) +
+    geom_vline(xintercept = as.POSIXct(vline_date))
+  
+  return(plot)
+}
+
+co2peak_23 <- peak_plot("FC_F")
+GPPpeak_23 <- peak_plot("GPP_F")
+RECOpeak_23 <- peak_plot("RECO")
+TApeak_23 <- peak_plot("TA")
+
+grid.arrange(co2peak_23, RECOpeak_23, GPPpeak_23, TApeak_23, nrow=2, ncol=2)
+
+
+soiltemp105peak_23 <- peak_plot("TS_1_05_1")
+soiltemp205peak_23 <- peak_plot("TS_2_05_1")
+
+PPFDinpeak_23 <- peak_plot("PPFD_IN")
+NETRADpeak_23 <- peak_plot("NETRAD")
+
+rainpeak_23 <- peak_plot("P")
+SWC1peak_23 <- peak_plot("SWC_1_1_1")
+SWC2peak_23 <- peak_plot("SWC_2_1_1")
+
+#soil water content/rain & flux
+grid.arrange(co2peak_23, RECOpeak_23, GPPpeak_23, rainpeak_23, SWC1peak_23, SWC2peak_23, nrow=2, ncol=3)
+
+#soil temp & flux
+grid.arrange(co2peak_23, RECOpeak_23, GPPpeak_23, TApeak_23, soiltemp105peak_23, soiltemp205peak_23, nrow=2, ncol=3)
+
+#radiation & flux
+grid.arrange(co2peak_23, RECOpeak_23, GPPpeak_23, NETRADpeak_23, PPFDinpeak_23, soiltemp205peak_23, nrow=2, ncol=3)
+
+
+```
+
+2007/2008
+```{r}
+
+co2_07 <- ggplot(data = df, aes(x = TIMESTAMP, y = FC_F)) + 
+  geom_point() +
+  ggtitle("2007")+
+  scale_x_datetime(limits = as.POSIXct(dates_07))
+
+co2_08 <- ggplot(data = df, aes(x = TIMESTAMP, y = FC_F)) + 
+  geom_point() +
+  ggtitle("2008")+
+  scale_x_datetime(limits = as.POSIXct(dates_08))
+
+ta_07 <- ggplot(data = df, aes(x = TIMESTAMP, y = TA)) + 
+  geom_point() +
+  scale_x_datetime(limits = as.POSIXct(dates_07))+
+  scale_y_continuous(limits = c(-25, 40))
+
+ta_08 <- ggplot(data = df, aes(x = TIMESTAMP, y = TA)) + 
+  geom_point() +
+  scale_x_datetime(limits = as.POSIXct(dates_08))+
+  scale_y_continuous(limits = c(-25, 40))
+
+grid.arrange(co2_07, co2_08, ta_07, ta_08, nrow=2, ncol=2)
+
+rm(co2_07, co2_08, ta_07, ta_08)
+
+```
+
+
 # Integrals
 
 Gets net emissions from given yr
-could change this to use half-hourly data?
+could change this to use half-hourly data? 
+could create function here instead of copy/paste in future
 
 #### 2007
 ```{r}
@@ -475,4 +621,25 @@ ggplot(data = df_avg_2023, aes(x=DOY))+
   scale_y_continuous(expression('CO'[2] * '('*m*mol~m^-2~s^-1*')'))+ labs(title = "2023 GPP & ER")
 
 ```
+
+# Monthly Averages of Biomet
+doesn't work yet
+``` {r}
+
+df <- df %>%
+  mutate(year = year(TIMESTAMP_END),
+         month = month(TIMESTAMP_END, label = TRUE))
+
+# Group by year and month, then calculate the monthly average TEMP and P
+monthly_summary <- df %>%
+  group_by(year, month) %>%
+  summarize(avg_air_temp = mean(TA, na.rm = TRUE),
+            avg_precip = mean(P, na.rm = TRUE), avg_soil_temp = mean(TS_1_05_1, na.rm = TRUE)) %>%
+  ungroup()
+
+# Print the monthly summary
+print(monthly_summary)
+
+```
+
 

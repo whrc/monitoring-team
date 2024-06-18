@@ -2914,6 +2914,8 @@ df$flux = df$H + df$LE
 
 plot(df$met, df$flux)
 
+#add better plot here! with 1:1 line and better axis ratio
+
 ```
 
 plot all solar radiation
