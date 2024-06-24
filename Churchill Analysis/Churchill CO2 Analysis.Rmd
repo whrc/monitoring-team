@@ -65,10 +65,18 @@ df$TIMESTAMP = df$TIMESTAMP_END
 
 df$TIMESTAMP = df$TIMESTAMP_END
 
-df_2023 = subset(df, format(TIMESTAMP, "%Y") == "2023")
-df_2022 = subset(df, format(TIMESTAMP, "%Y") == "2022")
-df_2008 = subset(df, format(TIMESTAMP, "%Y") == "2008")
-df_2007 = subset(df, format(TIMESTAMP, "%Y") == "2007")
+year_df <- function(df, year) {
+  df %>%
+    filter(format(day, "%Y") == as.character(year)) %>%
+    mutate(DOY = yday(day))
+}
+
+
+df_avg_2007 <- year_df(df_avg, 2007)
+df_avg_2008 <- year_df(df_avg, 2008)
+df_avg_2022 <- year_df(df_avg, 2022)
+df_avg_2023 <- year_df(df_avg, 2023)
+
 ```
 
 
@@ -490,9 +498,254 @@ grid.arrange(co2_07, co2_08, ta_07, ta_08, nrow=2, ncol=2)
 rm(co2_07, co2_08, ta_07, ta_08)
 
 ```
+# Definition of Seasons
+
+```{r}
+#defines seasons by Oechel et al. 2014
+#only works for 2023 right now
+
+# Season 1: Winter
+# Season 2: Spring
+# Season 3: Summer
+# Season 4: Fall
+
+find_consecutive_days <- function(df, column_name, threshold, min_days) {
+  
+  # Extract the vector from the dataframe based on the column name
+  vec <- df[[column_name]]
+  
+  # Helper function to find periods of consecutive days
+  find_consecutive_days2 <- function(vec, threshold, min_days) {
+    rle_vec <- rle(vec > threshold)
+    end_indices <- cumsum(rle_vec$lengths)
+    start_indices <- end_indices - rle_vec$lengths + 1
+    for (i in seq_along(rle_vec$values)) {
+      if (rle_vec$values[i] && rle_vec$lengths[i] >= min_days) {
+        return(start_indices[i])
+      }
+    }
+  }
+  
+  # Find the first start index of consecutive days above the threshold
+  start_index <- find_consecutive_days2(vec, threshold, min_days)
+  
+  # Return the corresponding date
+  return(df$DOY[start_index])
+}
+
+spring_start <- find_consecutive_days(df_avg_2023, "NETRAD", 0, 3)
+
+summer_start <- find_consecutive_days(df_avg_2023, "NETRAD", 100, 3)
+
+fall_start <- find_consecutive_days(df_avg_2023[(366: summer_start+1), ], "NETRAD", 100, 3)
+
+winter_start <- find_consecutive_days(df_avg_2023[(366: summer_start+1), ], "NETRAD", 0, 3)
 
 
-# Integrals
+#plot to check that it works
+ggplot(data = df_avg_2023, aes(x=DOY, y=NETRAD))+
+  geom_point()+
+  scale_x_continuous(lim = c(0, 365))+
+  geom_hline(yintercept=100, col="blue")+
+  geom_hline(yintercept=0, col="black")+
+  geom_vline(xintercept=summer_start, col="red")+
+  geom_vline(xintercept=spring_start, col="green")+
+  geom_vline(xintercept=fall_start, col="orange")+ geom_vline(xintercept=winter_start, col="purple")+
+  scale_y_continuous(expression('Net Radiation'))
+
+df_avg_2023 <- df_avg_2023 %>%
+    mutate(season = case_when(
+      DOY < spring_start ~ 1,
+      DOY >= spring_start & DOY < summer_start ~ 2,
+      DOY >= summer_start & DOY < fall_start ~ 3,
+      DOY >= fall_start & DOY < winter_start ~ 4,
+      row_number() >= winter_start ~ 1
+    ))
+
+plot(df_avg_2023$day, df_avg_2023$season
+     )
+
+
+# simpler function but doesn't work
+
+# assign_seasons <- function(df, column_name, spring_threshold = 0, summer_threshold = 100, min_days = 3) {
+#   
+#   # Helper function to find start date of consecutive days above threshold
+#   find_start_date <- function(vec, threshold, min_days) {
+#     rle_vec <- rle(vec > threshold)
+#     end_indices <- cumsum(rle_vec$lengths)
+#     start_indices <- end_indices - rle_vec$lengths + 1
+#     for (i in seq_along(rle_vec$values)) {
+#       if (rle_vec$values[i] && rle_vec$lengths[i] >= min_days) {
+#         return(start_indices[i])
+#       }
+#     }
+#   }
+#   
+#   # Find start dates for each season
+#   spring_start <- find_start_date(df[[column_name]], spring_threshold, min_days)
+#   summer_start <- find_start_date(df[[column_name]], summer_threshold, min_days)
+#   
+#   # Assume fall_start and winter_start are found
+#   fall_start <- find_start_date(df[[column_name]][(summer_start + 1):nrow(df)], summer_threshold, min_days)
+#   winter_start <- find_start_date(df[[column_name]][(summer_start + 1):nrow(df)], spring_threshold, min_days)
+#   
+#   # If fall_start or winter_start is not found, set it to the last day + 1
+#   if (is.na(fall_start)) {
+#     fall_start <- nrow(df) + 1
+#   }
+#   if (is.na(winter_start)) {
+#     winter_start <- nrow(df) + 1
+#   }
+#   
+#   # Assign seasons based on start dates
+#   df <- df %>%
+#     mutate(season = case_when(
+#       row_number() < spring_start ~ 1,    # Winter
+#       row_number() >= spring_start & row_number() < summer_start ~ 2,  # Spring
+#       row_number() >= summer_start & row_number() < fall_start ~ 3,    # Summer
+#       row_number() >= fall_start & row_number() < winter_start ~ 4,    # Fall
+#       row_number() >= winter_start ~ 1    # Winter
+#     ))
+#   rm(fall_start, winter_start, summer_start, spring_start)
+#   return(plot(df$DOY, df$season))
+# }
+
+
+```
+
+
+# Seasonal Integrals
+
+To do: add titles to bars describing season
+
+## NEE
+```{r}
+
+seasonal_integrals <- function(df) {
+  
+  # Calculate integral (sum) for each season
+  integrals <- df %>%
+    group_by(season) %>%
+    summarise(integral_value = sum(FC_F, na.rm = TRUE)) %>%
+    ungroup() %>%
+    arrange(season)
+  
+  return(integrals)
+}
+
+seasonal_integrals_2023 <- seasonal_integrals(df_avg_2023)
+
+ggplot(seasonal_integrals_2023, aes(x = season, y = integral_value)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  labs(
+    x = "Season",
+    y = "Net CO2 Flux",
+    title = "2023 CO2 Flux by season"
+  ) +
+  theme_minimal()
+
+
+
+# Bar graph showing growing season vs. year round analysis
+
+
+
+```
+
+
+
+
+
+## GPP
+```{r}
+
+seasonal_integrals <- function(df) {
+  
+  # Calculate integral (sum) for each season
+  integrals <- df %>%
+    group_by(season) %>%
+    summarise(integral_value = sum(GPP_F, na.rm = TRUE)) %>%
+    ungroup() %>%
+    arrange(season)
+  
+  return(integrals)
+}
+
+seasonal_integrals_2023 <- seasonal_integrals(df_avg_2023)
+
+ggplot(seasonal_integrals_2023, aes(x = season, y = integral_value)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  labs(
+    x = "Season",
+    y = "Net GPP",
+    title = "2023 GPP by season"
+  ) +
+  theme_minimal()
+
+
+
+# Bar graph showing growing season vs. year round analysis
+
+
+
+```
+
+
+
+
+
+
+
+
+
+## RECO
+```{r}
+
+seasonal_integrals <- function(df) {
+  
+  # Calculate integral (sum) for each season
+  integrals <- df %>%
+    group_by(season) %>%
+    summarise(integral_value = sum(RECO, na.rm = TRUE)) %>%
+    ungroup() %>%
+    arrange(season)
+  
+  return(integrals)
+}
+
+seasonal_integrals_2023 <- seasonal_integrals(df_avg_2023)
+
+ggplot(seasonal_integrals_2023, aes(x = season, y = integral_value)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  labs(
+    x = "Season",
+    y = "Net ER",
+    title = "2023 ER by season"
+  ) +
+  theme_minimal()
+
+
+
+# Bar graph showing growing season vs. year round analysis
+
+
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+# Year long Integrals
 
 Gets net emissions from given yr
 could change this to use half-hourly data? 
@@ -585,11 +838,15 @@ trapz(df_avg_2023$DOY, df_avg_2023$FC_F_no_NAs)
 
 ggplot(data = df_avg_2023, aes(x=DOY, y=cumulative))+
   geom_point()+
-  scale_x_continuous(lim = c(160, 290))+
-  geom_hline(yintercept=0, col="blue")+
+  scale_x_continuous(lim = c(0, 365))+
+  geom_hline(yintercept=0, col="black")+
+  scale_color_manual(values = c("blue", "green", "orange", "red"), name = "Season", labels = c("1", "2", "3", "4"))+ 
   scale_y_continuous(expression('Cumulative NEE ('*m*mol~m^-2~s^-1*')'))
+  
+# Add highlights here to show missed data in summer-only analysis
 
 ```
+
 
 
 # GPP & ER
@@ -621,6 +878,7 @@ ggplot(data = df_avg_2023, aes(x=DOY))+
   scale_y_continuous(expression('CO'[2] * '('*m*mol~m^-2~s^-1*')'))+ labs(title = "2023 GPP & ER")
 
 ```
+
 
 # Monthly Averages of Biomet
 doesn't work yet
