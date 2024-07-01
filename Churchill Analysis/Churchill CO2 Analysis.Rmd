@@ -86,9 +86,9 @@ dates_07 = c('2007-06-19','2007-10-07')
 
 dates_08 = c('2008-06-19','2008-10-07')
 
-dates_22 = c('2022-08-10','2022-11-01')
+dates_22 = c('2022-08-10','2022-12-01')
 
-dates_23 = c('2023-05-10','2023-11-01')
+dates_23 = c('2023-01-01','2023-12-01')
 ```
 
 
@@ -226,7 +226,8 @@ co2_22 <- ggplot(data = df, aes(x = TIMESTAMP, y = FC_F)) +
   ggtitle("2022")+
   scale_x_datetime(limits = as.POSIXct(dates_22))
 
-co2_23 <- ggplot(data = df, aes(x = TIMESTAMP, y = FC_F)) + 
+co2_23 <- ggplot(data = df, aes(x = TIMESTAMP, y = FC_F)) +
+  scale_y_continuous(limits=c(-1, 1))+
   geom_point() +
   ggtitle("2023")+
   scale_x_datetime(limits = as.POSIXct(dates_23))
@@ -265,10 +266,22 @@ soil23 <- ggplot(data = df)+ theme_bw()+
   scale_x_datetime(limits=as.POSIXct(dates_23))+
   scale_y_continuous(limits=c(-5, 20))
 
+GPP <- ggplot(data = df, aes(x = TIMESTAMP, y = GPP_F)) +
+  geom_point() +
+  ggtitle("2023")+
+  scale_x_datetime(limits = as.POSIXct(dates_23))
+
+RECO <- ggplot(data = df, aes(x = TIMESTAMP, y = RECO)) +
+  geom_point() +
+  ggtitle("2023")+
+  scale_x_datetime(limits = as.POSIXct(dates_23))
+
 # Arrange the plots side by side
-grid.arrange(co2_22, co2_23, soil22, soil23, nrow=2, ncol = 2)
+grid.arrange(co2_23, soil23, GPP, RECO, nrow=2, ncol = 2)
 
 rm(co2_22, co2_23, soil22, soil23)
+
+
 
 ```
 
@@ -423,6 +436,9 @@ rm(co2_22, co2_23, ta_22, ta_23)
 ### July 2023 peak
 ```{r}
 
+# gapfilled data causes peak here? compare with non-gapfilled data
+
+
 peak_plot <- function(y_var, df = df_2023, vline_date = "2023-07-02") {
   # Convert y_var to symbol
   y_var <- sym(y_var)
@@ -498,80 +514,57 @@ grid.arrange(co2_07, co2_08, ta_07, ta_08, nrow=2, ncol=2)
 rm(co2_07, co2_08, ta_07, ta_08)
 
 ```
+
+
 # Definition of Seasons
 
 ```{r}
-#defines seasons by Oechel et al. 2014
-#only works for 2023 right now
 
 # Season 1: Winter
 # Season 2: Spring
 # Season 3: Summer
 # Season 4: Fall
 
-find_consecutive_days <- function(df, column_name, threshold, min_days) {
+# Change this to snow melt, growing season, zero curtain, and winter
+
+# last period of the growing season is senescence, analyze with growing season
+
+# Use ratio of par in/out, soil heat flux data, snow depth, air temp to identify snow melt period
+
+
+
+ggplot(data = df_avg_2023) +
+  theme_bw() +
+  geom_line(aes(x = day, y = G_1_1_1/2), color = 'red') +
+  geom_line(aes(x = day, y = TA), color = 'blue') +
+  geom_line(aes(x = day, y = (PPFD_OUT*20)/PPFD_IN), color = 'green') +
+  geom_line(aes(x = day, y = D_SNOW), color = 'purple') +
+  scale_y_continuous(name = expression('CH4 Flux (' * n * mol ~ m^-2 ~ s^-1 * ')') +
+  geom_vline(xintercept = as.POSIXct('2023-5-12'))
   
-  # Extract the vector from the dataframe based on the column name
-  vec <- df[[column_name]]
   
-  # Helper function to find periods of consecutive days
-  find_consecutive_days2 <- function(vec, threshold, min_days) {
-    rle_vec <- rle(vec > threshold)
-    end_indices <- cumsum(rle_vec$lengths)
-    start_indices <- end_indices - rle_vec$lengths + 1
-    for (i in seq_along(rle_vec$values)) {
-      if (rle_vec$values[i] && rle_vec$lengths[i] >= min_days) {
-        return(start_indices[i])
-      }
-    }
-  }
   
-  # Find the first start index of consecutive days above the threshold
-  start_index <- find_consecutive_days2(vec, threshold, min_days)
   
-  # Return the corresponding date
-  return(df$DOY[start_index])
-}
-
-spring_start <- find_consecutive_days(df_avg_2023, "NETRAD", 0, 3)
-
-summer_start <- find_consecutive_days(df_avg_2023, "NETRAD", 100, 3)
-
-fall_start <- find_consecutive_days(df_avg_2023[(366: summer_start+1), ], "NETRAD", 100, 3)
-
-winter_start <- find_consecutive_days(df_avg_2023[(366: summer_start+1), ], "NETRAD", 0, 3)
+  # geom_vline(xintercept = as.POSIXct('2023-5-12'), linetype = 'dotdash')+
+  # geom_vline(xintercept = as.POSIXct('2023-5-3'), linetype = 'dotdash')+
+  # geom_hline(yintercept = 0) +
+  # scale_y_continuous(
+  #   name = expression('CH4 Flux (' * n * mol ~ m^-2 ~ s^-1 * ')'),
+  #   limits = c(-50, 200))+
+  # scale_x_datetime(limits = as.POSIXct(c('2023-4-20', '2023-6-16')))
 
 
-#plot to check that it works
-ggplot(data = df_avg_2023, aes(x=DOY, y=NETRAD))+
-  geom_point()+
-  scale_x_continuous(lim = c(0, 365))+
-  geom_hline(yintercept=100, col="blue")+
-  geom_hline(yintercept=0, col="black")+
-  geom_vline(xintercept=summer_start, col="red")+
-  geom_vline(xintercept=spring_start, col="green")+
-  geom_vline(xintercept=fall_start, col="orange")+ geom_vline(xintercept=winter_start, col="purple")+
-  scale_y_continuous(expression('Net Radiation'))
-
-df_avg_2023 <- df_avg_2023 %>%
-    mutate(season = case_when(
-      DOY < spring_start ~ 1,
-      DOY >= spring_start & DOY < summer_start ~ 2,
-      DOY >= summer_start & DOY < fall_start ~ 3,
-      DOY >= fall_start & DOY < winter_start ~ 4,
-      row_number() >= winter_start ~ 1
-    ))
-
-plot(df_avg_2023$day, df_avg_2023$season
-     )
 
 
-# simpler function but doesn't work
+# Function to use 
 
-# assign_seasons <- function(df, column_name, spring_threshold = 0, summer_threshold = 100, min_days = 3) {
+# find_consecutive_days <- function(df, column_name, threshold, min_days) {
 #   
-#   # Helper function to find start date of consecutive days above threshold
-#   find_start_date <- function(vec, threshold, min_days) {
+#   # Extract the vector from the dataframe based on the column name
+#   vec <- df[[column_name]]
+#   
+#   # Helper function to find periods of consecutive days
+#   find_consecutive_days2 <- function(vec, threshold, min_days) {
 #     rle_vec <- rle(vec > threshold)
 #     end_indices <- cumsum(rle_vec$lengths)
 #     start_indices <- end_indices - rle_vec$lengths + 1
@@ -582,34 +575,44 @@ plot(df_avg_2023$day, df_avg_2023$season
 #     }
 #   }
 #   
-#   # Find start dates for each season
-#   spring_start <- find_start_date(df[[column_name]], spring_threshold, min_days)
-#   summer_start <- find_start_date(df[[column_name]], summer_threshold, min_days)
+#   # Find the first start index of consecutive days above the threshold
+#   start_index <- find_consecutive_days2(vec, threshold, min_days)
 #   
-#   # Assume fall_start and winter_start are found
-#   fall_start <- find_start_date(df[[column_name]][(summer_start + 1):nrow(df)], summer_threshold, min_days)
-#   winter_start <- find_start_date(df[[column_name]][(summer_start + 1):nrow(df)], spring_threshold, min_days)
-#   
-#   # If fall_start or winter_start is not found, set it to the last day + 1
-#   if (is.na(fall_start)) {
-#     fall_start <- nrow(df) + 1
-#   }
-#   if (is.na(winter_start)) {
-#     winter_start <- nrow(df) + 1
-#   }
-#   
-#   # Assign seasons based on start dates
-#   df <- df %>%
-#     mutate(season = case_when(
-#       row_number() < spring_start ~ 1,    # Winter
-#       row_number() >= spring_start & row_number() < summer_start ~ 2,  # Spring
-#       row_number() >= summer_start & row_number() < fall_start ~ 3,    # Summer
-#       row_number() >= fall_start & row_number() < winter_start ~ 4,    # Fall
-#       row_number() >= winter_start ~ 1    # Winter
-#     ))
-#   rm(fall_start, winter_start, summer_start, spring_start)
-#   return(plot(df$DOY, df$season))
+#   # Return the corresponding date
+#   return(df$DOY[start_index])
 # }
+# 
+# spring_start <- find_consecutive_days(df_avg_2023, "NETRAD", 0, 3)
+# 
+# summer_start <- find_consecutive_days(df_avg_2023, "NETRAD", 100, 3)
+# 
+# fall_start <- find_consecutive_days(df_avg_2023[(366: summer_start+1), ], "NETRAD", 100, 3)
+# 
+# winter_start <- find_consecutive_days(df_avg_2023[(366: summer_start+1), ], "NETRAD", 0, 3)
+# 
+# 
+# #plot to check that it works
+# ggplot(data = df_avg_2023, aes(x=DOY, y=NETRAD))+
+#   geom_point()+
+#   scale_x_continuous(lim = c(0, 365))+
+#   geom_hline(yintercept=100, col="blue")+
+#   geom_hline(yintercept=0, col="black")+
+#   geom_vline(xintercept=summer_start, col="red")+
+#   geom_vline(xintercept=spring_start, col="green")+
+#   geom_vline(xintercept=fall_start, col="orange")+ geom_vline(xintercept=winter_start, col="purple")+
+#   scale_y_continuous(expression('Net Radiation'))
+# 
+# df_avg_2023 <- df_avg_2023 %>%
+#     mutate(season = case_when(
+#       DOY < spring_start ~ 1,
+#       DOY >= spring_start & DOY < summer_start ~ 2,
+#       DOY >= summer_start & DOY < fall_start ~ 3,
+#       DOY >= fall_start & DOY < winter_start ~ 4,
+#       row_number() >= winter_start ~ 1
+#     ))
+# 
+# plot(df_avg_2023$day, df_avg_2023$season
+#      )
 
 
 ```
@@ -617,7 +620,7 @@ plot(df_avg_2023$day, df_avg_2023$season
 
 # Seasonal Integrals
 
-To do: add titles to bars describing season
+To do: add titles to bars describing season, 1: winter, 2: Spring, 3: Summer, 4: Fall
 
 ## NEE
 ```{r}
@@ -836,14 +839,13 @@ df_avg_2023 <- df_avg %>%
 trapz(df_avg_2023$DOY, df_avg_2023$FC_F_no_NAs)
 #returns -11.81368
 
-ggplot(data = df_avg_2023, aes(x=DOY, y=cumulative))+
+ggplot(data = df_avg_2023, aes(x=DOY, y=cumulative, color = season))+
   geom_point()+
   scale_x_continuous(lim = c(0, 365))+
-  geom_hline(yintercept=0, col="black")+
-  scale_color_manual(values = c("blue", "green", "orange", "red"), name = "Season", labels = c("1", "2", "3", "4"))+ 
+  geom_hline(yintercept=0, col="black")+ 
   scale_y_continuous(expression('Cumulative NEE ('*m*mol~m^-2~s^-1*')'))
   
-# Add highlights here to show missed data in summer-only analysis
+# Add better colors here (create integer vs numeric for season) 
 
 ```
 
