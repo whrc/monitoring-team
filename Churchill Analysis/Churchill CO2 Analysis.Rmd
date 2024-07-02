@@ -54,8 +54,6 @@ df = fread('C:/Users/dtrangmoe/Documents/Churchill/Churchill_Merged_CF1_CF3.csv'
 df_avg = fread('C:/Users/dtrangmoe/Documents/Churchill/Churchill_Merged_Avg_CF1_CF3.csv',na.strings = c('-9999','NA','NaN','NAN','-7999'))
 
 
-df$TIMESTAMP = df$TIMESTAMP_END
-
 ```
 
 #### Create yearly dataframes, timestamp
@@ -71,11 +69,15 @@ year_df <- function(df, year) {
     mutate(DOY = yday(day))
 }
 
+df_avg$day <- as.POSIXct(df_avg$day, format = "%Y-%m-%d")
+
 
 df_avg_2007 <- year_df(df_avg, 2007)
 df_avg_2008 <- year_df(df_avg, 2008)
 df_avg_2022 <- year_df(df_avg, 2022)
 df_avg_2023 <- year_df(df_avg, 2023)
+
+
 
 ```
 
@@ -105,7 +107,7 @@ energy_balance <- function(df) {
   
   df$Flux <- df$LE + df$H
   
-   plot <- ggplot(data = df, aes(x = Met, y = Flux))+ 
+  plot <- ggplot(data = df, aes(x = Met, y = Flux))+ 
     geom_point()+
     geom_abline(slope=1, intercept=0, colour = "red")+
   scale_x_continuous(lim = c(-100, 600))+
@@ -216,23 +218,37 @@ ggplot(data=df_avg)+
 ```
 
 
-## Soil Temperature/CO2 flux- side by side
+## 2023 Soil Temp
 
-2022/2023
+2023
 ```{r}
 
-co2_22 <- ggplot(data = df, aes(x = TIMESTAMP, y = FC_F)) + 
-  geom_point() +
-  ggtitle("2022")+
-  scale_x_datetime(limits = as.POSIXct(dates_22))
-
 co2_23 <- ggplot(data = df, aes(x = TIMESTAMP, y = FC_F)) +
-  scale_y_continuous(limits=c(-1, 1))+
-  geom_point() +
+  scale_y_continuous(limits=c(-5, 5))+
+  geom_point()+
   ggtitle("2023")+
   scale_x_datetime(limits = as.POSIXct(dates_23))
 
-soil22 <- ggplot(data = df)+ theme_bw()+
+
+soil23_1 <- ggplot(data = df)+ theme_bw()+
+  geom_hline(yintercept = 0)+
+  geom_line(aes(TIMESTAMP,TS_1_0_1))+
+  geom_line(aes(TIMESTAMP,TS_1_05_1))+
+  geom_line(aes(TIMESTAMP,TS_1_1_1))+
+  geom_line(aes(TIMESTAMP,TS_1_2_1))+  
+  geom_line(aes(TIMESTAMP,TS_1_3_1))+
+  geom_line(aes(TIMESTAMP,TS_1_4_1))+
+  geom_line(aes(TIMESTAMP,TS_1_5_1))+
+  geom_line(aes(TIMESTAMP,TS_1_6_1))+
+  geom_line(aes(TIMESTAMP,TS_1_7_1))+
+  geom_line(aes(TIMESTAMP,TS_1_8_1))+
+  geom_line(aes(TIMESTAMP,TS_1_9_1))+
+  geom_line(aes(TIMESTAMP,TS_1_10_1))+
+  scale_x_datetime(limits=as.POSIXct(dates_23))
+
+
+soil23_2 <- ggplot(data = df)+
+  theme_bw()+
   geom_hline(yintercept = 0)+
   geom_line(aes(TIMESTAMP,TS_2_0_1))+
   geom_line(aes(TIMESTAMP,TS_2_05_1))+
@@ -246,42 +262,11 @@ soil22 <- ggplot(data = df)+ theme_bw()+
   geom_line(aes(TIMESTAMP,TS_2_8_1))+
   geom_line(aes(TIMESTAMP,TS_2_9_1))+
   geom_line(aes(TIMESTAMP,TS_2_10_1))+
-  scale_x_datetime(limits=as.POSIXct(dates_22))+
-  scale_y_continuous(limits=c(-5, 20))
+  scale_x_datetime(limits=as.POSIXct(dates_23))
 
-soil23 <- ggplot(data = df)+ theme_bw()+
-  geom_hline(yintercept = 0)+
-  geom_line(aes(TIMESTAMP,TS_2_0_1))+
-  geom_line(aes(TIMESTAMP,TS_2_05_1))+
-  geom_line(aes(TIMESTAMP,TS_2_1_1))+
-  geom_line(aes(TIMESTAMP,TS_2_2_1))+  
-  geom_line(aes(TIMESTAMP,TS_2_3_1))+
-  geom_line(aes(TIMESTAMP,TS_2_4_1))+
-  geom_line(aes(TIMESTAMP,TS_2_5_1))+
-  geom_line(aes(TIMESTAMP,TS_2_6_1))+
-  geom_line(aes(TIMESTAMP,TS_2_7_1))+
-  geom_line(aes(TIMESTAMP,TS_2_8_1))+
-  geom_line(aes(TIMESTAMP,TS_2_9_1))+
-  geom_line(aes(TIMESTAMP,TS_2_10_1))+
-  scale_x_datetime(limits=as.POSIXct(dates_23))+
-  scale_y_continuous(limits=c(-5, 20))
-
-GPP <- ggplot(data = df, aes(x = TIMESTAMP, y = GPP_F)) +
-  geom_point() +
-  ggtitle("2023")+
-  scale_x_datetime(limits = as.POSIXct(dates_23))
-
-RECO <- ggplot(data = df, aes(x = TIMESTAMP, y = RECO)) +
-  geom_point() +
-  ggtitle("2023")+
-  scale_x_datetime(limits = as.POSIXct(dates_23))
 
 # Arrange the plots side by side
-grid.arrange(co2_23, soil23, GPP, RECO, nrow=2, ncol = 2)
-
-rm(co2_22, co2_23, soil22, soil23)
-
-
+grid.arrange(co2_23, soil23_1, soil23_2)
 
 ```
 
@@ -520,107 +505,59 @@ rm(co2_07, co2_08, ta_07, ta_08)
 
 ```{r}
 
-# Season 1: Winter
-# Season 2: Spring
-# Season 3: Summer
-# Season 4: Fall
-
-# Change this to snow melt, growing season, zero curtain, and winter
-
 # last period of the growing season is senescence, analyze with growing season
 
 # Use ratio of par in/out, soil heat flux data, snow depth, air temp to identify snow melt period
 
 
+#need key here on graph 
 
 ggplot(data = df_avg_2023) +
   theme_bw() +
-  geom_line(aes(x = day, y = G_1_1_1/2), color = 'red') +
-  geom_line(aes(x = day, y = TA), color = 'blue') +
-  geom_line(aes(x = day, y = (PPFD_OUT*20)/PPFD_IN), color = 'green') +
-  geom_line(aes(x = day, y = D_SNOW), color = 'purple') +
-  scale_y_continuous(name = expression('CH4 Flux (' * n * mol ~ m^-2 ~ s^-1 * ')') +
-  geom_vline(xintercept = as.POSIXct('2023-5-12'))
+  geom_line(aes(x = DOY, y = TS_1_2_1), color = 'red') +
+  geom_line(aes(x = DOY, y = TA), color = 'blue') +
+  geom_line(aes(x = DOY, y = (PPFD_OUT*20) / PPFD_IN), color = 'green') +
+  geom_line(aes(x = DOY, y = D_SNOW/2), color = 'purple') +
+  geom_line(aes(x = DOY, y = (FC_F*15)), color = 'black') +
+  scale_y_continuous(name = expression('CH4 Flux (' * n * mol ~ m^-2 ~ s^-1 * ')'), limits = ) +
+  geom_vline(xintercept = 112)+
+  geom_vline(xintercept = 135)+
+  geom_vline(xintercept = 295)+
+  geom_vline(xintercept = 325)+
+  scale_x_discrete(limits = c(0, 366))
   
-  
-  
-  
-  # geom_vline(xintercept = as.POSIXct('2023-5-12'), linetype = 'dotdash')+
-  # geom_vline(xintercept = as.POSIXct('2023-5-3'), linetype = 'dotdash')+
-  # geom_hline(yintercept = 0) +
-  # scale_y_continuous(
-  #   name = expression('CH4 Flux (' * n * mol ~ m^-2 ~ s^-1 * ')'),
-  #   limits = c(-50, 200))+
-  # scale_x_datetime(limits = as.POSIXct(c('2023-4-20', '2023-6-16')))
+## does peak after snow is melted included in snow melt period?
 
+df_avg_2023 <- df_avg_2023 %>%
+  mutate(
+      season = case_when(
+      (DOY >= 295 & DOY <= 325) ~ 'Zero curtain',
+      (DOY >= 113 & DOY <= 135) ~ 'Snow Melt',
+      (DOY >= 136 & DOY <= 294) ~ 'Growing Season',
+      (DOY >= 326 | DOY <= 112) ~ 'Winter',
+      TRUE ~ NA_character_
+    )
+  )
+    
+seasonal_cumulative <- df_avg_2023 %>%
+  group_by(season) %>%
+  summarize(
+    cumulative_FC_F = sum(FC_F, na.rm = TRUE)
+  )
 
+print(seasonal_cumulative)
 
-
-# Function to use 
-
-# find_consecutive_days <- function(df, column_name, threshold, min_days) {
-#   
-#   # Extract the vector from the dataframe based on the column name
-#   vec <- df[[column_name]]
-#   
-#   # Helper function to find periods of consecutive days
-#   find_consecutive_days2 <- function(vec, threshold, min_days) {
-#     rle_vec <- rle(vec > threshold)
-#     end_indices <- cumsum(rle_vec$lengths)
-#     start_indices <- end_indices - rle_vec$lengths + 1
-#     for (i in seq_along(rle_vec$values)) {
-#       if (rle_vec$values[i] && rle_vec$lengths[i] >= min_days) {
-#         return(start_indices[i])
-#       }
-#     }
-#   }
-#   
-#   # Find the first start index of consecutive days above the threshold
-#   start_index <- find_consecutive_days2(vec, threshold, min_days)
-#   
-#   # Return the corresponding date
-#   return(df$DOY[start_index])
-# }
-# 
-# spring_start <- find_consecutive_days(df_avg_2023, "NETRAD", 0, 3)
-# 
-# summer_start <- find_consecutive_days(df_avg_2023, "NETRAD", 100, 3)
-# 
-# fall_start <- find_consecutive_days(df_avg_2023[(366: summer_start+1), ], "NETRAD", 100, 3)
-# 
-# winter_start <- find_consecutive_days(df_avg_2023[(366: summer_start+1), ], "NETRAD", 0, 3)
-# 
-# 
-# #plot to check that it works
-# ggplot(data = df_avg_2023, aes(x=DOY, y=NETRAD))+
-#   geom_point()+
-#   scale_x_continuous(lim = c(0, 365))+
-#   geom_hline(yintercept=100, col="blue")+
-#   geom_hline(yintercept=0, col="black")+
-#   geom_vline(xintercept=summer_start, col="red")+
-#   geom_vline(xintercept=spring_start, col="green")+
-#   geom_vline(xintercept=fall_start, col="orange")+ geom_vline(xintercept=winter_start, col="purple")+
-#   scale_y_continuous(expression('Net Radiation'))
-# 
-# df_avg_2023 <- df_avg_2023 %>%
-#     mutate(season = case_when(
-#       DOY < spring_start ~ 1,
-#       DOY >= spring_start & DOY < summer_start ~ 2,
-#       DOY >= summer_start & DOY < fall_start ~ 3,
-#       DOY >= fall_start & DOY < winter_start ~ 4,
-#       row_number() >= winter_start ~ 1
-#     ))
-# 
-# plot(df_avg_2023$day, df_avg_2023$season
-#      )
-
+# # Returns:
+# 1 Growing Season          -22.9 
+# 2 Snow Melt                 3.83
+# 3 Winter                    4.39
+# 4 Zero curtain              2.90
 
 ```
 
 
-# Seasonal Integrals
+# 2023 Seasonal Integrals
 
-To do: add titles to bars describing season, 1: winter, 2: Spring, 3: Summer, 4: Fall
 
 ## NEE
 ```{r}
@@ -630,7 +567,7 @@ seasonal_integrals <- function(df) {
   # Calculate integral (sum) for each season
   integrals <- df %>%
     group_by(season) %>%
-    summarise(integral_value = sum(FC_F, na.rm = TRUE)) %>%
+    summarise(integral_value = round(sum(FC_F, na.rm = TRUE), 2)) %>%
     ungroup() %>%
     arrange(season)
   
@@ -646,7 +583,8 @@ ggplot(seasonal_integrals_2023, aes(x = season, y = integral_value)) +
     y = "Net CO2 Flux",
     title = "2023 CO2 Flux by season"
   ) +
-  theme_minimal()
+  theme_minimal()+
+  geom_text(aes(label = integral_value), vjust = 1, colour = "black")
 
 
 
@@ -656,7 +594,12 @@ ggplot(seasonal_integrals_2023, aes(x = season, y = integral_value)) +
 
 ```
 
+Growing season only vs. full year of data
 
+```{r}
+
+
+```
 
 
 
