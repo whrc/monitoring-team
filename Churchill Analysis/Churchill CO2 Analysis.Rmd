@@ -771,15 +771,15 @@ ggplot(data = df_avg_2022, aes(x=DOY, y=cumulative))+
 #### 2023
 ```{r}
 
-df_avg_2023 <- df_avg %>%
-  subset(format(day, "%Y") == "2023") %>%
-  mutate(day_as_POSIXct = as.POSIXct(day)) %>%
-  mutate(DOY = as.numeric(format(day_as_POSIXct, "%j"))) %>%
-  subset(select = -c(day_as_POSIXct)) %>%
-  mutate(FC_F_no_NAs = ifelse(is.na(FC_F), 0, FC_F)) %>%
-  mutate(cumulative = cumtrapz(DOY, FC_F_no_NAs))
+# df_avg_2023 <- df_avg %>%
+#   subset(format(day, "%Y") == "2023") %>%
+#   mutate(day_as_POSIXct = as.POSIXct(day)) %>%
+#   mutate(DOY = as.numeric(format(day_as_POSIXct, "%j"))) %>%
+#   subset(select = -c(day_as_POSIXct)) %>%
+#   mutate(FC_F_no_NAs = ifelse(is.na(FC_F), 0, FC_F)) %>%
+#   mutate(cumulative = cumtrapz(DOY, FC_F_no_NAs))
 
-trapz(df_avg_2023$DOY, df_avg_2023$FC_F_no_NAs)
+trapz(df_avg_2023$DOY, df_avg_2023$FC_F)
 #returns -11.81368
 
 ggplot(data = df_avg_2023, aes(x=DOY, y=cumulative, color = season))+
