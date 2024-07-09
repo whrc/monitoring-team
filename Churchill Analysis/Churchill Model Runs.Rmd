@@ -23,6 +23,7 @@ library(lubridate)
 library(tidyverse)
 library(RColorBrewer)
 library(tidyr)
+library(ppcor)
 ```
 # Load DF's 
 ```{r}
@@ -274,32 +275,46 @@ ggplot(data = avg)+theme_bw()+
 # Met Timeseries
 ```{r}
 #Soil T
-ggplot(data = df)+theme_bw()+
-  geom_point(aes(ts,FCH4))+
-  geom_line(aes(x = ts, y = TS_2_05_1*4), color = 'blue') + 
+st5 = ggplot(data = df)+theme_bw()+
+  geom_point(aes(ts,FCH4),color = "salmon",pch=20,size = 1.5,alpha=0.75)+
+  geom_line(aes(x = ts, y = TS_2_05_1*5), color = '#087d94',size = .6) + 
+  geom_smooth(aes(x = ts, y = FCH4), color = "salmon", method = 'loess',span = 0.09,size = .7)+  
   geom_hline(yintercept = 0)+
   scale_y_continuous (expression('CH4 Flux ('*n*mol~m^-2~s^-1*')'),
-                      limits = c(-30,140),
-  sec.axis = sec_axis(~./4, name = "Soil Temperature 10cm (°C)")
-  ) 
+                      limits = c(-55,100),
+  sec.axis = sec_axis(~./5, name = "Soil Temperature 10cm (°C)")
+  ) +
+  scale_x_datetime(limits = as.POSIXct(c('2023-01-1', '2023-12-31')))
+
 #SWC
-ggplot(data = df)+theme_bw()+
-  geom_point(aes(ts,FCH4))+
-  geom_line(aes(x = ts, y = SWC_2_1_1), color = 'blue') + 
+swc = ggplot(data = df)+theme_bw()+
+  geom_point(aes(ts,FCH4),color = "salmon",pch=20,size = 1.5,alpha=0.75)+
+  geom_line(aes(x = ts, y = SWC_2_1_1), color = '#087d94',size = .6) + 
+  geom_smooth(aes(x = ts, y = FCH4), color = "salmon", method = 'loess',span = 0.09,size = .7)+  
   geom_hline(yintercept = 0)+
   scale_y_continuous (expression('CH4 Flux ('*n*mol~m^-2~s^-1*')'),
-                      limits = c(-30,140),
-  sec.axis = sec_axis(~., name = "Soil Temperature 10cm (°C)")
-  ) 
+                      limits = c(-5,100),
+  sec.axis = sec_axis(~., name = "Volumetric Water Content (%)")
+  ) +
+  scale_x_datetime(limits = as.POSIXct(c('2023-01-1', '2023-12-31')))
+
 #Rain
-ggplot(data = df)+theme_bw()+
-  geom_point(aes(ts,FCH4))+
-  geom_line(aes(x = ts, y = P*48*2), color = 'blue') + 
+rain = ggplot(data = df)+theme_bw()+
+  geom_point(aes(ts,FCH4),color = "salmon",pch=20,size = 1.5,alpha=0.75)+
+  geom_smooth(aes(x = ts, y = FCH4), color = "salmon", method = 'loess',span = 0.09,size = .7)+  
+  geom_bar(aes(x = ts, y = P * 48 * 2), stat = "identity", fill = '#087d94', alpha = 0.8) +
   geom_hline(yintercept = 0)+
   scale_y_continuous (expression('CH4 Flux ('*n*mol~m^-2~s^-1*')'),
-                      limits = c(-30,140),
+                      limits = c(-5,100),
   sec.axis = sec_axis(~./2, name = "Precip (mm)")
-  )
+  )+
+  scale_x_datetime(limits = as.POSIXct(c('2023-01-1', '2023-12-31')))
+
+
+combined_plot <- plot_grid(st5, swc, rain, ncol = 1)
+print(combined_plot)
+
+ggsave('C:/Permafrost Pathways/combined_plot.png', combined_plot, width = 8, height = 12)
 ```
 
 ## Soil T CH4 Timeseries
@@ -371,8 +386,27 @@ ggplot(data = df)+theme_bw()+
 #  scale_fill_brewer(palette = 'YlOrRd')
   scale_fill_gradientn(colours = brewer.pal(9,'GnBu'))
 ```
+# NA DF
+```{r}
+
+NAdf <- na.omit(df[, c("ts","FCH4", "TS_2_05_1", "SWC_2_1_1", "GPP_F")])
+```
+
+
 
 # Model Runs
+# LAGGED_P creation
+```{r}
+df <- df %>%
+  mutate(LAGGED_P = lag(P, n = 13))
+
+
+# Replace NA values with 0 for dates before '2022-08-18'
+df$LAGGED_P <- ifelse(is.na(df$LAGGED_P) & df$ts < as.POSIXct("2022-08-19"), 0, df$LAGGED_P)
+
+```
+
+
 ## LM Runs 0, 5, 10 cm
 ```{r}
 #0 cm (R-squared 0.73)
@@ -388,6 +422,14 @@ summary((TS5logCH4))
 TS10logCH4 = lm(log10(FCH4+5)~TS_2_1_1,data = df)
 summary((TS10logCH4))
 
+#TA (R-squared 0.72)
+TAlogCH4 = lm(log10(FCH4+5)~TA,data = df)
+summary((TAlogCH4))
+
+
+#P (R-squared 0.72)
+PlogCH4 = lm(log10(FCH4+5)~LAGGED_P,data = df)
+summary((PlogCH4))
 ```
 ## Trendline 5 cm
 ```{r}
@@ -402,6 +444,14 @@ num_rows_df <- nrow(df)
 # Create the new dataframe with the same number of rows as df, removing NA values
 new_data <- data.frame(TS_2_05_1 = seq(min(na.omit(df$TS_2_05_1)), max(na.omit(df$TS_2_05_1)), length.out = num_rows_df))
 new_data$predicted <- exponential_trend_5(new_data$TS_2_05_1)
+
+
+#na.omit(df$TS_2_05_1) removes NA values from the TS_2_05_1 column of your dataframe df, returning a vector containing only the non-NA values.
+
+#min() and max() functions are then applied to this vector to calculate the minimum and maximum values of TS_2_05_1 while ignoring NA values.
+
+#The length.out argument in seq() ensures that the sequence has the same length as the filtered TS_2_05_1 values, thus addressing the issue of mismatched row numbers.
+
 
 
 ggplot(data = df) +
@@ -427,34 +477,41 @@ ggplot(data = new_data) +
   theme(legend.position = "none")
 min(df$FCH4,na.rm = TRUE)
 ```
-## Trendline 0 cm
+## Residual Analysis (ST5)
+
 ```{r}
-# Define the exponential trend function
-exponential_trend_0 <- function(x) {
-  10^(1.20111 + 0.04328664 * x) - 5
-}
 
-# Determine the number of rows in your original dataframe df
-num_rows_df <- nrow(df)
+# NEED TO USE NA df for same variable lengths
+TS5logCH4_residuals <- residuals(TS5logCH4)
 
-# Create the new dataframe with the same number of rows as df, removing NA values
-new_data <- data.frame(TS_1_0_1 = seq(min(na.omit(df$TS_1_0_1)), max(na.omit(df$TS_1_0_1)), length.out = num_rows_df))
-new_data$predicted <- exponential_trend_0(new_data$TS_1_0_1)
+# Model residuals with GPP
+GPP_FCH4_residuals <- lm(TS5logCH4_residuals ~ GPP_F, data = NAdf)
+summary(GPP_FCH4_residuals)
+
+# Model residuals with VWC
+VWC_FCH4_residuals <- lm(TS5logCH4_residuals ~ SWC_2_1_1, data = NAdf)
+summary(VWC_FCH4_residuals)
 
 
+# Model residuals with GPP & VWC
+both_FCH4_residuals <- lm(TS5logCH4_residuals ~ SWC_2_1_1 + GPP_F, data = NAdf)
+summary(both_FCH4_residuals)
+
+# Fit the combined model including temperature, GPP, and VWC
+model_combined <- lm(log10(FCH4 + 5) ~ TS_2_05_1 + GPP_F + SWC_2_1_1, data = NAdf)
+summary(model_combined)
+```
+### p RESIDUAL
+```{r}
+# Model residuals with P
+P_FCH4_residuals <- lm(TS5logCH4_residuals ~ LAGGED_P, data = NAdf)
+summary(P_FCH4_residuals)
 ```
 
-## LM 0 model
-```{r}
-# Extract the predicted log10(FCH4 + 5) values from the model
-predicted_FCH4_0 <- predict(TS0logCH4)
 
-# Exponentiate the predicted log10(FCH4 + 5) values to obtain predicted FCH4 values
-p_FCH4_0 <- 10^predicted_FCH4_0 - 5
 
-# Plot the predicted FCH4 values against the actual FCH4 values
-plot(p_FCH4_0,pch = 16, col = "blue", xlab = "Actual FCH4", ylab = "Predicted FCH4", main = "Predicted vs Actual FCH4")
-```
+
+
 
 ## LM 5 model
 ```{r, warning=FALSE}
@@ -598,9 +655,34 @@ ccf(df$SWC_2_1_1,df$FCH4, na.action = na.pass)
 #GPP
 ccf(df$GPP_F,df$FCH4, na.action = na.pass)
 
+```
+# PCOR Test
+```{r}
 
+pcorvwc <- pcor.test(NAdf$FCH4, NAdf$TS_2_05_1, NAdf$SWC_2_1_1)
+print(pcorvwc)
+
+pcorgpp <- pcor.test(NAdf$FCH4, NAdf$TS_2_05_1, NAdf$GPP_F)
+print(pcorgpp)
+
+pcorboth <- pcor.test(NAdf$FCH4, NAdf$TS_2_05_1, NAdf[, c("SWC_2_1_1", "GPP_F")])
+print(pcorboth)
+
+# Apply the transformation to FCH4
+df$logFCH4 <- log10(df$FCH4 + 5)
+NAdf <- na.omit(df[, c("ts","FCH4", "TS_2_05_1", "SWC_2_1_1", "GPP_F","logFCH4")])
+
+logpcorvwc <- pcor.test(NAdf$logFCH4, NAdf$SWC_2_1_1, NAdf$TS_2_05_1)
+print(logpcorvwc)
+
+logpcorgpp <- pcor.test(NAdf$logFCH4, NAdf$GPP_F, NAdf$TS_2_05_1)
+print(logpcorgpp)
+
+logpcorboth <- pcor.test(NAdf$logFCH4, NAdf[, c("SWC_2_1_1", "GPP_F")], NAdf$TS_2_05_1)
+print(logpcorboth)
 
 ```
+
 
 ## Seasons breakdown 
 Our onset of melt is DOY 126, theirs is 166
@@ -664,6 +746,9 @@ ggplot(data = df) +
   geom_point(aes(x = ts, y = FCH4_F*1000), color = 'salmon') +
   geom_point(aes(x = ts, y = Predicted_CH4), color = '#00BFC4') +
   geom_line(aes(x = ts, y = TS_2_05_1*5), color = 'blue') +  
+  geom_line(aes(x = ts, y = TS_2_1_1*5), color = 'darkgreen') + 
+  geom_line(aes(x = ts, y = TS_2_2_1*5), color = 'orange') + 
+  geom_line(aes(x = ts, y = TS_2_3_1*5), color = 'red') + 
   geom_smooth(aes(x = ts, y = FCH4, color = "FCH4"), method = 'loess',span = 0.115)+
   geom_smooth(aes(x = ts, y = Predicted_CH4, color = "Log 5 CH4"), method = 'loess',span = 0.115)+
   geom_vline(xintercept = as.POSIXct('2023-4-23'))+
@@ -762,6 +847,10 @@ ggplot(seasonal_cumulative_long, aes(x = season, y = cumulative_value, fill = ty
        x = "Season", y = "Cumulative Value",
        fill = "Type") +
   theme_minimal()
+
+sum(df23$FCH4_F*1000)
+sum(df23$Predicted_CH4,na.rm = TRUE)
+
 ```
 
 
