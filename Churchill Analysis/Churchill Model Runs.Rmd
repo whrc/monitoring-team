@@ -118,9 +118,9 @@ CF3$date = as.POSIXct(paste(CF3$year,CF3$month,CF3$day,sep = ''),
 #Changing TS_3 and TS_4 into TS_2 and TS_1 
 #Changing TS_2_1_1 and TS_2_2_1 into TS_3_0_1 & TS_3_05_1
 
-CF3 <- CF3 %>% select(-TS_1_1_1)
-CF3 <- CF3 %>% select(-TS_2_1_1)
-CF3 <- CF3 %>% select(-TS_2_2_1)
+CF3 <- CF3 %>% dplyr::select(-TS_1_1_1)
+CF3 <- CF3 %>% dplyr::select(-TS_2_1_1)
+CF3 <- CF3 %>% dplyr::select(-TS_2_2_1)
 
 
 #Open water therms
@@ -276,60 +276,95 @@ ggplot(data = avg)+theme_bw()+
 ```{r}
 #Soil T
 st5 = ggplot(data = df)+theme_bw()+
-  geom_point(aes(ts,FCH4),color = "salmon",pch=20,size = 1.5,alpha=0.75)+
+  geom_point(aes(ts,FCH4),color = "salmon",pch=20,size = 2,alpha=0.75)+
   geom_line(aes(x = ts, y = TS_2_05_1*5), color = '#087d94',size = .6) + 
   geom_smooth(aes(x = ts, y = FCH4), color = "salmon", method = 'loess',span = 0.09,size = .7)+  
   geom_hline(yintercept = 0)+
-  scale_y_continuous (expression('CH4 Flux ('*n*mol~m^-2~s^-1*')'),
-                      limits = c(-55,100),
-  sec.axis = sec_axis(~./5, name = "Soil Temperature 10cm (°C)")
+  scale_y_continuous (expression('CH'[4]~'Flux ('*n*mol~m^-2~s^-1*')'),
+                      limits = c(-70,100),
+  sec.axis = sec_axis(~./5, name = "Soil Temperature 5cm (°C)")
   ) +
-  scale_x_datetime(limits = as.POSIXct(c('2023-01-1', '2023-12-31')))
-
+  scale_x_datetime(limits = as.POSIXct(c('2023-01-1', '2023-12-31')))+
+  labs(x = NULL)+
+  theme(
+    axis.text.x = element_text(size = 16),   
+    axis.text.y = element_text(size = 16),  
+    axis.title.y = element_text(size = 18) 
+  )
+st5
 #SWC
 swc = ggplot(data = df)+theme_bw()+
-  geom_point(aes(ts,FCH4),color = "salmon",pch=20,size = 1.5,alpha=0.75)+
+  geom_point(aes(ts,FCH4),color = "salmon",pch=20,size = 2,alpha=0.75)+
   geom_line(aes(x = ts, y = SWC_2_1_1), color = '#087d94',size = .6) + 
   geom_smooth(aes(x = ts, y = FCH4), color = "salmon", method = 'loess',span = 0.09,size = .7)+  
   geom_hline(yintercept = 0)+
-  scale_y_continuous (expression('CH4 Flux ('*n*mol~m^-2~s^-1*')'),
+  scale_y_continuous (expression('CH'[4]~'Flux ('*n*mol~m^-2~s^-1*')'),
                       limits = c(-5,100),
   sec.axis = sec_axis(~., name = "Volumetric Water Content (%)")
   ) +
-  scale_x_datetime(limits = as.POSIXct(c('2023-01-1', '2023-12-31')))
+  scale_x_datetime(limits = as.POSIXct(c('2023-01-1', '2023-12-31')))+
+  labs(x = NULL)+
+  theme(
+    axis.text.x = element_text(size = 16),   
+    axis.text.y = element_text(size = 16),  
+    axis.title.y = element_text(size = 18) 
+  )
 
 #Rain
 rain = ggplot(data = df)+theme_bw()+
-  geom_point(aes(ts,FCH4),color = "salmon",pch=20,size = 1.5,alpha=0.75)+
+  geom_point(aes(ts,FCH4),color = "salmon",pch=20,size = 2,alpha=0.75)+
   geom_smooth(aes(x = ts, y = FCH4), color = "salmon", method = 'loess',span = 0.09,size = .7)+  
   geom_bar(aes(x = ts, y = P * 48 * 2), stat = "identity", fill = '#087d94', alpha = 0.8) +
   geom_hline(yintercept = 0)+
-  scale_y_continuous (expression('CH4 Flux ('*n*mol~m^-2~s^-1*')'),
+  scale_y_continuous (expression('CH'[4]~'Flux ('*n*mol~m^-2~s^-1*')'),
                       limits = c(-5,100),
   sec.axis = sec_axis(~./2, name = "Precip (mm)")
   )+
-  scale_x_datetime(limits = as.POSIXct(c('2023-01-1', '2023-12-31')))
+  scale_x_datetime(limits = as.POSIXct(c('2023-01-1', '2023-12-31')))+
+  labs(x = NULL)+
+  theme(
+    axis.text.x = element_text(size = 16),   
+    axis.text.y = element_text(size = 16),  
+    axis.title.y = element_text(size = 18) 
+  )
 
+#GPP
+GPP = ggplot(data = df)+theme_bw()+
+  geom_point(aes(ts,FCH4),color = "salmon",pch=20,size = 2,alpha=0.75)+
+  geom_smooth(aes(x = ts, y = FCH4), color = "salmon", method = 'loess',span = 0.09,size = .7)+  
+  geom_line(aes(x = ts, y = GPP_F*30), color = '#087d94',size = .6) + 
+  geom_hline(yintercept = 0)+
+  scale_y_continuous (expression('CH'[4]~'Flux ('*n*mol~m^-2~s^-1*')'),
+                      limits = c(-5,100),
+  sec.axis = sec_axis(~./30, name = 'GPP ('*u*mol~m^-2~s^-1*')')
+  )+
+  scale_x_datetime(limits = as.POSIXct(c('2023-01-1', '2023-12-31')))+
+  labs(x = NULL) +
+  theme(
+    axis.text.x = element_text(size = 16),   
+    axis.text.y = element_text(size = 16),  
+    axis.title.y = element_text(size = 18) 
+  )
+  
 
-combined_plot <- plot_grid(st5, swc, rain, ncol = 1)
+GPP
+combined_plot <- plot_grid(st5, swc, GPP, ncol = 1)
 print(combined_plot)
 
-ggsave('C:/Permafrost Pathways/combined_plot.png', combined_plot, width = 8, height = 12)
+ggsave('C:/Permafrost Pathways/combined_plot.png', combined_plot, width = 16, height = 12)
 ```
 
 ## Soil T CH4 Timeseries
 ```{r}
 
 
-ggplot(data = df) +
+ggplot(data = CF3) +
   theme_bw() +
-  geom_point(aes(x = ts, y = FCH4), color = 'salmon') +
-  geom_line(aes(x = ts, y = TS_2_05_1*4), color = 'blue') +  
+  geom_point(aes(x = ts, y = H20), color = 'salmon') + 
   geom_hline(yintercept = 0) +
   scale_y_continuous(
     name = expression('CH4 Flux (' * n * mol ~ m^-2 ~ s^-1 * ')'),
     limits = c(-20, 95),
-    sec.axis = sec_axis(~./4, name = "Soil Temperature 5cm (°C)")
   ) +
   scale_x_datetime(limits = as.POSIXct(c('2023-04-16', '2023-12-23')))
 
@@ -415,7 +450,7 @@ summary((TS0logCH4))
 
 
 #5cm (R-squared 0.76)
-TS5logCH4 = lm(log10(FCH4+5)~TS_2_05_1,data = df)
+TS5logCH4 = lm(log10(FCH4+5)~TS_2_05_1,data = NAdf)
 summary((TS5logCH4))
 
 #5cm (R-squared 0.72)
@@ -427,9 +462,6 @@ TAlogCH4 = lm(log10(FCH4+5)~TA,data = df)
 summary((TAlogCH4))
 
 
-#P (R-squared 0.72)
-PlogCH4 = lm(log10(FCH4+5)~LAGGED_P,data = df)
-summary((PlogCH4))
 ```
 ## Trendline 5 cm
 ```{r}
@@ -483,23 +515,25 @@ min(df$FCH4,na.rm = TRUE)
 
 # NEED TO USE NA df for same variable lengths
 TS5logCH4_residuals <- residuals(TS5logCH4)
+# TS5 and VWC
+TS5_VWC = lm(SWC_2_1_1~TS_2_05_1, data = NAdf)
 
-# Model residuals with GPP
-GPP_FCH4_residuals <- lm(TS5logCH4_residuals ~ GPP_F, data = NAdf)
-summary(GPP_FCH4_residuals)
+TS5_VWC_residuals <- residuals(TS5_VWC)
 
-# Model residuals with VWC
-VWC_FCH4_residuals <- lm(TS5logCH4_residuals ~ SWC_2_1_1, data = NAdf)
-summary(VWC_FCH4_residuals)
+PCOR_TS5_VWC <- lm(TS5logCH4_residuals ~ TS5_VWC_residuals)
+summary(PCOR_TS5_VWC)
+# TS5 and GPP
+TS5_GPP = lm(GPP_F~TS_2_05_1, data = NAdf)
 
+TS5_GPP_residuals <- residuals(TS5_GPP)
 
-# Model residuals with GPP & VWC
-both_FCH4_residuals <- lm(TS5logCH4_residuals ~ SWC_2_1_1 + GPP_F, data = NAdf)
-summary(both_FCH4_residuals)
+PCOR_TS5_GPP <- lm(TS5logCH4_residuals ~ TS5_GPP_residuals)
+summary(PCOR_TS5_GPP)
 
-# Fit the combined model including temperature, GPP, and VWC
-model_combined <- lm(log10(FCH4 + 5) ~ TS_2_05_1 + GPP_F + SWC_2_1_1, data = NAdf)
-summary(model_combined)
+hist(PCOR_TS5_GPP$residuals)
+shapiro.test(PCOR_TS5_GPP$residuals)
+
+plot(TS5logCH4_residuals,TS5_GPP_residuals)
 ```
 ### p RESIDUAL
 ```{r}
@@ -595,53 +629,7 @@ summary((GPP_FCH4))
 
 
 ```
-# Modelled GPP plot 
 
-```{r}
-
-# Extract the predicted FCH4 values from the model
-predicted_FCH4 <- predict(GPP_FCH4)
-
-
-# Plot the predicted FCH4 values against the actual FCH4 values
-plot(predicted_FCH4, pch = 16, col = "blue", xlab = "Actual FCH4", ylab = "Predicted FCH4", main = "Predicted vs Actual FCH4")
-
-
-
-
-# Extract the subset of observations used for fitting the model
-df_subset <- df[!is.na(df$GPP_F), ]
-
-# Predict CH4 values for the subset of observations
-predicted_FCH4_subset <- predict(GPP_FCH4, newdata = df_subset) 
-
-# Add the predicted CH4 values to your dataframe df_subset
-df_subset$Predicted_CH4 <- predicted_FCH4_subset
-
-# Merge the predicted CH4 values back to the original dataframe df
-df <- merge(df, df_subset[, c("ts", "Predicted_CH4")], by = "ts", all.x = TRUE)
-
-# Check the structure of your dataframe to confirm that the new column has been added
-str(df)
-
-
-
-ggplot(data = df) +
-  theme_bw() +
-  geom_point(aes(x = ts, y = FCH4, color = "Observed CH4"), alpha = 0.5) +
-  geom_smooth(aes(x = ts, y = FCH4, color = "Observed CH4"), method = 'loess',span = 0.25)+
-  geom_point(aes(x = ts, y = Predicted_CH4, color = "Predicted CH4"), alpha = 0.5) +
-  geom_smooth(aes(x = ts, y = Predicted_CH4, color = "Predicted CH4"), method = 'loess',span = 0.25)+
-  geom_hline(yintercept = 0) +
-  scale_y_continuous(expression('CH4 Flux (' * n * mol ~ m^-2 ~ s^-1 * ')'), limits = c(-6, 135)) +
-  scale_x_datetime(limits = as.POSIXct(c('2022-08-6', '2023-12-31'))) +
-  labs(color = "CH4 Values") +
-  scale_color_manual(values = c("Observed CH4" = "salmon", "Predicted CH4" = "blue")) +
-  guides(color = guide_legend(title = "CH4 Values"))
-
-#if FC is NA then make GPP NA
-#use GPP as a residual analysis 
-```
 
 
 ## Time lag 
@@ -656,32 +644,7 @@ ccf(df$SWC_2_1_1,df$FCH4, na.action = na.pass)
 ccf(df$GPP_F,df$FCH4, na.action = na.pass)
 
 ```
-# PCOR Test
-```{r}
 
-pcorvwc <- pcor.test(NAdf$FCH4, NAdf$TS_2_05_1, NAdf$SWC_2_1_1)
-print(pcorvwc)
-
-pcorgpp <- pcor.test(NAdf$FCH4, NAdf$TS_2_05_1, NAdf$GPP_F)
-print(pcorgpp)
-
-pcorboth <- pcor.test(NAdf$FCH4, NAdf$TS_2_05_1, NAdf[, c("SWC_2_1_1", "GPP_F")])
-print(pcorboth)
-
-# Apply the transformation to FCH4
-df$logFCH4 <- log10(df$FCH4 + 5)
-NAdf <- na.omit(df[, c("ts","FCH4", "TS_2_05_1", "SWC_2_1_1", "GPP_F","logFCH4")])
-
-logpcorvwc <- pcor.test(NAdf$logFCH4, NAdf$SWC_2_1_1, NAdf$TS_2_05_1)
-print(logpcorvwc)
-
-logpcorgpp <- pcor.test(NAdf$logFCH4, NAdf$GPP_F, NAdf$TS_2_05_1)
-print(logpcorgpp)
-
-logpcorboth <- pcor.test(NAdf$logFCH4, NAdf[, c("SWC_2_1_1", "GPP_F")], NAdf$TS_2_05_1)
-print(logpcorboth)
-
-```
 
 
 ## Seasons breakdown 
