@@ -13,11 +13,6 @@ knitr::opts_chunk$set(echo = TRUE)
 
 Notes:
 
-create integral function
-
-Controls and general patterns
-separate seasons (annual data- lose 60% of sink)
-don’t worry about error bar for now
 
 
 
@@ -45,6 +40,10 @@ library(RColorBrewer)
 library(pracma)
 ```
 
+
+
+
+
 # Load data
 ```{r}
 
@@ -69,6 +68,9 @@ year_df <- function(df, year) {
     mutate(DOY = yday(day))
 }
 
+
+#Creates data frames of each year containing the daily averages of each value- useful for focusing on one year at a time
+
 df_avg$day <- as.POSIXct(df_avg$day, format = "%Y-%m-%d")
 
 
@@ -83,6 +85,9 @@ df_avg_2023 <- year_df(df_avg, 2023)
 
 
 ### Date ranges for plots
+
+Adjust dates here!
+
 ```{r}
 dates_07 = c('2007-06-19','2007-10-07')
 
@@ -116,14 +121,13 @@ energy_balance <- function(df) {
   return(plot)
 }
 
-eb07 <- energy_balance(df_2007)
-eb08 <- energy_balance(df_2008)
-eb22 <- energy_balance(df_2022)
-eb23 <- energy_balance(df_2023)
+eb07 <- energy_balance(df_avg_2007)
+eb08 <- energy_balance(df_avg_2008)
+eb22 <- energy_balance(df_avg_2022)
+eb23 <- energy_balance(df_avg_2023)
 
 grid.arrange(eb07, eb08, eb22, eb23, nrow=2, ncol=2)
 
-summary(lm(df_2023$Flux ~ df_2023$Met))
 
 
 ```
@@ -132,7 +136,7 @@ summary(lm(df_2023$Flux ~ df_2023$Met))
 
 ## Biomet variable plots
 
-Used to figure out what data is here
+Used to figure out what data is included for each year, not for analysis
 
 ``` {r, warning=FALSE}
 
@@ -179,48 +183,50 @@ ggplot(df, aes_string(x = "TIMESTAMP_END", y = "TS_2_4_1"))+
     geom_point() +
   geom_vline(aes(xintercept= as.POSIXct("2023-05-14")))+
     scale_x_datetime(name = 'Date')+
-    scale_y_continuous(name = 'Random Soil Temp')
+    scale_y_continuous(name = 'Random Soil Temp, CF3')
 
 
 # Only CF1 soil temps
+
 ggplot(df, aes_string(x = "TIMESTAMP_END", y = "TS_F_MDS_1"))+
     theme_bw()+
     geom_point() +
-  geom_vline(aes(xintercept= as.POSIXct("2023-05-14")))+
-    scale_x_datetime(name = 'Date')+
-    scale_y_continuous(name = 'Random Soil Temp')
+    scale_x_datetime(as.POSIXct(c('01-01-2007','12-31-2008'))+
+    scale_y_continuous(name = 'Random Soil Temp, CF1')
 
 ggplot(df, aes_string(x = "TIMESTAMP_END", y = "TS_F_MDS_2"))+
     theme_bw()+
     geom_point() +
   geom_vline(aes(xintercept= as.POSIXct("2023-05-14")))+
     scale_x_datetime(name = 'Date')+
-    scale_y_continuous(name = 'Random Soil Temp')
+    scale_y_continuous(name = 'Random Soil Temp, CF1')
 ```
 
 
 ## Month=color plots 
 ```{r}
 
-df_avg$month = as.numeric(as.yearmon(df_avg$day))
+#Creates a month variable in the 2023 dataframe
 
-ggplot(data=df_avg)+
-  geom_point(aes(x=TS_2_0_1, y=FC_F, col = PPFD_IN))
+df_avg_2023$month = as.numeric(as.yearmon(df_avg_2023$day))
 
-ggplot(data=df_avg)+
-  geom_point(aes(x=TS_2_0_1, y=GPP_F, col = PPFD_IN))
 
-ggplot(data=df_avg)+
-  geom_point(aes(x=VPD, y=FC_F, col = month))+
-  scale_x_continuous(limits = c(0, 100))
+#Plots two variables against each other with the color representing the time of year 
+
+ggplot(data=df_avg_2023)+
+  geom_point(aes(x=TS_2_0_1, y=GPP_F, col = month))+
+  scale_x_continuous(limits = c(0, 25))
 
 
 ```
 
 
-## 2023 Soil Temp
+## Soil Temp
 
 2023
+
+Plots both soil profiles and net CO2 flux together
+
 ```{r}
 
 co2_23 <- ggplot(data = df, aes(x = TIMESTAMP, y = FC_F)) +
@@ -269,6 +275,7 @@ soil23_2 <- ggplot(data = df)+
 grid.arrange(co2_23, soil23_1, soil23_2)
 
 ```
+
 
 2007/2008
 ```{r}
@@ -338,7 +345,7 @@ rn_23 <- ggplot(data = df, aes(x = TIMESTAMP, y = NETRAD)) +
   scale_x_datetime(limits = as.POSIXct(dates_23))+
   scale_y_continuous(limits = c(-10, 1000))
 
-grid.arrange(co2_22, co2_23, rn_22, rn_23, nrow=3, ncol=2)
+grid.arrange(co2_22, co2_23, rn_22, rn_23, nrow=2, ncol=2)
 
 rm(co2_22, co2_23, rn_22, rn_23)
 
@@ -419,6 +426,9 @@ rm(co2_22, co2_23, ta_22, ta_23)
 ```
 
 ### July 2023 peak
+
+Focused plots on the peak in FC_F in July 2023
+
 ```{r}
 
 # gapfilled data causes peak here? compare with non-gapfilled data
@@ -449,27 +459,9 @@ TApeak_23 <- peak_plot("TA")
 grid.arrange(co2peak_23, RECOpeak_23, GPPpeak_23, TApeak_23, nrow=2, ncol=2)
 
 
-soiltemp105peak_23 <- peak_plot("TS_1_05_1")
-soiltemp205peak_23 <- peak_plot("TS_2_05_1")
-
-PPFDinpeak_23 <- peak_plot("PPFD_IN")
-NETRADpeak_23 <- peak_plot("NETRAD")
-
-rainpeak_23 <- peak_plot("P")
-SWC1peak_23 <- peak_plot("SWC_1_1_1")
-SWC2peak_23 <- peak_plot("SWC_2_1_1")
-
-#soil water content/rain & flux
-grid.arrange(co2peak_23, RECOpeak_23, GPPpeak_23, rainpeak_23, SWC1peak_23, SWC2peak_23, nrow=2, ncol=3)
-
-#soil temp & flux
-grid.arrange(co2peak_23, RECOpeak_23, GPPpeak_23, TApeak_23, soiltemp105peak_23, soiltemp205peak_23, nrow=2, ncol=3)
-
-#radiation & flux
-grid.arrange(co2peak_23, RECOpeak_23, GPPpeak_23, NETRADpeak_23, PPFDinpeak_23, soiltemp205peak_23, nrow=2, ncol=3)
-
-
 ```
+
+
 
 2007/2008
 ```{r}
@@ -503,14 +495,14 @@ rm(co2_07, co2_08, ta_07, ta_08)
 
 # Definition of Seasons
 
+Uses ratio of par in/out, soil heat flux data, snow depth, air temp to identify snow melt period
+
 ```{r}
 
 # last period of the growing season is senescence, analyze with growing season
 
-# Use ratio of par in/out, soil heat flux data, snow depth, air temp to identify snow melt period
 
-
-#need key here on graph 
+#need key here on graph
 
 ggplot(data = df_avg_2023) +
   theme_bw() +
@@ -519,7 +511,7 @@ ggplot(data = df_avg_2023) +
   geom_line(aes(x = DOY, y = (PPFD_OUT*20) / PPFD_IN), color = 'green') +
   geom_line(aes(x = DOY, y = D_SNOW/2), color = 'purple') +
   geom_line(aes(x = DOY, y = (FC_F*15)), color = 'black') +
-  scale_y_continuous(name = expression('CH4 Flux (' * n * mol ~ m^-2 ~ s^-1 * ')'), limits = ) +
+  scale_y_continuous(name = expression('Biomet Vars & FC'), limits = ) +
   geom_vline(xintercept = 112)+
   geom_vline(xintercept = 135)+
   geom_vline(xintercept = 295)+
@@ -527,6 +519,9 @@ ggplot(data = df_avg_2023) +
   scale_x_discrete(limits = c(0, 366))
   
 ## does peak after snow is melted included in snow melt period?
+
+
+# Defines seasons in the 2023 dataframe using a column of character values
 
 df_avg_2023 <- df_avg_2023 %>%
   mutate(
@@ -697,6 +692,8 @@ Gets net emissions from given yr
 could change this to use half-hourly data? 
 could create function here instead of copy/paste in future
 
+These don't work right now, need to switch dataframe definitions
+
 #### 2007
 ```{r}
 
@@ -769,15 +766,18 @@ ggplot(data = df_avg_2022, aes(x=DOY, y=cumulative))+
 
 
 #### 2023
+
+Add GPP and RECO plots here?
+
 ```{r}
 
-# df_avg_2023 <- df_avg %>%
-#   subset(format(day, "%Y") == "2023") %>%
-#   mutate(day_as_POSIXct = as.POSIXct(day)) %>%
-#   mutate(DOY = as.numeric(format(day_as_POSIXct, "%j"))) %>%
-#   subset(select = -c(day_as_POSIXct)) %>%
-#   mutate(FC_F_no_NAs = ifelse(is.na(FC_F), 0, FC_F)) %>%
-#   mutate(cumulative = cumtrapz(DOY, FC_F_no_NAs))
+df_avg_2023 <- df_avg_2023 %>%
+  subset(format(day, "%Y") == "2023") %>%
+  mutate(day_as_POSIXct = as.POSIXct(day)) %>%
+  mutate(DOY = as.numeric(format(day_as_POSIXct, "%j"))) %>%
+  subset(select = -c(day_as_POSIXct)) %>%
+  mutate(FC_F_no_NAs = ifelse(is.na(FC_F), 0, FC_F)) %>%
+  mutate(cumulative = cumtrapz(DOY, FC_F_no_NAs))
 
 trapz(df_avg_2023$DOY, df_avg_2023$FC_F)
 #returns -11.81368
