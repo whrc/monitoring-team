@@ -449,9 +449,15 @@ TS0logCH4 = lm(log10(FCH4+5)~TS_1_0_1,data = df)
 summary((TS0logCH4))
 
 
-#5cm (R-squared 0.76)
+#5cm (R-squared 0.76) with NAdf and non-NAdf, all is the same
 TS5logCH4 = lm(log10(FCH4+5)~TS_2_05_1,data = NAdf)
 summary((TS5logCH4))
+
+
+TS5logCH4 = lm(log10(FCH4+5)~TS_2_05_1,data = df)
+summary((TS5logCH4))
+
+
 
 #5cm (R-squared 0.72)
 TS10logCH4 = lm(log10(FCH4+5)~TS_2_1_1,data = df)
@@ -535,6 +541,30 @@ shapiro.test(PCOR_TS5_GPP$residuals)
 
 plot(TS5logCH4_residuals,TS5_GPP_residuals)
 ```
+#Re-insert residuals
+#Spring Analysis
+```{r}
+# add log10(FCH4+5) residuals to NAdf data frame
+NAdf$TS5logCH4_residuals = TS5logCH4_residuals
+
+#create new NAdf for spring period only
+spring = subset(NAdf, NAdf$ts >= '2023-5-3' & NAdf$ts <= '2023-6-14')
+
+#summarize and visualize df
+summary(spring$TS5logCH4_residuals)
+hist(spring$TS5logCH4_residuals)
+
+#re-insert residuals with correct formula 10^residuals +5
+spring$regresid = (10^spring$TS5logCH4_residuals) +5 
+hist(spring$regresid)
+summary(spring$regresid)
+
+# change units to mgC /day
+spring$regresid_daily_mgc = spring$regresid*60*60*24/(10^6)*12
+sum(spring$regresid_daily_mgc)
+
+```
+
 ### p RESIDUAL
 ```{r}
 # Model residuals with P
@@ -674,6 +704,7 @@ ggplot(data = avg) +
     name = expression('CH4 Flux (' * n * mol ~ m^-2 ~ s^-1 * ')'),
     limits = c(-50, 200))+
   scale_x_datetime(limits = as.POSIXct(c('2023-4-20', '2023-6-16')))
+ 
 
 ggplot(data = avg) +
   theme_bw() +
@@ -749,18 +780,30 @@ ggplot(data = df) +
   scale_x_datetime(limits = as.POSIXct(c('2023-01-1', '2023-4-30')))
 ```
 
+# Spring pulse removed model
+
+```{r}
+#create new variable removing spring pulse in DF
+df$FCH4_no_spring = df$FCH4
+df$FCH4_no_spring = ifelse(df$ts >= '2023-5-3' & df$ts <= '2023-6-14' ,NA, df$FCH4_no_spring)
+
+#linear model with no spring (R^2 = 0.80)
+no_spring_TS5logCH4 = lm(log10(FCH4_no_spring+5)~TS_2_05_1,data = df)
+summary(no_spring_TS5logCH4)
+```
 
 
 ## Separations and plots
+Spring will start at the onset of melt (5/3 DOY 124)
 ```{r}
 
 df23 <- df %>%
   mutate(
       season = case_when(
       (DOY >= 260 & DOY <= 320) ~ 'fall',
-      (DOY >= 113 & DOY <= 166) ~ 'spring',
+      (DOY >= 124 & DOY <= 166) ~ 'spring',
       (DOY >= 167 & DOY <= 259) ~ 'summer',
-      (DOY >= 321 | DOY <= 112) ~ 'winter',
+      (DOY >= 321 | DOY <= 123) ~ 'winter',
       TRUE ~ NA_character_
     )
   ) %>%
