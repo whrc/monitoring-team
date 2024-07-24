@@ -116,9 +116,6 @@ df1 <- select(df1, !all_of(names(df1)[grep("_DT", names(df1))]))
 
 df3 <- select(df3, !all_of(names(df3)[grep("_DT", names(df3))]))
 
-#Methane
-df3 <- select(df3, !all_of(names(df3)[grep("CH4", names(df3))]))
-
 #_TEST
 df3 <- select(df3, !all_of(names(df3)[grep("_TEST$", names(df3))]))
 
