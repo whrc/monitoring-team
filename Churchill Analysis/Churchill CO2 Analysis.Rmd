@@ -216,13 +216,20 @@ print(seasonal_cumulative2)
 ```
 
 
-# Isolate nighttime data
+# Isolate nighttime, snowmelt FC data
 
 ```{r}
 
 ggplot(data=df_2023)+
-  geom_point(aes(x=TIMESTAMP, y=NETRAD))
-  
+  geom_point(aes(x=TIMESTAMP, y=NETRAD))+
+  scale_x_datetime(limits = as.POSIXct(snowmelt23))
+
+df_2023 <- df_2023 %>%
+  mutate(FC_night = ifelse(NETRAD <= 0, FC, NA))
+
+ggplot(data=df_2023)+
+  geom_point(aes(x=TIMESTAMP, y=FC_night))+
+  scale_x_datetime(limits = as.POSIXct(snowmelt23))
 ```
 
 
@@ -315,16 +322,6 @@ ggplot(seasonal_integrals_2023, aes(x = season, y = integral_value)) +
 
 
 # Bar graph showing growing season vs. year round analysis
-
-
-
-```
-
-### Growing Season vs. Full Year
-
-Compares the NEE of growing-season only site and our year round data
-
-```{r}
 
 
 
@@ -432,6 +429,16 @@ ggplot(seasonal_integrals_2023, aes(x = season, y = integral_value)) +
   ) +
   theme_minimal()+
   geom_text(aes(label = integral_value), vjust = 1, colour = "orange")
+
+```
+
+### Growing Season vs. Full Year
+
+Compares the NEE of growing-season only site and our year round data
+
+```{r}
+
+
 
 ```
 
