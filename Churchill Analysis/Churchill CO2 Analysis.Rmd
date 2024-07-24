@@ -93,11 +93,11 @@ snowmelt23 = c('2023-04-23','2023-05-15')
 ```
 
 
-### Avg. GPP & ER Plot
+### GPP & ER Plots
 
 ```{r}
 
-ggplot(data = df_avg_2023, aes(x=DOY))+
+ggplot(data = df_2023, aes(x=DOY))+
   geom_point(aes(y = GPP_F, color = "GPP")) +
   geom_point(aes(y = RECO, color = "ER")) +
   geom_hline(yintercept=0, col="black")+
@@ -106,7 +106,7 @@ ggplot(data = df_avg_2023, aes(x=DOY))+
 ```
 
 
-# Gap Filling Plots
+#### Gap Filling Plot
 
 Shows gap in flux data and compares gap filled and non-gap filled data
 
@@ -218,12 +218,15 @@ print(seasonal_cumulative2)
 
 # Isolate nighttime data
 
-```{}
+```{r}
 
+ggplot(data=df_2023)+
+  geom_point(aes(x=TIMESTAMP, y=NETRAD))
+  
 ```
 
 
-# Year long Integrals
+# Year long Budget 
 
 #### NEE
 
@@ -435,21 +438,47 @@ grid.arrange(eb07, eb08, eb22, eb23, nrow=2, ncol=2)
 
 
 
-## Month=color plots 
+## Temperature Relationship 
 
 ```{r}
 
 #Creates a month variable in the 2023 dataframe
 
-df_avg_2023$month = as.numeric(as.yearmon(df_avg_2023$day))
+df_2023$month = as.numeric(as.yearmon(df_2023$day))
 
+#Plots flux variables vs. 5cm soil temp to visualize temperature/co2 flux relationship
 
-#Plots two variables against each other with the color representing the time of year 
+ggplot(data=df_2023)+
+  geom_point(aes(x=TS_1_05_1, y=FC, col = season))+
+  labs(
+    x = "Soil Temp (C)",
+    y = "NEE",
+    title = "NEE vs. Soil Temp"
+  ) 
+
+ggplot(data=df_2023)+
+  geom_point(aes(x=TS_1_05_1, y=GPP_F, col = season))+
+  labs(
+    x = "Soil Temp",
+    y = "GPP",
+    title = "GPP vs. Soil Temp"
+  ) 
+
+ggplot(data=df_2023)+
+  geom_point(aes(x=TS_1_05_1, y=RECO, col = season))+
+  labs(
+    x = "Soil Temp",
+    y = "Respiration",
+    title = "Respiraton vs. Soil Temp"
+  ) 
 
 ggplot(data=df_avg_2023)+
-  geom_point(aes(x=TS_2_0_1, y=GPP_F, col = month))+
-  scale_x_continuous(limits = c(0, 25))
-
+  geom_point(aes(x=TS_1_05_1, y=RECO, col = season)) +
+  labs(
+    x = "Soil Temp",
+    y = "Respiration",
+    title = "Respiraton vs. Soil Temp"
+  ) 
 
 ```
 
