@@ -41,15 +41,6 @@ library(pracma)
 ```
 
 
-To-Do:
-
-Link files to Google Drive
-
-Differentiate temp. controlled peak and non-temperature controlled
-
-Make plots show up in script
-
-
 
 
 # Load data
@@ -81,9 +72,6 @@ year_df <- function(df, year) {
 
 df_avg$day <- as.POSIXct(df_avg$day, format = "%Y-%m-%d")
 
-
-df_avg_2007 <- year_df(df_avg, 2007)
-df_avg_2008 <- year_df(df_avg, 2008)
 df_avg_2022 <- year_df(df_avg, 2022)
 df_avg_2023 <- year_df(df_avg, 2023)
 
@@ -98,15 +86,24 @@ df_2023 <- year_df(df, 2023)
 Adjust dates here!
 
 ```{r}
-dates_07 = c('2007-06-19','2007-10-07')
-
-dates_08 = c('2008-06-19','2008-10-07')
-
-dates_22 = c('2022-08-10','2022-12-01')
 
 dates_23 = c('2023-01-01','2023-12-01')
+
+snowmelt23 = c('2023-04-23','2023-05-15')
 ```
 
+
+### Avg. GPP & ER Plot
+
+```{r}
+
+ggplot(data = df_avg_2023, aes(x=DOY))+
+  geom_point(aes(y = GPP_F, color = "GPP")) +
+  geom_point(aes(y = RECO, color = "ER")) +
+  geom_hline(yintercept=0, col="black")+
+  scale_y_continuous(expression('CO'[2] * '('*m*mol~m^-2~s^-1*')'))+ labs(title = "2023 GPP & ER")
+
+```
 
 
 # Gap Filling Plots
@@ -121,21 +118,12 @@ ggplot(data = df_2023)+
   geom_hline(yintercept = 0)+
   geom_point(aes(TIMESTAMP,FC_F,col='Gapfilled'))+
   geom_point(aes(TIMESTAMP,FC,col='Original'))+
-  scale_y_continuous(limits=c(-6,6))+
+  scale_y_continuous(limits=c(-7,6))+
   scale_x_datetime(limits = as.POSIXct(dates_23,format="%F"))+
   labs(y = "CO2 Flux", x = "Time") +
   scale_color_manual(values=c('red','black'))+
-  geom_vline(xintercept = as.POSIXct("07-05-2023"))
+  geom_vline(xintercept = as.POSIXct("2023-07-05"))
 
-
-# Uses daily averages
-
-ggplot(data = df_avg_2023)+geom_hline(yintercept = 0)+
-  geom_point(aes(day,FC_F,col='Gapfilled'))+
-  geom_point(aes(day,FC,col='Original'))+
-  scale_y_continuous(limits=c(-2.5,2.5))+
-  scale_x_datetime(limits = as.POSIXct(dates_23,format="%F"))+
-  scale_color_manual(values=c('red','black'))
 
 ```
 
@@ -228,219 +216,17 @@ print(seasonal_cumulative2)
 ```
 
 
+# Isolate nighttime data
 
-
-# 2023 Seasonal Integrals
-
-
-## NEE
-
-Finds the net CO2 exchange of each season as defined above
-```{r}
-
-seasonal_integrals <- function(df) {
-  
-  # Calculate integral (sum) for each season
-  integrals <- df %>%
-    group_by(season) %>%
-    summarise(integral_value = round(sum(FC_F, na.rm = TRUE), 2)) %>%
-    ungroup() %>%
-    arrange(season)
-  
-  return(integrals)
-}
-
-seasonal_integrals_2023 <- seasonal_integrals(df_avg_2023)
-
-ggplot(seasonal_integrals_2023, aes(x = season, y = integral_value)) +
-  geom_bar(stat = "identity", position = "dodge") +
-  labs(
-    x = "Season",
-    y = "Net CO2 Flux",
-    title = "2023 CO2 Flux by season"
-  ) +
-  theme_minimal()+
-  geom_text(aes(label = integral_value), vjust = 1, colour = "black")
-
-
-
-# Bar graph showing growing season vs. year round analysis
-
-
+```{}
 
 ```
-
-### Growing Season vs. Full Year
-
-Compares the NEE of growing-season only site and our year round data
-
-```{r}
-
-
-
-```
-
-
-
-## GPP
-
-Finds the net GPP of each season
-
-```{r}
-
-seasonal_integrals <- function(df) {
-  
-  # Calculate integral (sum) for each season
-  integrals <- df %>%
-    group_by(season) %>% summarise(integral_value = round(sum(GPP_F, na.rm = TRUE), 2)) %>%
-    ungroup() %>%
-    arrange(season)
-  
-  return(integrals)
-}
-
-seasonal_integrals_2023 <- seasonal_integrals(df_avg_2023)
-
-ggplot(seasonal_integrals_2023, aes(x = season, y = integral_value)) +
-  geom_bar(stat = "identity", position = "dodge") +
-  labs(
-    x = "Season",
-    y = "Net GPP",
-    title = "2023 GPP by season"
-  ) +
-  theme_minimal()+
-  geom_text(aes(label = integral_value), vjust = 1, colour = "magenta")
-
-
-
-# Bar graph showing growing season vs. year round analysis
-
-
-
-```
-
-
-
-
-
-## RECO
-```{r}
-
-seasonal_integrals <- function(df) {
-  
-  # Calculate integral (sum) for each season
-  integrals <- df %>%
-    group_by(season) %>%
-    summarise(integral_value = round(sum(RECO, na.rm = TRUE), 2)) %>%
-    ungroup() %>%
-    arrange(season)
-  
-  return(integrals)
-}
-
-seasonal_integrals_2023 <- seasonal_integrals(df_avg_2023)
-
-ggplot(seasonal_integrals_2023, aes(x = season, y = integral_value)) +
-  geom_bar(stat = "identity", position = "dodge") +
-  labs(
-    x = "Season",
-    y = "Net ER",
-    title = "2023 ER by season"
-  ) +
-  theme_minimal()+
-  geom_text(aes(label = integral_value), vjust = 1, colour = "orange")
-
-
-
-# Bar graph showing growing season vs. year round analysis
-
-
-
-```
-
 
 
 # Year long Integrals
 
-Gets net emissions from given yr
-could change this to use half-hourly data? 
-could create function here instead of copy/paste in future
+#### NEE
 
-
-#### 2007
-```{r}
-
-df_avg_2007 <- df_avg %>%
-  subset(format(day, "%Y") == "2007") %>%
-  mutate(day_as_POSIXct = as.POSIXct(day)) %>%
-  mutate(DOY = as.numeric(format(day_as_POSIXct, "%j"))) %>%
-  subset(select = -c(day_as_POSIXct)) %>%
-  mutate(FC_F_no_NAs = ifelse(is.na(FC_F), 0, FC_F)) %>%
-  mutate(cumulative = cumtrapz(DOY, FC_F_no_NAs))
-
-
-trapz(df_avg_2007$DOY, df_avg_2007$FC_F_no_NAs)
-#returns 10.71887
-                           
-ggplot(data = df_avg_2007, aes(x=DOY, y=cumulative))+
-  geom_point()+
-  scale_x_continuous(lim = c(160, 290))+
-  geom_hline(yintercept=0, col="blue")+
-  scale_y_continuous(expression('Cumulative NEE ('*m*mol~m^-2~s^-1*')'))
-
-```
-
-
-#### 2008
-```{r}
-
-df_avg_2008 <- df_avg %>%
-  subset(format(day, "%Y") == "2008") %>%
-  mutate(day_as_POSIXct = as.POSIXct(day)) %>%
-  mutate(DOY = as.numeric(format(day_as_POSIXct, "%j"))) %>%
-  subset(select = -c(day_as_POSIXct)) %>%
-  mutate(FC_F_no_NAs = ifelse(is.na(FC_F), 0, FC_F)) %>%
-  mutate(cumulative = cumtrapz(DOY, FC_F_no_NAs))
-
-trapz(df_avg_2008$DOY, df_avg_2008$FC_F_no_NAs)
-#returns 46.96865
-
-ggplot(data = df_avg_2008, aes(x=DOY, y=cumulative))+
-  geom_point()+
-  scale_x_continuous(lim = c(160, 290))+
-  geom_hline(yintercept=0, col="blue")+
-  scale_y_continuous(expression('Cumulative NEE ('*m*mol~m^-2~s^-1*')'))
-
-```
-
-
-#### 2022
-```{r}
-#incomplete year - need continuous day var in avg df
-
-df_avg_2022 <- df_avg %>%
-  subset(format(day, "%Y") == "2022") %>%
-  mutate(day_as_POSIXct = as.POSIXct(day)) %>%
-  mutate(DOY = as.numeric(format(day_as_POSIXct, "%j"))) %>%
-  subset(select = -c(day_as_POSIXct)) %>%
-  mutate(FC_F_no_NAs = ifelse(is.na(FC_F), 0, FC_F)) %>%
-  mutate(cumulative = cumtrapz(DOY, FC_F_no_NAs))
-
-trapz(df_avg_2022$DOY, df_avg_2022$FC_F_no_NAs)
-#returns -17.67401
-
-ggplot(data = df_avg_2022, aes(x=DOY, y=cumulative))+
-  geom_point()+
-  scale_x_continuous(lim = c(160, 290))+
-  geom_hline(yintercept=0, col="blue")+
-  scale_y_continuous(expression('Cumulative NEE ('*m*mol~m^-2~s^-1*')'))
-
-```
-
-
-#### 2023
-
-Add GPP and RECO plots here?
 
 ```{r}
 
@@ -465,38 +251,154 @@ ggplot(data = df_avg_2023, aes(x=DOY, y=cumulative, color = season))+
 ```
 
 
+# Seasonal Integrals
 
-### GPP & ER
+
+## NEE
+
+Finds the net CO2 exchange of each season as defined above
+```{r}
+
+seasonal_integrals <- function(df) {
+  
+  # Calculate integral (sum) for each season
+  integrals <- df %>%
+    group_by(season) %>%
+    summarise(integral_value = round(sum(FC_F, na.rm = TRUE), 2)) %>%
+    ungroup() %>%
+    arrange(season)
+  
+  return(integrals)
+}
+
+seasonal_integrals_2023 <- seasonal_integrals(df_2023)
+
+ggplot(seasonal_integrals_2023, aes(x = season, y = integral_value)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  labs(
+    x = "Season",
+    y = "Net CO2 Flux",
+    title = "2023 CO2 Flux by season"
+  ) +
+  theme_minimal()+
+  geom_text(aes(label = integral_value), vjust = 1, colour = "orange")
+
+
+
+# Bar graph showing growing season vs. year round analysis
+
+
+
+```
+
+### Growing Season vs. Full Year
+
+Compares the NEE of growing-season only site and our year round data
 
 ```{r}
 
-ggplot(data = df_avg_2007, aes(x=DOY))+
-  geom_point(aes(y = GPP_F, color = "GPP")) +
-  geom_point(aes(y = RECO, color = "ER")) +
-  geom_hline(yintercept=0, col="black")+
-  scale_y_continuous(expression('CO'[2] * '('*m*mol~m^-2~s^-1*')'))+ labs(title = "2007 GPP & ER")
 
-ggplot(data = df_avg_2008, aes(x=DOY))+
-  geom_point(aes(y = GPP_F, color = "GPP")) +
-  geom_point(aes(y = RECO, color = "ER")) +
-  geom_hline(yintercept=0, col="black")+
-  scale_y_continuous(expression('CO'[2] * '('*m*mol~m^-2~s^-1*')'))+ labs(title = "2008 GPP & ER")
-
-ggplot(data = df_avg_2022, aes(x=DOY))+
-  geom_point(aes(y = GPP_F, color = "GPP")) +
-  geom_point(aes(y = RECO, color = "ER")) +
-  geom_hline(yintercept=0, col="black")+
-  scale_y_continuous(expression('CO'[2] * '('*m*mol~m^-2~s^-1*')'))+ labs(title = "2022 GPP & ER")
-
-ggplot(data = df_avg_2023, aes(x=DOY))+
-  geom_point(aes(y = GPP_F, color = "GPP")) +
-  geom_point(aes(y = RECO, color = "ER")) +
-  geom_hline(yintercept=0, col="black")+
-  scale_y_continuous(expression('CO'[2] * '('*m*mol~m^-2~s^-1*')'))+ labs(title = "2023 GPP & ER")
 
 ```
 
 
+## GPP
+
+Finds the net GPP of each season
+
+```{r}
+
+seasonal_integrals <- function(df) {
+  
+  # Calculate integral (sum) for each season
+  integrals <- df %>%
+    group_by(season) %>% summarise(integral_value = round(sum(GPP_F, na.rm = TRUE), 2)) %>%
+    ungroup() %>%
+    arrange(season)
+  
+  return(integrals)
+}
+
+seasonal_integrals_2023 <- seasonal_integrals(df_2023)
+
+ggplot(seasonal_integrals_2023, aes(x = season, y = integral_value)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  labs(
+    x = "Season",
+    y = "Net GPP",
+    title = "2023 GPP by season"
+  ) +
+  theme_minimal()+
+  geom_text(aes(label = integral_value), vjust = 1, colour = "orange")
+
+
+
+# Bar graph showing growing season vs. year round analysis
+
+
+
+```
+
+
+
+## RECO
+```{r}
+
+seasonal_integrals <- function(df) {
+  
+  # Calculate integral (sum) for each season
+  integrals <- df %>%
+    group_by(season) %>%
+    summarise(integral_value = round(sum(RECO, na.rm = TRUE), 2)) %>%
+    ungroup() %>%
+    arrange(season)
+  
+  return(integrals)
+}
+
+seasonal_integrals_2023 <- seasonal_integrals(df_2023)
+
+ggplot(seasonal_integrals_2023, aes(x = season, y = integral_value)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  labs(
+    x = "Season",
+    y = "Net ER",
+    title = "2023 ER by season"
+  ) +
+  theme_minimal()+
+  geom_text(aes(label = integral_value), vjust = 1, colour = "orange")
+
+
+
+# Bar graph showing growing season vs. year round analysis
+
+
+
+```
+
+
+
+# Snowmelt peak analysis
+
+```{r}
+
+## Shows non-temperature correlated peak in CO2 Flux data during snowmelt
+
+ggplot(data = df_2023) +
+  theme_bw() +
+  geom_point(aes(x = TIMESTAMP, y = FC_F), color = 'black') +
+  geom_point(aes(x = TIMESTAMP, y = RECO), color = 'blue') +
+  geom_point(aes(x = TIMESTAMP, y = GPP_F), color = 'green') +
+  geom_line(aes(x = TIMESTAMP, y = TS_2_05_1), color = 'deeppink2') +  
+  geom_hline(yintercept = 0) +
+  scale_y_continuous(
+    name = expression('CO2 Data'),
+    limits = c(-7, 5),
+    sec.axis = sec_axis(~./4, name = "5cm Soil Temp")
+    ) +
+  scale_x_datetime(limits = as.POSIXct(c('2023-05-05', '2023-05-20')))
+
+```
 
 
 # Analysis of Controls
@@ -531,85 +433,6 @@ grid.arrange(eb07, eb08, eb22, eb23, nrow=2, ncol=2)
 
 ```
 
-
-
-## Biomet variable plots
-
-Used to figure out what data is included for each year, not for analysis
-
-``` {r, warning=FALSE}
-
-ggplot(df, aes_string(x = "TIMESTAMP_END", y = "FC_F"))+
-    theme_bw()+
-    geom_point()+
-    scale_x_datetime(name = 'Date')+
-    scale_y_continuous(name = CO2)
-
-#only soil heat flux in CF3 dataset
-ggplot(df, aes_string(x = "TIMESTAMP_END", y = "G_1_1_1"))+
-    theme_bw()+
-    geom_point()+
-  geom_vline(aes(xintercept= as.POSIXct("2023-05-14")))+
-    scale_x_datetime(name = 'Date')+
-    scale_y_continuous(name = 'SHF1')
-
-#only snow depth in CF3 dataset
-ggplot(df, aes_string(x = "TIMESTAMP_END", y = "D_SNOW"))+
-    theme_bw()+
-    geom_point() +
-  geom_vline(aes(xintercept= as.POSIXct("2023-05-14")))+
-    scale_x_datetime(name = 'Date')+
-    scale_y_continuous(name = 'Snow Depth')
-
-ggplot(df, aes_string(x = "TIMESTAMP_END", y = "TA"))+
-    theme_bw()+
-    geom_point() +
-  geom_vline(aes(xintercept= as.POSIXct("2023-05-14")))+
-  geom_vline(aes(xintercept= as.POSIXct("2023-04-10")))+
-    scale_x_datetime(name = 'Date')+
-    scale_y_continuous(name = 'Air Temp')
-
-# only CACF3 data here
-ggplot(df, aes_string(x = "TIMESTAMP_END", y = "ALB"))+
-    theme_bw()+
-    geom_point() +
-  geom_vline(aes(xintercept= as.POSIXct("2023-05-14")))+
-    scale_x_datetime(name = 'Date')+
-    scale_y_continuous(name = 'Albedo')
-
-ggplot(df, aes_string(x = "TIMESTAMP_END", y = "TS_2_4_1"))+
-    theme_bw()+
-    geom_point() +
-  geom_vline(aes(xintercept= as.POSIXct("2023-05-14")))+
-    scale_x_datetime(name = 'Date')+
-    scale_y_continuous(name = 'Random Soil Temp, CF3')
-
-
-# Only CF1 soil temps
-
-ggplot(df, aes_string(x = "TIMESTAMP_END", y = "TS_F_MDS_1"))+
-    theme_bw()+
-    geom_point() +
-    scale_x_datetime(as.POSIXct(c('01-01-2007','12-31-2008'))+
-    scale_y_continuous(name = 'Random Soil Temp, CF1')
-    
-
-ggplot(df, aes_string(x = "TIMESTAMP_END", y = "TS_F_MDS_2"))+
-    theme_bw()+
-    geom_point() +
-  geom_vline(aes(xintercept= as.POSIXct("2023-05-14")))+
-    scale_x_datetime(name = 'Date')+
-    scale_y_continuous(name = 'Random Soil Temp, CF1')
-
-ggplot(df, aes_string(x = "TIMESTAMP_END", y = "TS_F_MDS_2"))+
-    theme_bw()+
-    geom_point() +
-  geom_vline(aes(xintercept= as.POSIXct("2023-05-14")))+
-    scale_x_datetime(name = 'Date')+
-    scale_y_continuous(name = 'Random Soil Temp, CF1')
-
-
-```
 
 
 ## Month=color plots 
@@ -684,251 +507,19 @@ soil23_2 <- ggplot(data = df)+
 # Arrange the plots side by side
 grid.arrange(co2_23, soil23_1, soil23_2)
 
-```
+## Shows non-temperature correlated peak in CO2 Flux data during snowmelt
 
-
-2007/2008
-```{r}
-
-co2_07 <- ggplot(data = df, aes(x = TIMESTAMP, y = FC_F)) + 
-  geom_point() +
-  ggtitle("2007")+
-  scale_x_datetime(limits = as.POSIXct(dates_07))
-
-co2_08 <- ggplot(data = df, aes(x = TIMESTAMP, y = FC_F)) + 
-  geom_point() +
-  ggtitle("2008")+
-  scale_x_datetime(limits = as.POSIXct(dates_08))
-
-soil07 <- ggplot(data = df)+ theme_bw()+
-  geom_hline(yintercept = 0)+
-  geom_line(aes(TIMESTAMP,TS_F_MDS_1))+
-  geom_line(aes(TIMESTAMP,TS_F_MDS_2))+
-  geom_line(aes(TIMESTAMP,TS_F_MDS_3))+
-  geom_line(aes(TIMESTAMP,TS_F_MDS_4))+  
-  geom_line(aes(TIMESTAMP,TS_F_MDS_5))+
-  geom_line(aes(TIMESTAMP,TS_F_MDS_6))+
-  scale_x_datetime(limits=as.POSIXct(dates_07))+
-  scale_y_continuous(limits=c(-5, 20))
-
-soil08 <- ggplot(data = df)+ theme_bw()+
-  geom_hline(yintercept = 0)+
-  geom_line(aes(TIMESTAMP,TS_F_MDS_1))+
-  geom_line(aes(TIMESTAMP,TS_F_MDS_2))+
-  geom_line(aes(TIMESTAMP,TS_F_MDS_3))+
-  geom_line(aes(TIMESTAMP,TS_F_MDS_4))+  
-  geom_line(aes(TIMESTAMP,TS_F_MDS_5))+
-  geom_line(aes(TIMESTAMP,TS_F_MDS_6))+
-  scale_x_datetime(limits=as.POSIXct(dates_08))+
-  scale_y_continuous(limits=c(-5, 20))
-
-# Arrange the plots side by side
-grid.arrange(co2_07, co2_08, soil07, soil08, nrow=2, ncol = 2)
-
-rm(co2_07, co2_08, soil07, soil08)
-```
-
-
-
-##CO2/NR Side by Side
-
-2022/2023
-```{r}
-
-co2_22 <- ggplot(data = df, aes(x = TIMESTAMP, y = FC_F)) + 
-  geom_point() +
-  ggtitle("2022")+
-  scale_x_datetime(limits = as.POSIXct(dates_22))
-
-co2_23 <- ggplot(data = df, aes(x = TIMESTAMP, y = FC_F)) + 
-  geom_point() +
-  ggtitle("2023")+
-  scale_x_datetime(limits = as.POSIXct(dates_23))
-
-rn_22 <- ggplot(data = df, aes(x = TIMESTAMP, y = NETRAD)) + 
-  geom_point() +
-  scale_x_datetime(limits = as.POSIXct(dates_22))+
-  scale_y_continuous(limits = c(-10, 1000))
-
-rn_23 <- ggplot(data = df, aes(x = TIMESTAMP, y = NETRAD)) + 
-  geom_point() +
-  scale_x_datetime(limits = as.POSIXct(dates_23))+
-  scale_y_continuous(limits = c(-10, 1000))
-
-grid.arrange(co2_22, co2_23, rn_22, rn_23, nrow=2, ncol=2)
-
-rm(co2_22, co2_23, rn_22, rn_23)
+ggplot(data = df_2023) +
+  theme_bw() +
+  geom_point(aes(x = TIMESTAMP, y = FC), color = 'darkgreen') +
+  geom_line(aes(x = TIMESTAMP, y = TS_2_05_1), color = 'deeppink2') +  
+  geom_hline(yintercept = 0) +
+  scale_y_continuous(
+    name = expression('CO2 Flux'),
+    limits = c(-7, 5),
+    sec.axis = sec_axis(~./4, name = "5cm Soil Temp")
+    ) +
+  scale_x_datetime(limits = as.POSIXct(c('2023-05-01', '2023-05-20')))
 
 ```
-
-2007/2008
-```{r}
-
-co2_07 <- ggplot(data = df, aes(x = TIMESTAMP, y = FC_F)) + 
-  geom_point() +
-  ggtitle("2007")+
-  scale_x_datetime(limits = as.POSIXct(dates_07))
-
-co2_08 <- ggplot(data = df, aes(x = TIMESTAMP, y = FC_F)) + 
-  geom_point() +
-  ggtitle("2008")+
-  scale_x_datetime(limits = as.POSIXct(dates_08))
-
-## check units on VPD for different datasets
-vpd_07 <- ggplot(data = df, aes(x = TIMESTAMP, y = VPD)) + 
-  geom_point() +
-  scale_x_datetime(limits = as.POSIXct(dates_07))+
-  scale_y_continuous(limits = c(-10, 50))
-
-vpd_08 <- ggplot(data = df, aes(x = TIMESTAMP, y = VPD)) + 
-  geom_point() +
-  scale_x_datetime(limits = as.POSIXct(dates_08))+
-  scale_y_continuous(limits = c(-10, 50))
-
-rn_07 <- ggplot(data = df, aes(x = TIMESTAMP, y = NETRAD)) + 
-  geom_point() +
-  scale_x_datetime(limits = as.POSIXct(dates_07))+
-  scale_y_continuous(limits = c(-10, 1000))
-
-rn_08 <- ggplot(data = df, aes(x = TIMESTAMP, y = NETRAD)) + 
-  geom_point() +
-  scale_x_datetime(limits = as.POSIXct(dates_08))+
-  scale_y_continuous(limits = c(-10, 1000))
-
-grid.arrange(co2_07, co2_08, vpd_07, vpd_08, rn_07, rn_08, nrow=3, ncol=2)
-
-rm(co2_07, co2_08, vpd_07, vpd_08, rn_07, rn_08)
-
-```
-
-
-
-##CO2/Air Temp Side by Side
-
-2022/2023
-```{r}
-
-co2_22 <- ggplot(data = df, aes(x = TIMESTAMP, y = FC_F)) + 
-  geom_point() +
-  ggtitle("2022")+
-  scale_x_datetime(limits = as.POSIXct(dates_22))
-
-co2_23 <- ggplot(data = df, aes(x = TIMESTAMP, y = FC_F)) + 
-  geom_point() +
-  ggtitle("2023")+
-  scale_x_datetime(limits = as.POSIXct(dates_23))
-
-ta_22 <- ggplot(data = df, aes(x = TIMESTAMP, y = TA)) + 
-  geom_point() +
-  scale_x_datetime(limits = as.POSIXct(dates_22))+
-  scale_y_continuous(limits = c(-25, 40))
-
-ta_23 <- ggplot(data = df, aes(x = TIMESTAMP, y = TA)) + 
-  geom_point() +
-  scale_x_datetime(limits = as.POSIXct(dates_23))+
-  scale_y_continuous(limits = c(-25, 40))
-
-grid.arrange(co2_22, co2_23, ta_22, ta_23, nrow=2, ncol=2)
-
-rm(co2_22, co2_23, ta_22, ta_23)
-
-## add partitioned data here
-```
-
-### July 2023 peak
-
-Focused plots on the peak in FC_F in July 2023
-
-```{r}
-
-# gapfilled data causes peak here? compare with non-gapfilled data
-
-
-peak_plot <- function(y_var, df = df_2023, vline_date = "2023-07-02") {
-  # Convert y_var to symbol
-  y_var <- sym(y_var)
-  
-  # Fixed start and end dates
-  start_date <- "2023-06-20"
-  end_date <- "2023-07-10"
-  
-  # Create the plot
-  plot <- ggplot(data = df, aes(x = TIMESTAMP, y = !!y_var)) + 
-    geom_point() +
-    scale_x_datetime(limits = as.POSIXct(c(start_date, end_date))) +
-    geom_vline(xintercept = as.POSIXct(vline_date))
-  
-  return(plot)
-}
-
-co2peak_23 <- peak_plot("FC_F")
-GPPpeak_23 <- peak_plot("GPP_F")
-RECOpeak_23 <- peak_plot("RECO")
-TApeak_23 <- peak_plot("TA")
-
-grid.arrange(co2peak_23, RECOpeak_23, GPPpeak_23, TApeak_23, nrow=2, ncol=2)
-
-
-ggplot(data = df_avg_2023)+
-  geom_point(aes(x=day, y=FC))+
-  geom_point(aes(x=day, y=FC_F, color = "blue"))+
-
-
-```
-
-
-
-2007/2008
-```{r}
-
-co2_07 <- ggplot(data = df, aes(x = TIMESTAMP, y = FC_F)) + 
-  geom_point() +
-  ggtitle("2007")+
-  scale_x_datetime(limits = as.POSIXct(dates_07))
-
-co2_08 <- ggplot(data = df, aes(x = TIMESTAMP, y = FC_F)) + 
-  geom_point() +
-  ggtitle("2008")+
-  scale_x_datetime(limits = as.POSIXct(dates_08))
-
-ta_07 <- ggplot(data = df, aes(x = TIMESTAMP, y = TA)) + 
-  geom_point() +
-  scale_x_datetime(limits = as.POSIXct(dates_07))+
-  scale_y_continuous(limits = c(-25, 40))
-
-ta_08 <- ggplot(data = df, aes(x = TIMESTAMP, y = TA)) + 
-  geom_point() +
-  scale_x_datetime(limits = as.POSIXct(dates_08))+
-  scale_y_continuous(limits = c(-25, 40))
-
-grid.arrange(co2_07, co2_08, ta_07, ta_08, nrow=2, ncol=2)
-
-rm(co2_07, co2_08, ta_07, ta_08)
-
-```
-
-
-
-# Monthly Averages of Biomet
-
-doesn't work yet!
-
-``` {r}
-
-df <- df %>%
-  mutate(year = year(TIMESTAMP_END),
-         month = month(TIMESTAMP_END, label = TRUE))
-
-# Group by year and month, then calculate the monthly average TEMP and P
-monthly_summary <- df %>%
-  group_by(year, month) %>%
-  summarize(avg_air_temp = mean(TA, na.rm = TRUE),
-            avg_precip = mean(P, na.rm = TRUE), avg_soil_temp = mean(TS_1_05_1, na.rm = TRUE)) %>%
-  ungroup()
-
-# Print the monthly summary
-print(monthly_summary)
-
-```
-
 
