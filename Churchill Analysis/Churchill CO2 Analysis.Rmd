@@ -226,7 +226,31 @@ ggplot(data=df_2023)+
 ```
 
 
-# Year long Budget 
+# Year-Long Budget 
+
+#### Methane
+
+```{r}
+
+df_avg_2023 <- df_avg_2023 %>%
+  subset(format(day, "%Y") == "2023") %>%
+  mutate(day_as_POSIXct = as.POSIXct(day)) %>%
+  mutate(DOY = as.numeric(format(day_as_POSIXct, "%j"))) %>%
+  subset(select = -c(day_as_POSIXct)) %>%
+  mutate(FCH4_F_no_NAs = ifelse(is.na(FCH4_F), 0, FCH4_F)) %>%
+  mutate(cumulativeCH4 = cumtrapz(DOY, FCH4_F_no_NAs))
+
+trapz(df_avg_2023$DOY, df_avg_2023$FCH4_F)
+#returns 8.03157
+
+ggplot(data = df_avg_2023, aes(x=DOY, y=cumulativeCH4, color = season))+
+  geom_point()+
+  scale_x_continuous(lim = c(0, 365))+
+  geom_hline(yintercept=0, col="black")+ 
+  scale_y_continuous(expression('Cumulative CH4 ('*m*mol~m^-2~s^-1*')'))
+  
+
+```
 
 #### NEE
 
@@ -255,6 +279,8 @@ ggplot(data = df_avg_2023, aes(x=DOY, y=cumulative, color = season))+
 
 
 # Seasonal Integrals
+
+Use half-hourly data to calculate net co2 budgets by season
 
 
 ## NEE
@@ -379,6 +405,35 @@ ggplot(seasonal_integrals_2023, aes(x = season, y = integral_value)) +
 
 ```
 
+
+## Methane
+```{r}
+
+seasonal_integrals <- function(df) {
+  
+  # Calculate integral (sum) for each season
+  integrals <- df %>%
+    group_by(season) %>%
+    summarise(integral_value = round(sum(FCH4_F, na.rm = TRUE), 2)) %>%
+    ungroup() %>%
+    arrange(season)
+  
+  return(integrals)
+}
+
+seasonal_integrals_2023 <- seasonal_integrals(df_2023)
+
+ggplot(seasonal_integrals_2023, aes(x = season, y = integral_value)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  labs(
+    x = "Season",
+    y = "Net CH4 Flux",
+    title = "2023 CH4 Flux by season"
+  ) +
+  theme_minimal()+
+  geom_text(aes(label = integral_value), vjust = 1, colour = "orange")
+
+```
 
 
 # Snowmelt peak analysis
