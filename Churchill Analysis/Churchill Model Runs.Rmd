@@ -257,6 +257,25 @@ ggplot(ras, aes(x = date, y = SoilDepth, fill = SoilTemperature)) +
   scale_y_reverse() +  # Invert the y-axis
   theme_minimal()
 
+ras_plot = ggplot(ras, aes(x = date, y = SoilDepth, fill = SoilTemperature))+
+  geom_raster(interpolate = TRUE) +
+  scale_fill_viridis(option = "turbo") +  
+  labs(x = "Date", y = "Soil Depth", fill = "Soil Temperature") +
+  scale_x_date(expand = expansion(c(0, 0.00413))) + 
+  scale_y_reverse(expand = expansion(c(0, 0))) +  # Invert the y-axis
+  theme(
+    axis.text.x = element_text(size = 16),   
+    axis.text.y = element_text(size = 16),  
+    axis.title.y = element_text(size = 18), 
+    axis.title.x = element_text(size = 18),
+    legend.title = element_text(size = 18), 
+    legend.text = element_text(size = 14),
+    legend.key.size = unit(1.5, "cm"),
+  )
+
+ras_plot
+
+ggsave('C:/Permafrost Pathways/ras_plot.png', ras_plot, width = 9, height = 4.5)
 ```
 removing date bc of conflict with ts column 
 ```{r}
