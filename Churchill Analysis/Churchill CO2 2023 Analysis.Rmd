@@ -98,7 +98,7 @@ snowmelt23 = c('2023-04-23','2023-05-15')
 ```{r}
 
 ggplot(data = df_2023, aes(x=DOY))+
-  geom_point(aes(y = GPP_F, color = "GPP")) +
+  geom_point(aes(y = -GPP_F, color = "GPP")) +
   geom_point(aes(y = RECO, color = "ER")) +
   geom_hline(yintercept=0, col="black")+
   scale_y_continuous(expression('CO'[2] * '('*m*mol~m^-2~s^-1*')'))+ labs(title = "2023 GPP & ER")
@@ -120,7 +120,7 @@ ggplot(data = df_2023)+
   geom_point(aes(TIMESTAMP,FC,col='Original'))+
   scale_y_continuous(limits=c(-7,6))+
   scale_x_datetime(limits = as.POSIXct(dates_23,format="%F"))+
-  labs(y = "CO2 Flux", x = "Time") +
+  labs(y = "CO2 Flux ", x = "Time") +
   scale_color_manual(values=c('red','black'))+
   geom_vline(xintercept = as.POSIXct("2023-07-05"))
 
@@ -136,28 +136,29 @@ Uses ratio of par in/out, soil heat flux data, snow depth, air temp to identify 
 ```{r}
 
 # last period of the growing season is senescence, analyze with growing season
-
-
-#need key here on graph
+# need key here on graph
+# Re-adjust to determine best way to capture ecosystem functions in seasonal definitions
 
 ggplot(data = df_avg_2023) +
   theme_bw() +
-  geom_line(aes(x = DOY, y = TS_1_2_1), color = 'red') +
+  geom_line(aes(x = DOY, y = TS_1_0_1), color = 'red') +
   geom_line(aes(x = DOY, y = TA), color = 'blue') +
   geom_line(aes(x = DOY, y = (PPFD_OUT*20) / PPFD_IN), color = 'green') +
   geom_line(aes(x = DOY, y = D_SNOW/2), color = 'purple') +
   geom_line(aes(x = DOY, y = (FC_F*15)), color = 'black') +
+  geom_line(aes(x = DOY, y = (G_1_1_1/2.5)), color = 'orange') +
   scale_y_continuous(name = expression('Biomet Vars & FC'), limits = ) +
-  geom_vline(xintercept = 112)+
-  geom_vline(xintercept = 135)+
-  geom_vline(xintercept = 295)+
-  geom_vline(xintercept = 325)+
+  geom_vline(xintercept = 123)+ #end of winter
+  geom_vline(xintercept = 148)+ #end of snowmelt
+  geom_vline(xintercept = 295)+ #end of growing season
+  geom_vline(xintercept = 325)+ #end of zero curtain
   scale_x_discrete(limits = c(0, 366))
 
 
 # Defines seasons in 2023 dataframes using a column of character values
 
-# Daily Average dataframe
+
+# Definition of seasons in the daily average dataframe 
 
 df_avg_2023 <- df_avg_2023 %>%
   mutate(
@@ -169,23 +170,9 @@ df_avg_2023 <- df_avg_2023 %>%
       TRUE ~ NA_character_
     )
   )
-    
-seasonal_cumulative <- df_avg_2023 %>%
-  group_by(season) %>%
-  summarize(
-    cumulative_FC_F = sum(FC_F, na.rm = TRUE)
-  )
-
-print(seasonal_cumulative)
-
-# # Returns:
-# 1 Growing Season          -22.9 
-# 2 Snow Melt                 3.83
-# 3 Winter                    4.39
-# 4 Zero curtain              2.90
 
 
-# Half-Hourly dataframe 
+# Definition of seasons in the half-hourly dataframe 
 
 df_2023 <- df_2023 %>%
   mutate(
@@ -199,35 +186,26 @@ df_2023 <- df_2023 %>%
   )
 
 
-seasonal_cumulative2 <- df_2023 %>%
-  group_by(season) %>%
-  summarize(
-    cumulative_FC_F = sum(FC_F, na.rm = TRUE)
-  )
-
-print(seasonal_cumulative2)
-
-# # Returns:
-# 1 Growing Season          -1098
-# 2 Snow Melt                 184
-# 3 Winter                    210
-# 4 Zero curtain              139
-
 ```
 
 
 # Isolate nighttime CO2 data
 
+Isolates nighttime CO2 Flux data in the half-hourly dataframe
+
 ```{r}
 
+# Visualize incoming shortwave Data
 ggplot(data=df_2023)+
-  geom_point(aes(x=TIMESTAMP, y=NETRAD))+
+  geom_point(aes(x=TIMESTAMP, y=SW_IN))+
   scale_x_datetime(limits = as.POSIXct(snowmelt23))+
   geom_hline(yintercept = 0)
 
+# Filter CO2 Flux data by incoming shortwave values
 df_2023 <- df_2023 %>%
-  mutate(FC_night = ifelse(NETRAD <= 0, FC, NA))
+  mutate(FC_night = ifelse(SW_IN <= 0, FC, NA))
 
+# Plot the filtered vs. unfiltered CO2 Flux values to visualize nighttime data
 ggplot(data = df_2023)+
   geom_hline(yintercept = 0)+
   geom_point(aes(TIMESTAMP,FC,col='Original'))+
@@ -239,24 +217,37 @@ ggplot(data = df_2023)+
 ```
 
 
-# Year-Long Budget 
+# Year-Long Budget
+
+Calculates the entire year's total emissions for NEE and Methane flux
+
 
 #### NEE
 
 
 ```{r}
 
+
+# For unit adjustment: 
+#   Units start as Micromoles of CO2/(m^2s), converted to Grams of C/m^2
+
+
+# Creates column in dataframe that is in the correct units, without NAs
 df_avg_2023 <- df_avg_2023 %>%
   subset(format(day, "%Y") == "2023") %>%
   mutate(day_as_POSIXct = as.POSIXct(day)) %>%
   mutate(DOY = as.numeric(format(day_as_POSIXct, "%j"))) %>%
   subset(select = -c(day_as_POSIXct)) %>%
-  mutate(FC_F_no_NAs = ifelse(is.na(FC_F), 0, FC_F)) %>%
+  mutate(FC_F_no_NAs = ifelse(is.na(FC_F), 0, FC_F*60*60*24*(1/1000000)*12)) %>%
   mutate(cumulative = cumtrapz(DOY, FC_F_no_NAs))
 
-trapz(df_avg_2023$DOY, df_avg_2023$FC_F)
-#returns -11.81368
 
+# Calculates numeric sum of CO2 Flux in 2023
+trapz(df_avg_2023$DOY, df_avg_2023$FC_F_no_NAs)
+#returns -12.24842 grams of C/m2
+
+
+# Plots cumulative CO2 Flux for the year of 2023
 ggplot(data = df_avg_2023, aes(x=DOY, y=cumulative, color = season))+
   geom_point()+
   scale_x_continuous(lim = c(0, 365))+
@@ -270,6 +261,9 @@ ggplot(data = df_avg_2023, aes(x=DOY, y=cumulative, color = season))+
 #### Methane
 
 ```{r}
+
+# For unit adjustment: 
+#   Units start as Nanomoles of CO2/(m^2s), converted to Grams of C/m^2
 
 df_avg_2023 <- df_avg_2023 %>%
   subset(format(day, "%Y") == "2023") %>%
@@ -295,6 +289,8 @@ ggplot(data = df_avg_2023, aes(x=DOY, y=cumulativeCH4, color = season))+
 # Seasonal Budgets
 
 Use half-hourly data to calculate net co2 budgets by season
+Average rate per day, separate graph for daily rate
+geom_violin 
 
 
 ## NEE
@@ -307,9 +303,18 @@ seasonal_integrals <- function(df) {
   # Calculate integral (sum) for each season
   integrals <- df %>%
     group_by(season) %>%
-    summarise(integral_value = round(sum(FC_F, na.rm = TRUE), 2)) %>%
+    summarise(integral_value = sum(FC_F, na.rm = TRUE)) %>%
     ungroup() %>%
     arrange(season)
+  
+  
+  # Changes units from  Micromoles of CO2/((m^2)s) to Grams of C/m^2, and rounds
+    integrals$integral_value = 
+      round(integrals$integral_value*60*30*(1/1000000)*12, 2)
+    
+  #methane is in nanomol- don't use this for methane
+    #Fix rounding
+  
   
   return(integrals)
 }
@@ -321,14 +326,18 @@ ggplot(seasonal_integrals_2023, aes(x = season, y = integral_value)) +
   labs(
     x = "Season",
     y = "Net CO2 Flux",
-    title = "2023 CO2 Flux by season"
+    title = "2023 CO2 Flux by season (Grams of Carbon/m^2)"
   ) +
   theme_minimal()+
   geom_text(aes(label = integral_value), vjust = 1, colour = "orange")
 
-
+# 
+# ggplot(data=df_2023)+
+#   geom_boxplot(aes(season, FC_F))
 
 # Bar graph showing growing season vs. year round analysis
+# Change GPP to negative to show dynamics in budget
+
 
 
 
@@ -345,9 +354,16 @@ seasonal_integrals <- function(df) {
   
   # Calculate integral (sum) for each season
   integrals <- df %>%
-    group_by(season) %>% summarise(integral_value = round(sum(GPP_F, na.rm = TRUE), 2)) %>%
+    group_by(season) %>% 
+    summarise(integral_value = sum(GPP_F, na.rm = TRUE)) %>%
     ungroup() %>%
     arrange(season)
+  
+    
+  # Changes units from  Micromoles of CO2/(m^2s) to Grams of C/m^2, 
+  #     makes GPP a negative value, and rounds
+    integrals$integral_value = 
+      round(integrals$integral_value*-60*30*(1/1000000)*12, 2)
   
   return(integrals)
 }
@@ -382,9 +398,14 @@ seasonal_integrals <- function(df) {
   # Calculate integral (sum) for each season
   integrals <- df %>%
     group_by(season) %>%
-    summarise(integral_value = round(sum(RECO, na.rm = TRUE), 2)) %>%
+    summarise(integral_value = sum(RECO, na.rm = TRUE)) %>%
     ungroup() %>%
     arrange(season)
+  
+    
+  # Changes units from  Micromoles of CO2/(m^2s) to Grams of C/m^2, and rounds
+    integrals$integral_value = 
+      round(integrals$integral_value*60*30*(1/1000000)*12, 2)
   
   return(integrals)
 }
@@ -396,7 +417,7 @@ ggplot(seasonal_integrals_2023, aes(x = season, y = integral_value)) +
   labs(
     x = "Season",
     y = "Net ER",
-    title = "2023 ER by season"
+    title = "2023 Ecosystem Respiration by season"
   ) +
   theme_minimal()+
   geom_text(aes(label = integral_value), vjust = 1, colour = "orange")
@@ -411,6 +432,9 @@ ggplot(seasonal_integrals_2023, aes(x = season, y = integral_value)) +
 
 
 ## Methane
+
+?? Conversion not giving meaningful numbers, changed to milligrams
+
 ```{r}
 
 seasonal_integrals <- function(df) {
@@ -418,9 +442,14 @@ seasonal_integrals <- function(df) {
   # Calculate integral (sum) for each season
   integrals <- df %>%
     group_by(season) %>%
-    summarise(integral_value = round(sum(FCH4_F, na.rm = TRUE), 2)) %>%
+    summarise(integral_value = sum(FCH4_F, na.rm = TRUE)) %>%
     ungroup() %>%
     arrange(season)
+  
+    
+  # Changes units from Nanomoles of CH4/(m^2s) to Milligrams of C/m^2, and rounds
+    integrals$integral_value = 
+      round(integrals$integral_value*60*30*(1/1000000000)*1000*12, 2)
   
   return(integrals)
 }
@@ -431,7 +460,7 @@ ggplot(seasonal_integrals_2023, aes(x = season, y = integral_value)) +
   geom_bar(stat = "identity", position = "dodge") +
   labs(
     x = "Season",
-    y = "Net CH4 Flux",
+    y = "Net CH4 Flux (Milligrams of C/m^2)",
     title = "2023 CH4 Flux by season"
   ) +
   theme_minimal()+
@@ -458,17 +487,20 @@ Compares the annual budget of growing-season only site and our year round data
 
 ggplot(data = df_2023) +
   theme_bw() +
-  geom_point(aes(x = TIMESTAMP, y = FC_F), color = 'black') +
-  geom_point(aes(x = TIMESTAMP, y = RECO), color = 'blue') +
+  geom_point(aes(x = TIMESTAMP, y = FC), color = 'black') +
+  geom_point(aes(x = TIMESTAMP, y = FC_night), color = 'deeppink2') +
   geom_point(aes(x = TIMESTAMP, y = GPP_F), color = 'green') +
-  geom_line(aes(x = TIMESTAMP, y = TS_2_05_1), color = 'deeppink2') +  
+  geom_point(aes(x = TIMESTAMP, y = FCH4_F*7), color = 'orange') +
+  geom_point(aes(x = TIMESTAMP, y = RECO), color = 'purple') +
+  geom_line(aes(x = TIMESTAMP, y = TS_2_05_1), color = 'blue') + 
   geom_hline(yintercept = 0) +
   scale_y_continuous(
     name = expression('CO2 Data'),
     limits = c(-7, 5),
     sec.axis = sec_axis(~./4, name = "5cm Soil Temp")
     ) +
-  scale_x_datetime(limits = as.POSIXct(c('2023-05-05', '2023-05-20')))
+  scale_x_datetime(limits = as.POSIXct(c('2023-05-05', '2023-05-30')))+
+  scale_y_continuous(limits = c(-2.5, 5))
 
 ```
 
@@ -509,6 +541,11 @@ grid.arrange(eb07, eb08, eb22, eb23, nrow=2, ncol=2)
 
 ## Temperature Relationship 
 
+Uses non-gap filled data for NEE, nighttime CO2 data
+Uses gap filled data for GPP and RECO
+
+All use half-hourly data
+
 ```{r}
 
 #Creates a month variable in the 2023 dataframe
@@ -518,7 +555,7 @@ df_2023$month = as.numeric(as.yearmon(df_2023$day))
 #Plots flux variables vs. 5cm soil temp to visualize temperature/co2 flux relationship
 
 ggplot(data=df_2023)+
-  geom_point(aes(x=TS_1_05_1, y=FC, col = season))+
+  geom_point(aes(x=TS_1_05_1, y=FC, col = DOY))+
   labs(
     x = "Soil Temp (C)",
     y = "NEE",
@@ -526,7 +563,7 @@ ggplot(data=df_2023)+
   ) 
 
 ggplot(data=df_2023)+
-  geom_point(aes(x=TS_1_05_1, y=GPP_F, col = season))+
+  geom_point(aes(x=TS_1_05_1, y=GPP_F, col = DOY))+
   labs(
     x = "Soil Temp",
     y = "GPP",
@@ -534,30 +571,32 @@ ggplot(data=df_2023)+
   ) 
 
 ggplot(data=df_2023)+
-  geom_point(aes(x=TS_1_05_1, y=RECO, col = season))+
+  geom_point(aes(x=TS_1_05_1, y=RECO, col = DOY))+
   labs(
     x = "Soil Temp",
     y = "Respiration",
     title = "Respiraton vs. Soil Temp"
   ) 
 
-ggplot(data=df_avg_2023)+
-  geom_point(aes(x=TS_1_05_1, y=RECO, col = season)) +
-  labs(
-    x = "Soil Temp",
-    y = "Respiration",
-    title = "Respiraton vs. Soil Temp"
-  )+
-  scale_x_continuous(limits = c(-15, 20))
-
-# FC_night used to estimate RECO without temp correlation
+# FC_night used to estimate RECO without temp correlation or gapfilling
 ggplot(data=df_2023)+
-  geom_point(aes(x=TS_1_05_1, y=FC_night, col = season))+
+  geom_point(aes(x=TS_1_05_1, y=FC_night, col = DOY))+
   labs(
     x = "Soil Temp",
     y = "Nighttime CO2 Flux",
     title = "Nighttime CO2 Flux vs. Soil Temp"
-  )
+  )+
+  scale_x_continuous(limits=c(-15,20))
+
+
+ggplot(data=df_2023)+
+  geom_point(aes(x=TS_1_05_1, y=FCH4, col = DOY))+
+  labs(
+    x = "Soil Temp",
+    y = "Methane",
+    title = "Methane vs. Soil Temp"
+  )+
+  scale_x_continuous(limits = c(-2, 2))
 
 ```
 
