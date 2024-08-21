@@ -8,7 +8,7 @@ date: "2023-2-5"
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE,dev = 'png')
-knitr::opts_knit$set(root.dir = 'C:/Users/karndt.WHRC/Desktop/sites/YKD/Ameriflux YK/unburned/') #use this to set your directory
+knitr::opts_knit$set(root.dir = 'C:/Users/karndt.WHRC/Desktop/sites/YKD/Ameriflux YK/burned/') #use this to set your directory
 ```
 
 
@@ -26,7 +26,7 @@ Sys.setenv(TZ='UTC')
 
 Load in data
 ```{r,error=FALSE,warning=FALSE}
-cf = fread('./ykd_unburned_2019_2022_era.csv')
+cf = fread('./ykd_burned_2019_2022_era.csv')
 cf = cf[complete.cases(cf$airt.eramod),]
 
 #create a sub data frame of the variables you want for a neural network
@@ -92,49 +92,28 @@ Examine variable importance
 set.seed(123)
 cc = ncf[complete.cases(ncf$nee),]
 
-#boruta = Boruta(nee ~ tair + rh + rg + ws + tsoil + swc + vpd + le + h,data = cc,doTrace = 2,maxRuns = 100)
-
-#plot(boruta,las = 2)
-```
-
-
-Lets try to fill with random forest
-```{r,error=FALSE,warning=FALSE}
-#use 90% of data set as training set and 10% as test set
-sample.nee = sample(c(TRUE, FALSE), nrow(cc), replace=TRUE, prob=c(0.8,0.2))
-train.nee  = cc[sample.nee, ]
-test.nee   = cc[!sample.nee, ]
+#use 80% of data set as training set and 10% as test set
+sample = sample(c(TRUE, FALSE), nrow(cc), replace=TRUE, prob=c(0.8,0.2))
+train  = cc[sample, ]
+test   = cc[!sample, ]
 
 hist(cc$nee)
-hist(train.nee$nee)
-hist(test.nee$nee)
+hist(train$nee)
+hist(test$nee)
 
-rfnee = randomForest(formula = nee ~ tair + rh + rg + ws + tsoil + swc + vpd + le + h,data = train.nee,ntree = 100,importance=T)
+rfnee = randomForest(formula = nee ~ tair + rh + rg + ws + tsoil + swc + vpd + le + h,data = train,ntree = 100,importance=T)
 
 pnee = predict(object = rfnee,newdata = ncf)
 
 cf$rfnee = pnee
 ```
 
-
-Time series plots
-```{r,error=FALSE,warning=FALSE}
-ggplot(data = cf)+theme_bw()+
-  geom_point(aes(date,rfnee,col='RF'),alpha=0.2)+
-  geom_point(aes(date,co2_flux.c,col='Real'),alpha=0.2)+
-  scale_x_datetime(limits = as.POSIXct(c("2020-06-15","2020-06-30")))
-
-ggplot(data = cf)+theme_bw()+
-  geom_point(aes(date,rfnee,col='RF'),alpha=0.2)+
-  geom_point(aes(date,co2_flux.c,col='Real'),alpha=0.2)
-```
-Filling out the extremes better, no anomalous winter sinks. Looks better than ANN
-
 Validation
 ```{r,error=FALSE,warning=FALSE}
-test.data.nee = merge(test.nee,cf,by = 'date',all.x = T)
+test.data = merge(test,cf,by = 'date',all.x = T)
+summary(lm(test.data$co2_flux.c ~ test.data$rfnee))
 
-yk2nee = ggplot(data = test.data.nee,aes(rfnee,co2_flux.c))+theme_bw()+
+yk1nee = ggplot(data = test.data,aes(rfnee,co2_flux.c))+theme_bw()+ggtitle('US-YK1 | Burned')+
   geom_hline(yintercept = 0,lty=2)+
   geom_vline(xintercept = 0,lty=2)+
   geom_point(alpha=0.2)+
@@ -142,12 +121,10 @@ yk2nee = ggplot(data = test.data.nee,aes(rfnee,co2_flux.c))+theme_bw()+
   geom_abline(slope = 1,intercept = 0,col='red',lty=1)+
   scale_x_continuous(limits = c(-12,10),expression('Random Forest NEE ('*mu*mol~CO[2]~m^-2~s^-1*')'))+
   scale_y_continuous(limits = c(-12,10),expression('Eddy Covariance NEE ('*mu*mol~CO[2]~m^-2~s^-1*')'))+
-  annotate(geom = 'text',x = 6, y = -8,label=expression(R^2~"= 0.75"),size = 3)+
-  annotate(geom = 'text',x = 6,y = -10,label=expression(Slope~"= 1.00"),size = 3)+
-  theme(text = element_text(size = 8))
+  geom_text(aes(7,-8),label=expression(R^2~"= 0.83"))+
+  geom_text(aes(7,-10),label=expression(Slope~"= 1.00"))
 
-yk2nee
-summary(lm(test.data.nee$co2_flux.c ~ test.data.nee$rfnee))
+yk1nee
 ```
 
 Examine variable importance
@@ -156,77 +133,58 @@ set.seed(123)
 cc = ncf[complete.cases(ncf$fch4),]
 
 #boruta = Boruta(fch4 ~ tair + rh + rg + ws + tsoil + swc + vpd + le + h,data = cc,doTrace = 2,maxRuns = 100)
+
 #plot(boruta,las = 2)
 ```
 
 try random forest for CH4
 ```{r,error=FALSE,warning=FALSE}
 #use 80% of data set as training set and 20% as test set, expanded to try to reprsent the larger points better
-cc = subset(cc,cc$fch4 < 0.2)
-sample.ch4 = sample(c(TRUE, FALSE), nrow(cc), replace=TRUE, prob=c(0.8,0.2))
-train.ch4  = cc[sample.ch4, ]
-test.ch4   = cc[!sample.ch4, ]
+sample = sample(c(TRUE, FALSE), nrow(cc), replace=TRUE, prob=c(0.8,0.2))
+train  = cc[sample, ]
+test   = cc[!sample, ]
 
 hist(cc$fch4)
-hist(train.ch4$fch4)
-hist(test.ch4$fch4)
+hist(train$fch4)
+hist(test$fch4)
 
 summary(cc$fch4)
-summary(train.ch4$fch4)
-summary(test.ch4$fch4)
+summary(train$fch4)
+summary(test$fch4)
 
-rfch4 = randomForest(formula = fch4 ~ tair + rh + rg + ws + tsoil + vpd + swc + h + le,data = train.ch4,ntree = 100)
+rfch4 = randomForest(formula = fch4 ~ tair + rh + rg + ws + tsoil + vpd + swc + h + le,data = train,ntree = 100)
 
 pch4 = predict(object = rfch4,newdata = ncf)
 
 cf$rfch4 = pch4
 ```
 
-Plots and Validation
-```{r,error=FALSE,warning=FALSE}
-ggplot(data = cf)+theme_bw()+
-  geom_point(aes(date,rfch4,col='RF'),alpha=0.5)+
-  geom_point(aes(date,ch4_flux.c,col='Real'),alpha=0.5)+
-  scale_x_datetime(limits = as.POSIXct(c("2020-07-01","2020-07-30")))
- # scale_y_continuous(limits = c(-0.05,0.05))
-
-ggplot(data = cf)+theme_bw()+
-  geom_point(aes(date,rfch4,col='RF'),alpha=0.2)+
-  geom_point(aes(date,ch4_flux.c,col='Real'),alpha=0.2)
-```
-Very high values seem to be driving the model to learn higher than expected fluxes
-
 
 ```{r,error=FALSE,warning=FALSE}
-test.data.ch4 = merge(test.ch4,cf,by = 'date',all.x = T)
+test.data = merge(test,cf,by = 'date',all.x = T)
 
-yk2ch4 = ggplot(data = test.data.ch4,aes(rfch4,ch4_flux.c))+theme_bw()+
+yk1ch4 = ggplot(data = test.data,aes(rfch4,ch4_flux.c))+theme_bw()+ggtitle("US-YK1 | Burned")+
   geom_hline(yintercept = 0,lty=2)+
   geom_vline(xintercept = 0,lty=2)+
   geom_point(alpha=0.2)+
   scale_fill_viridis_c()+
   geom_abline(slope = 1,intercept = 0,col='red',lty=1)+
-  scale_x_continuous(limits = c(-0.05,0.1),expression('Random Forest '*CH[4]~flux~" ("*mu*mol~CH[4]~m^-2~s^-1*')'))+
+  scale_x_continuous(limits = c(-0.05,0.1),expression('RF '*CH[4]~flux~" ("*mu*mol~CH[4]~m^-2~s^-1*')'))+
   scale_y_continuous(limits = c(-0.05,0.1),expression('Eddy Covariance '*CH[4]~flux~" ("*mu*mol~CH[4]~m^-2~s^-1*')'))+
-  annotate(geom = 'text',x = 0.07,y = -0.025,label = expression(R^2~"= 0.52"),size = 3)+
-  annotate(geom= 'text',x = 0.07,y = -0.035,label = expression(Slope~"= 1.08"),size = 3)+
-  theme(text = element_text(size = 8))
+  geom_text(aes(0.075,-0.01),label=expression(R^2~"= 0.49"))+
+  geom_text(aes(0.075,-0.03),label=expression(Slope~"= 1.14"))
 
-yk2ch4
-summary(lm(test.data.ch4$ch4_flux.c ~ test.data.ch4$rfch4))
+yk1ch4
+summary(lm(test.data$ch4_flux.c ~ test.data$rfch4))
 ```
 
 
+Final plot
 ```{r}
 library(cowplot)
 
-png(filename = 'C:/Users/karndt.WHRC/Desktop/sites/YKD/plots/yk2unburned gapfilling validation.png',width = 6,height = 4,units = 'in',res = 1000)
-plot_grid(yk2nee,yk2ch4)
-dev.off()
+plot_grid(yk1nee,yk1ch4,labels = c('a','b'))
+
 ```
 
 
-save off the data
-```{r,error=FALSE,warning=FALSE}
-write.csv(x = cf,file = "./ykd_unburned_2019_2022_gf.csv",quote = F,row.names = F)
-```
