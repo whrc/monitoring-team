@@ -92,24 +92,24 @@ Examine variable importance
 set.seed(123)
 cc = ncf[complete.cases(ncf$nee),]
 
-boruta = Boruta(nee ~ tair + rh + rg + ws + tsoil + swc + vpd + le + h,data = cc,doTrace = 2,maxRuns = 100)
+#boruta = Boruta(nee ~ tair + rh + rg + ws + tsoil + swc + vpd + le + h,data = cc,doTrace = 2,maxRuns = 100)
 
-plot(boruta,las = 2)
+#plot(boruta,las = 2)
 ```
 
 
 Lets try to fill with random forest
 ```{r,error=FALSE,warning=FALSE}
 #use 90% of data set as training set and 10% as test set
-sample = sample(c(TRUE, FALSE), nrow(cc), replace=TRUE, prob=c(0.8,0.2))
-train  = cc[sample, ]
-test   = cc[!sample, ]
+sample.nee = sample(c(TRUE, FALSE), nrow(cc), replace=TRUE, prob=c(0.8,0.2))
+train.nee  = cc[sample.nee, ]
+test.nee   = cc[!sample.nee, ]
 
 hist(cc$nee)
-hist(train$nee)
-hist(test$nee)
+hist(train.nee$nee)
+hist(test.nee$nee)
 
-rfnee = randomForest(formula = nee ~ tair + rh + rg + ws + tsoil + swc + vpd + le + h,data = train,ntree = 100,importance=T)
+rfnee = randomForest(formula = nee ~ tair + rh + rg + ws + tsoil + swc + vpd + le + h,data = train.nee,ntree = 100,importance=T)
 
 pnee = predict(object = rfnee,newdata = ncf)
 
@@ -132,18 +132,22 @@ Filling out the extremes better, no anomalous winter sinks. Looks better than AN
 
 Validation
 ```{r,error=FALSE,warning=FALSE}
-test.data = merge(test,cf,by = 'date',all.x = T)
+test.data.nee = merge(test.nee,cf,by = 'date',all.x = T)
+summary(lm(test.data.nee$co2_flux.c ~ test.data.nee$rfnee))
 
-ggplot(data = test.data,aes(rfnee,co2_flux.c))+theme_bw()+
+yk1nee = ggplot(data = test.data.nee,aes(rfnee,co2_flux.c))+theme_bw()+
   geom_hline(yintercept = 0,lty=2)+
   geom_vline(xintercept = 0,lty=2)+
   geom_point(alpha=0.2)+
   scale_fill_viridis_c()+
   geom_abline(slope = 1,intercept = 0,col='red',lty=1)+
   scale_x_continuous(limits = c(-12,10),expression('Random Forest NEE ('*mu*mol~CO[2]~m^-2~s^-1*')'))+
-  scale_y_continuous(limits = c(-12,10),expression('Eddy Covariance NEE ('*mu*mol~CO[2]~m^-2~s^-1*')'))
+  scale_y_continuous(limits = c(-12,10),expression('Eddy Covariance NEE ('*mu*mol~CO[2]~m^-2~s^-1*')'))+
+  annotate(geom = 'text',x = 6,y = -8,label = expression(R^2~"= 0.83"),size = 3)+
+  annotate(geom = 'text',x = 6,y = -10,label = expression(Slope~"= 1.00"),size = 3)+
+  theme(text = element_text(size = 8))
 
-summary(lm(test.data$co2_flux.c ~ test.data$rfnee))
+yk1nee
 ```
 
 Examine variable importance
@@ -151,27 +155,27 @@ Examine variable importance
 set.seed(123)
 cc = ncf[complete.cases(ncf$fch4),]
 
-boruta = Boruta(fch4 ~ tair + rh + rg + ws + tsoil + swc + vpd + le + h,data = cc,doTrace = 2,maxRuns = 100)
-
-plot(boruta,las = 2)
+#boruta = Boruta(fch4 ~ tair + rh + rg + ws + tsoil + swc + vpd + le + h,data = cc,doTrace = 2,maxRuns = 100)
+#plot(boruta,las = 2)
 ```
 
 try random forest for CH4
 ```{r,error=FALSE,warning=FALSE}
 #use 80% of data set as training set and 20% as test set, expanded to try to reprsent the larger points better
-sample = sample(c(TRUE, FALSE), nrow(cc), replace=TRUE, prob=c(0.8,0.2))
-train  = cc[sample, ]
-test   = cc[!sample, ]
+sample.ch4 = sample(c(TRUE, FALSE), nrow(cc), replace=TRUE, prob=c(0.8,0.2))
+train.ch4  = cc[sample.ch4, ]
+test.ch4   = cc[!sample.ch4, ]
 
 hist(cc$fch4)
-hist(train$fch4)
-hist(test$fch4)
+hist(train.ch4$fch4)
+hist(test.ch4$fch4)
 
 summary(cc$fch4)
-summary(train$fch4)
-summary(test$fch4)
+summary(train.ch4$fch4)
+summary(test.ch4$fch4)
 
-rfch4 = randomForest(formula = fch4 ~ tair + rh + rg + ws + tsoil + vpd + swc + h + le,data = train,ntree = 100)
+rfch4 = randomForest(formula = fch4 ~ tair + rh + rg + ws + tsoil + vpd + swc + h + le,data = train.ch4,ntree = 100)
+#rfch4 = randomForest(formula = fch4 ~ tair + rh + rg + ws + tsoil + vpd,data = test.ch4,ntree = 100)
 
 pch4 = predict(object = rfch4,newdata = ncf)
 
@@ -194,19 +198,32 @@ Very high values seem to be driving the model to learn higher than expected flux
 
 
 ```{r,error=FALSE,warning=FALSE}
-test.data = merge(test,cf,by = 'date',all.x = T)
+test.data.ch4 = merge(test.ch4,cf,by = 'date',all.x = T)
 
-ggplot(data = test.data,aes(rfch4,ch4_flux.c))+theme_bw()+
+yk1ch4 = ggplot(data = test.data.ch4,aes(rfch4,ch4_flux.c))+theme_bw()+
   geom_hline(yintercept = 0,lty=2)+
   geom_vline(xintercept = 0,lty=2)+
   geom_point(alpha=0.2)+
   scale_fill_viridis_c()+
   geom_abline(slope = 1,intercept = 0,col='red',lty=1)+
-  scale_x_continuous(limits = c(-0.05,0.1),expression('RF '*CH[4]~flux~" ("*mu*mol~CO[2]~m^-2~s^-1*')'))+
-  scale_y_continuous(limits = c(-0.05,0.1),expression('Eddy Covariance '*CH[4]~flux~" ("*mu*mol~CO[2]~m^-2~s^-1*')'))
+  scale_x_continuous(limits = c(-0.05,0.1),expression('Random Forest '*CH[4]~flux~" ("*mu*mol~CH[4]~m^-2~s^-1*')'))+
+  scale_y_continuous(limits = c(-0.05,0.1),expression('Eddy Covariance '*CH[4]~flux~" ("*mu*mol~CH[4]~m^-2~s^-1*')'))+
+  annotate(geom='text',x = 0.07,y = -0.025,label = expression(R^2~"= 0.52"),size = 3)+
+  annotate(geom = 'text',x = 0.07,y = -0.035,label = expression(Slope~"= 1.10"),size = 3)+
+  theme(text = element_text(size = 8))
 
-summary(lm(test.data$ch4_flux.c ~ test.data$rfch4))
+yk1ch4
+summary(lm(test.data.ch4$ch4_flux.c ~ test.data.ch4$rfch4))
 ```
+
+```{r}
+library(cowplot)
+
+png(filename = 'C:/Users/karndt.WHRC/Desktop/sites/YKD/plots/yk1burned gapfilling validation.png',width = 6,height = 4,units = 'in',res = 1000)
+plot_grid(yk1nee,yk1ch4)
+dev.off()
+```
+
 
 save off the data
 ```{r,error=FALSE,warning=FALSE}

@@ -1,5 +1,5 @@
 ---
-title: "Prep for Ameriflux - YK1 Burned"
+title: "Prep for Ameriflux - YK2 Unburned"
 author: "Kyle Arndt"
 date: "2024-02-15"
 output: html_document
@@ -7,7 +7,7 @@ output: html_document
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
-knitr::opts_knit$set(root.dir = 'C:/Users/karndt.WHRC/Desktop/sites/YKD/Ameriflux YK/burned/') #use this to set your directory
+knitr::opts_knit$set(root.dir = 'C:/Users/karndt.WHRC/Desktop/sites/YKD/data/unburned/') #use this to set your directory
 ```
 
 Libraries
@@ -21,10 +21,11 @@ Sys.setenv(TZ = "UTC")
 
 Load Data
 ```{r}
-c19 = fread(input = "./YKDBurned_Cleaned_Met_Flux_2019_Ameriflux.csv")
-c20 = fread(input = "./YKDBurned_Cleaned_Met_Flux_2020_Ameriflux.csv")
-c21 = fread(input = "./YKDBurned_Cleaned_Met_Flux_2021_Ameriflux.csv")
-c22 = fread(input = "./YKDBurned_Cleaned_Met_Flux_2022_Ameriflux.csv")
+c19 = fread(input = "./YKDUnburned_Cleaned_Met_Flux_2019_Ameriflux.csv")
+c20 = fread(input = "./YKDUnburned_Cleaned_Met_Flux_2020_Ameriflux.csv")
+c21 = fread(input = "./YKDUnburned_Cleaned_Met_Flux_2021_Ameriflux.csv")
+c22 = fread(input = "./YKDUnburned_Cleaned_Met_Flux_2022_Ameriflux.csv")
+c23 = fread(input = "./YKD_UB_2023_clean.csv")
 
 df = rbind(c19,c20,c21,c22,fill=T)
 
@@ -48,7 +49,7 @@ df$SHF_2_1_1.c = na.spline(df$SHF_2_1_1.c,maxgap = gap)
 df$SHF_3_1_1.c = na.spline(df$SHF_3_1_1.c,maxgap = gap)
 
 #meteorology and weather #################################
-df$TA_1_1_1.c  = na.spline(df$TA_1_1_1.c-273.15,maxgap = gap)
+df$TA_1_1_1  = na.spline(df$TA_1_1_1-273.15,maxgap = gap)
 df$RH_1_1_1.c  = na.spline(df$RH_1_1_1.c,maxgap = gap)
 
 #Radiation #####################################
@@ -76,34 +77,13 @@ df$TS_3_1_1.c = na.spline(df$TS_3_1_1.c-273.15,maxgap = gap)
 ```
 
 
-Filter out Known CO2 issue
 ```{r}
-ggplot(data = df)+
-  geom_point(aes(ts,co2_flux.c))
-
-ggplot(data = df)+
-  geom_point(aes(ts,co2_flux.c))+
-  scale_x_datetime(limits = as.POSIXct(c("2021-10-1","2021-12-1")))
-
-df$co2_flux.c = ifelse(df$ts > as.POSIXct("2021-11-15") & df$ts < as.POSIXct("2021-11-30"),NA,df$co2_flux.c)
-
-ggplot(data = df)+
-  geom_point(aes(ts,co2_flux.c))
-
-ggplot(data = df)+
-  geom_point(aes(ts,co2_flux.c))+
-  scale_x_datetime(limits = as.POSIXct(c("2021-10-1","2021-12-1")))
-```
-
-
-
-```{r}
-write.csv(x = df,file = "./ykd_burned_2019_2022.csv",row.names = F)
+write.csv(x = df,file = "./ykd_unburned_2019_2022.csv",row.names = F)
 ```
 
 Add ERA5 data
 ```{r}
-era = fread('./era5_ykd_burned.csv')
+era = fread('./era5_ykd_unburned.csv')
 
 df$date = df$ts
 
@@ -135,14 +115,15 @@ ggplot(data = all,aes(rh,RH_1_1_1.c))+
 ```{r}
 ggplot(data = all)+
   geom_point(aes(date,airt,col='ERA5'))+
-  geom_point(aes(date,all$TA_1_1_1.c,col='Site'))
+  geom_point(aes(date,all$TA_1_1_1,col='Site'))
 
-airt.mod = lm(formula = all$TA_1_1_1.c ~ all$airt)
+
+airt.mod = lm(formula = all$TA_1_1_1 ~ all$airt)
 summary(airt.mod)
 
 all$airt.eramod = all$airt*airt.mod$coefficients[2] + airt.mod$coefficients[1]     
 
-ggplot(data = all,aes(airt,TA_1_1_1.c))+theme_bw()+
+ggplot(data = all,aes(airt,TA_1_1_1))+theme_bw()+
   geom_point()+
   geom_smooth(method = 'lm')+
   geom_abline(slope = 1,intercept = 0,col='red',lty=2)
@@ -241,6 +222,12 @@ ggplot(data = all,aes(h,H.c))+theme_bw()+
 
 
 ```{r}
+#remove duplicated timestamp rows
+df = df[!duplicated(df$ts),]
+```
+
+
+```{r}
 #calculate VPD from air t and RH
 svp = 610.7*10^((7.5*all$airt)/(237.3+all$airt))
 all$vpd.era = ((100 - all$rh)/100)*svp  
@@ -320,7 +307,7 @@ swc = ggplot(data = all,aes(vwc1*100,SWC_1_1_1.c))+theme_bw()+
   scale_x_continuous(expression("ERA5 VWC (%)"))+
   scale_y_continuous(expression("Site VWC (%)"))
 
-png(filename = 'C:/Users/karndt.WHRC/Desktop/sites/YKD/plots/burnedera5.png',width = 8,height = 8,units = 'in',res = 1500)
+png(filename = 'C:/Users/karndt.WHRC/Desktop/sites/YKD/plots/unburnedera5.png',width = 8,height = 8,units = 'in',res = 1500)
 plot_grid(ta,rh,vpd,st,sw,ws,le,h,swc)
 dev.off()
 ```
@@ -333,7 +320,7 @@ eras = all[,c('date','rh.eramod','airt.eramod','ws.eramod','rad.eramod','tsoil.e
 df = df[!duplicated(df$date),]
 df = merge(df,eras,by = 'date',all.x = T)
 
-write.csv(x = df,file = './ykd_burned_2019_2022_era.csv',row.names = F,quote = F)
+write.csv(x = df,file = './ykd_unburned_2019_2022_era.csv',row.names = F,quote = F)
 ```
 
 

@@ -220,6 +220,98 @@ ggplot(data = all,aes(h,H.c))+theme_bw()+
 ```
 
 
+```{r}
+#remove duplicated timestamp rows
+df = df[!duplicated(df$ts),]
+```
+
+
+```{r}
+#calculate VPD from air t and RH
+svp = 610.7*10^((7.5*all$airt)/(237.3+all$airt))
+all$vpd.era = ((100 - all$rh)/100)*svp  
+
+#calculate VPD from air t and RH
+svp = 610.7*10^((7.5*all$TA_1_1_1)/(237.3+all$TA_1_1_1))
+all$vpd.site = ((100 - all$RH_1_1_1.c)/100)*svp 
+
+
+ta = ggplot(data = all,aes(airt,TA_1_1_1))+theme_bw()+
+  geom_point(alpha = 0.25)+
+  geom_smooth(method = 'lm')+
+  geom_abline(slope = 1,intercept = 0,col='red',lty=2)+
+  scale_x_continuous(expression("ERA5 Air T. ("*degree*"C)"))+
+  scale_y_continuous(expression("Site Air T. ("*degree*"C)"))
+
+rh = ggplot(data = all,aes(rh,RH_1_1_1.c))+theme_bw()+
+  geom_point(alpha = 0.25)+
+  geom_smooth(method = 'lm')+
+  geom_abline(slope = 1,intercept = 0,col='red',lty=2)+
+  scale_x_continuous(expression("ERA5 RH (%)"))+
+  scale_y_continuous(expression("Site RH (%)"))
+
+vpd = ggplot(data = all,aes(vpd.era,vpd.site))+theme_bw()+
+  geom_point(alpha = 0.25)+
+  geom_smooth(method = 'lm')+
+  geom_abline(slope = 1,intercept = 0,col='red',lty=2)+
+  scale_x_continuous(expression("ERA5 VPD ("*Wm^-2*")"))+
+  scale_y_continuous(expression("Site VPD ("*Wm^-2*")"))
+
+st = ggplot(data = all,aes(st2,TS_2_1_1.c))+theme_bw()+
+    geom_point(alpha = 0.25)+
+    geom_smooth(method = 'lm')+
+  geom_abline(slope = 1,intercept = 0,col='red',lty=2)+
+  scale_x_continuous(expression("ERA5 Soil T. ("*degree*"C)"))+
+  scale_y_continuous(expression("Site Soil T. ("*degree*"C)"))
+
+sw = ggplot(data = all,aes(rad,SWIN_1_1_1.c))+theme_bw()+
+  geom_point(alpha = 0.25)+
+  geom_smooth(method = 'lm')+
+  geom_abline(slope = 1,intercept = 0,col='red',lty=2)+
+  scale_x_continuous(expression("ERA5 SW ("*Wm^-2*")"))+
+  scale_y_continuous(expression("Site SW ("*Wm^-2*")"))
+
+ws = ggplot(data = all,aes(ws,wind_speed))+theme_bw()+
+  geom_point(alpha = 0.25)+
+  geom_smooth(method = 'lm')+
+  geom_abline(slope = 1,intercept = 0,col='red',lty=2)+
+  scale_x_continuous(expression("ERA5 WS ("*ms^-1*")"))+
+  scale_y_continuous(expression("Site WS ("*ms^-1*")"))
+
+le = ggplot(data = all,aes(le,LE.c))+theme_bw()+
+  geom_point(alpha = 0.25)+
+  geom_smooth(method = 'lm')+
+  geom_abline(slope = 1,intercept = 0,col='red',lty=2)+
+  scale_x_continuous(expression("ERA5 LE ("*Wm^-2*")"))+
+  scale_y_continuous(expression("Site LE ("*Wm^-2*")"))
+
+h = ggplot(data = all,aes(h,H.c))+theme_bw()+
+  geom_point(alpha = 0.25)+
+  geom_smooth(method = 'lm')+
+  geom_abline(slope = 1,intercept = 0,col='red',lty=2)+
+  scale_x_continuous(expression("ERA5 H ("*Wm^-2*")"))+
+  scale_y_continuous(expression("Site H ("*Wm^-2*")"))
+
+h = ggplot(data = all,aes(h,H.c))+theme_bw()+
+  geom_point(alpha = 0.25)+
+  geom_smooth(method = 'lm')+
+  geom_abline(slope = 1,intercept = 0,col='red',lty=2)+
+  scale_x_continuous(expression("ERA5 H ("*Wm^-2*")"))+
+  scale_y_continuous(expression("Site H ("*Wm^-2*")"))
+
+swc = ggplot(data = all,aes(vwc1*100,SWC_1_1_1.c))+theme_bw()+
+  geom_point(alpha = 0.25)+
+  geom_smooth(method = 'lm')+
+  geom_abline(slope = 1,intercept = 0,col='red',lty=2)+
+  scale_x_continuous(expression("ERA5 VWC (%)"))+
+  scale_y_continuous(expression("Site VWC (%)"))
+
+png(filename = 'C:/Users/karndt.WHRC/Desktop/sites/YKD/plots/unburnedera5.png',width = 8,height = 8,units = 'in',res = 1500)
+plot_grid(ta,rh,vpd,st,sw,ws,le,h,swc)
+dev.off()
+```
+
+
 #reduce down to churchill size and add to final data set
 ```{r}
 eras = all[,c('date','rh.eramod','airt.eramod','ws.eramod','rad.eramod','tsoil.eramod','le.eramod','h.eramod')]
