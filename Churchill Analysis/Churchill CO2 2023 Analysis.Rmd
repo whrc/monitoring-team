@@ -13,11 +13,6 @@ knitr::opts_chunk$set(echo = TRUE)
 
 Notes:
 
-
-
-
-
-
 ```{r, include=FALSE}
 rm(list = ls())
 
@@ -40,10 +35,8 @@ library(RColorBrewer)
 library(pracma)
 ```
 
-
-
-
 # Load data
+
 ```{r}
 
 df = fread('C:/Users/dtrangmoe/Documents/Churchill/Churchill_Merged_CF1_CF3.csv',na.strings = c('-9999','NA','NaN','NAN','-7999'))
@@ -92,18 +85,22 @@ dates_23 = c('2023-01-01','2023-12-01')
 snowmelt23 = c('2023-04-23','2023-05-15')
 ```
 
-
-### GPP & ER Plots
+### [Plot 1] GPP & ER Plots
 
 ```{r}
 
-ggplot(data = df_2023, aes(x=DOY))+
+ggplot(data = df_2023, aes(x=TIMESTAMP))+
+  theme_bw()+
   geom_point(aes(y = -GPP_F, color = "GPP")) +
-  geom_point(aes(y = RECO, color = "ER")) +
+  geom_point(aes(y = RECO, color = "Respiration")) +
   geom_hline(yintercept=0, col="black")+
-  scale_y_continuous(expression('CO'[2] * '('*m*mol~m^-2~s^-1*')'))+ labs(title = "2023 GPP & ER")
+  scale_y_continuous(expression('Half-Hourly CO'[2]*' Flux ('*m*mol~m^-2~s^-1*')'))+
+  scale_x_datetime(expression('Date'))+
+  scale_color_manual(name = " ", values=c("turquoise3", "salmon2"))
+  # +labs(title = expression('Partitioned CO'[2]*' Data 2023'))
 
 ```
+
 
 
 #### Gap Filling Plot
@@ -128,6 +125,93 @@ ggplot(data = df_2023)+
 ```
 
 
+#### [Plot 2] Net C Budget
+
+```{r}
+
+
+#Creates numeric timestamp with the unit of minutes to integrate over half-hourly data
+
+df_2023 <- df_2023 %>%
+  mutate(time_minutes = as.numeric(difftime(TIMESTAMP, min(TIMESTAMP), units = "mins")))
+
+# Units start as Micromoles of CO2/(m^2s), converted to Grams of C/m^2/minute, integrated over minutes to get Grams of C/m^2
+
+# Net CO2 Flux
+df_2023 <- df_2023 %>%
+  mutate(FC_F_no_NAs = ifelse(is.na(FC_F), 0, FC_F * 60 * (1/1000000) * 12))
+
+net_CO2 <- trapz(df_2023$time_minutes, df_2023$FC_F_no_NAs)
+
+# Units start as Nanomoles of CH4/(m^2s), converted to Grams of C/m^2/minute, integrated over minutes to get Grams of C/m^2
+
+#Net CH4 Flux
+df_2023 <- df_2023 %>%
+  mutate(FCH4_F_no_NAs = ifelse(is.na(FCH4_F), 0, FCH4_F*60*(1/1000000000)*12))
+
+net_CH4 <- trapz(df_2023$time_minutes, df_2023$FCH4_F_no_NAs)
+
+
+# Use IPCC Sixth Assessment Report (AR6) global warming potentials, 100 year time period - could use paper gwp* or 20 yr time period later? 
+
+net_CH4_CO2e <- net_CH4*27.2
+sum = net_CO2+net_CH4_CO2e
+
+#Dataframe created to generate bar graph
+
+
+
+net_wp_2023 <- data.frame(
+  Category = c("CO2", "CH4", "Total"),
+  Value = c(round(net_CO2, 2), round(net_CH4_CO2e, 2), round(sum, 2) 
+))
+
+#Plot here
+
+ggplot(net_wp_2023, aes(x = Category, y = Value)) +
+  theme_bw()+
+  geom_bar(stat = "identity", position = "dodge", fill = "turquoise3") +
+  geom_hline(yintercept=0, colour = "black")+
+  labs(
+    x = "Source",
+    y = "Net warming potental (in 100 yr CO2 Equivalents)"
+  ) +
+  geom_label(aes(label = Value), vjust = ifelse(net_wp_2023$Value >= 0, -0.7, 1.5), colour = "black", fill ="white")+
+  scale_y_continuous(limits=c(-13.5, 2))
+
+
+
+```
+
+
+
+#### Create derivative of daily averages of FC
+
+```{r}
+
+dx=1
+dy=diff(df_avg_2023$FC_F)
+
+    
+derivative = dy/dx
+
+
+#adds one NA to make length of derivative = length of df
+derivative = c(derivative, NA)
+
+df_avg_2023$derivative = derivative
+
+
+## Plots FC and derivative
+
+ggplot(data = df_avg_2023) +
+  theme_bw() +
+  geom_line(aes(x = DOY, y = (FC_F*60*60*24*(1/1000000)*12)), color = 'darkblue') +
+  geom_line(aes(x=DOY, y=derivative), color = 'darkgreen') +
+  geom_line(aes(x = DOY, y = 0, color = 'black')) +
+  scale_y_continuous(name = expression('FC (Grams of Carbon per m^2 per day'))
+
+```
 
 # Definition of Seasons
 
@@ -149,32 +233,26 @@ ggplot(data = df_avg_2023) +
   geom_line(aes(x = DOY, y = D_SNOW/2), color = 'purple') +
   geom_line(aes(x = DOY, y = (FC_F*15)), color = 'darkblue') +
   geom_line(aes(x = DOY, y = 0, color = 'black')) +
-  scale_y_continuous(name = expression('Biomet Vars & FC'), limits = c(-50,50)) +
-  geom_vline(xintercept = 123)+ #end of winter
-  geom_vline(xintercept = 136)+ #end of snowmelt
-  geom_vline(xintercept = 272)+ #end of growing season
+  scale_y_continuous(name = expression('Biomet Vars & FC'), limits = c(-30,20)) +
+  geom_vline(xintercept = 130)+ #end of winter
+  geom_vline(xintercept = 150)+ #end of snowmelt
+  geom_vline(xintercept = 230)+ #end of growing season
   geom_vline(xintercept = 325)+ #end of zero curtain
   scale_x_continuous(limits = c(0, 366))
 
-
-
-# Simplified Version for poster
-# Split axis: Temperature and CO2 Flux?
-# need key here!!
+## Just CO2 Plot: for defining seasons by flux patterns
 
 ggplot(data = df_avg_2023) +
-  theme_bw() +
-  geom_line(aes(x = DOY, y = TS_1_0_1), color = 'red') +
-  geom_line(aes(x = DOY, y = TA), color = 'blue') +
-  geom_line(aes(x = DOY, y = (PPFD_OUT*20) / PPFD_IN), color = 'green') +
-  geom_point(aes(x = DOY, y = (FC_F*15)), color = 'black') +
-  geom_line(aes(x = DOY, y = (G_1_1_1/2.5)), color = 'orange') +
-  scale_y_continuous(name = expression('Biomet Vars & FC'), limits = ) +
-  geom_vline(xintercept = 123)+ #end of winter
-  geom_vline(xintercept = 136)+ #end of snowmelt
-  geom_vline(xintercept = 272)+ #end of growing season
+  theme_bw()+
+  geom_point(aes(x = DOY, y = (FC_F*60*60*24*(1/1000000)*12)), color = 'darkgreen') +
+  geom_line(aes(x = DOY, y = 0, color = 'darkblue')) +
+  scale_y_continuous(name = expression('FC (Grams of Carbon per m^2 per day'), limits = c(-5,5)) +
+  geom_vline(xintercept = 130)+ #end of winter
+  geom_vline(xintercept = 150)+ #end of snowmelt
+  geom_vline(xintercept = 230)+ #end of growing season
   geom_vline(xintercept = 325)+ #end of zero curtain
-  scale_x_discrete(limits = c(0, 366))
+  scale_x_continuous(limits = c(0, 366))
+
 
 
 # Defines seasons in 2023 dataframes using a column of character values
@@ -211,6 +289,68 @@ df_2023 <- df_2023 %>%
 ```
 
 
+####[Plot 5] Simplified Version for poster
+
+
+Definition of seasons: 3+ days of the sign of FC_F changing??
+
+```{r}
+
+ggplot(data = df_avg_2023) +
+  theme_bw() +
+  geom_hline(yintercept=0, colour = "black")+
+  geom_line(aes(x = day, y = TS_1_0_1/15, colour = "10cm Soil Temperature")) +
+  geom_line(aes(x = day, y = TA/15, colour = "Air Temperature")) +
+  geom_point(aes(x = day, y = FC_F, colour = "Net CO2 Flux"))+
+  scale_y_continuous(name = expression(" CO"[2] * " Flux (Micromoles of CO"[2] * "/ m"^2*"s)"), sec.axis = sec_axis(~ . * 15, name = "Temperature (C)"))+
+  scale_x_datetime(name="Date")+
+  scale_color_manual(
+    name = "Plots",
+    values = c("10cm Soil Temperature" = "darkblue", "Air Temperature" = "salmon", "Net CO2 Flux" = "turquoise3"))+
+  geom_vline(xintercept = as.POSIXct("2023-05-10"))+ #end of winter, DOY 130
+  geom_vline(xintercept =  as.POSIXct("2023-06-12"))+ #end of snowmelt, DOY 163
+  geom_vline(xintercept =  as.POSIXct("2023-09-06"))+ #end of growing season, DOY 249
+  geom_vline(xintercept =  as.POSIXct("2023-10-27"))
+  
+  #end of zero curtain, DOY 300
+
+
+
+# This is the same plot, just without a legend so it has better proportions
+
+ggplot(data = df_avg_2023) +
+  theme_bw() +
+  geom_hline(yintercept=0, colour = "black")+
+  geom_line(aes(x = day, y = TS_1_0_1/15), colour = "darkblue") +
+  geom_line(aes(x = day, y = TA/15), colour = "salmon") +
+  geom_point(aes(x = day, y = FC_F), colour = "turquoise3")+
+  scale_y_continuous(name = expression(" CO"[2] * " Flux (Micromoles of CO"[2] * "/ m"^2*"s)"), sec.axis = sec_axis(~ . * 15, name = "Temperature (C)"))+
+  scale_x_datetime(name="Date")+
+  geom_vline(xintercept = as.POSIXct("2023-05-10"))+ #end of winter, DOY 130
+  geom_vline(xintercept =  as.POSIXct("2023-06-12"))+ #end of snowmelt, DOY 163
+  geom_vline(xintercept =  as.POSIXct("2023-09-06"))+ #end of growing season, DOY 249
+  geom_vline(xintercept =  as.POSIXct("2023-10-27"))
+  
+  #end of zero curtain, DOY 300
+
+
+
+```
+
+
+# Seasonal Correlations
+
+correlation between variables in growing season
+
+```{r}
+
+df_growing_avg_2023 <- filter(df_avg_2023, season == "Growing Season")
+
+cor(df_growing_avg_2023$FC_F, df_growing_avg_2023$TA)
+
+
+```
+
 # Isolate nighttime CO2 data
 
 Isolates nighttime CO2 Flux data in the half-hourly dataframe
@@ -238,20 +378,17 @@ ggplot(data = df_2023)+
   scale_color_manual(values=c('deeppink3','black'))
 ```
 
-
-# Year-Long Budgets
+# Year-Long Budget Plot
 
 Calculates the entire year's total emissions for NEE and Methane flux
 
-
 #### NEE
-
 
 ```{r}
 
 
 # For unit adjustment: 
-#   Units start as Micromoles of CO2/(m^2s), converted to Grams of C/m^2
+# Units start as Micromoles of CO2/(m^2s), converted to Grams of C/m^2
 
 
 # Creates column in dataframe that is in the correct units, without NAs
@@ -278,7 +415,6 @@ ggplot(data = df_avg_2023, aes(x=DOY, y=cumulative, color = season))+
   
 
 ```
-
 
 #### Methane
 
@@ -308,17 +444,14 @@ ggplot(data = df_avg_2023, aes(x=DOY, y=cumulativeCH4, color = season))+
 
 ```
 
-
 # Seasonal Budgets
 
-Use half-hourly data to calculate net co2 budgets by season
-Average rate per day, separate graph for daily rate
-geom_violin 
+Use half-hourly data to calculate net co2 budgets by season Average rate per day, separate graph for daily rate geom_violin
 
-
-## NEE
+## [Plot 3] NEE
 
 Finds the net CO2 exchange of each season as defined above
+
 ```{r}
 
 seasonal_integrals <- function(df) {
@@ -344,19 +477,23 @@ seasonal_integrals <- function(df) {
 
 seasonal_integrals_2023 <- seasonal_integrals(df_2023)
 
+#reorders seasons to timeline order
+seasonal_integrals_2023$season <- factor(seasonal_integrals_2023$season, levels = c("Snow Melt", "Growing Season", "Zero curtain", "Winter"))
+
 ggplot(seasonal_integrals_2023, aes(x = season, y = integral_value)) +
-  geom_bar(stat = "identity", position = "dodge") +
+  theme_bw()+
+  geom_hline(yintercept=0, colour="black")+
+  geom_bar(stat = "identity", position = "dodge", fill = "turquoise3") +
   labs(
     x = "Season",
-    y = "Net CO2 Flux (Grams of Carbon/m^2)",
-    title = "2023 CO2 Flux by season"
+    y = expression("Net CO"[2] * " Flux (Grams of Carbon / m"^2*")"),
+    title = expression("Net CO"[2] * " Flux by Season")
   ) +
-  theme_minimal()+
-  geom_text(aes(label = integral_value), vjust = 1, colour = "orange")
+  geom_label(aes(label = integral_value), vjust = ifelse(seasonal_integrals_2023$integral_value >= 0, -0.7, 1.5), colour = "black", fill ="white")+
+  scale_y_continuous(limits=c(-33, 12))
 
-# 
-# ggplot(data=df_2023)+
-#   geom_boxplot(aes(season, FC_F))
+
+
 
 # Bar graph showing growing season vs. year round analysis
 # Change GPP to negative to show dynamics in budget
@@ -365,7 +502,6 @@ ggplot(seasonal_integrals_2023, aes(x = season, y = integral_value)) +
 
 
 ```
-
 
 ## GPP
 
@@ -411,9 +547,8 @@ ggplot(seasonal_integrals_2023, aes(x = season, y = integral_value)) +
 
 ```
 
-
-
 ## RECO
+
 ```{r}
 
 seasonal_integrals <- function(df) {
@@ -453,10 +588,9 @@ ggplot(seasonal_integrals_2023, aes(x = season, y = integral_value)) +
 
 ```
 
+## [Plot 4] Methane
 
-## Methane
-
-?? Conversion not giving meaningful numbers, changed to milligrams
+Conversion not giving meaningful numbers, changed to milligrams
 
 ```{r}
 
@@ -479,15 +613,20 @@ seasonal_integrals <- function(df) {
 
 seasonal_integrals_2023 <- seasonal_integrals(df_2023)
 
+#reorders seasons to timeline order
+seasonal_integrals_2023$season <- factor(seasonal_integrals_2023$season, levels = c("Snow Melt", "Growing Season", "Zero curtain", "Winter"))
+
 ggplot(seasonal_integrals_2023, aes(x = season, y = integral_value)) +
-  geom_bar(stat = "identity", position = "dodge") +
+  theme_bw()+
+  geom_hline(yintercept=0, colour="black")+
+  geom_bar(stat = "identity", position = "dodge", fill = "turquoise3") +
   labs(
     x = "Season",
-    y = "Net CH4 Flux (Milligrams of C/m^2)",
-    title = "2023 CH4 Flux by season"
+    y = expression("Net CH"[4] * " Flux (Milligrams of Carbon / m"^2*")"),
+    title = expression("Net CH"[4] * " Flux by Season")
   ) +
-  theme_minimal()+
-  geom_text(aes(label = integral_value), vjust = 1, colour = "orange")
+  geom_label(aes(label = integral_value), vjust = ifelse(seasonal_integrals_2023$integral_value >= 0, -0.7, 1.5), colour = "black", fill ="white")+
+  scale_y_continuous(limits=c(0, 8.3))
 
 ```
 
@@ -500,7 +639,6 @@ Compares the annual budget of growing-season only site and our year round data
 
 
 ```
-
 
 # Snowmelt peak analysis
 
@@ -530,45 +668,11 @@ ggplot(data = df_2023) +
 
 ```
 
-
 # Analysis of Controls
 
-## Energy Balance
-```{r}
+## Temperature Relationship
 
-energy_balance <- function(df) {
-  
-  # Create the plot
-  df$Met <- df$NETRAD
-  
-  df$Flux <- df$LE + df$H
-  
-  plot <- ggplot(data = df, aes(x = Met, y = Flux))+ 
-    geom_point()+
-    geom_abline(slope=1, intercept=0, colour = "red")+
-  scale_x_continuous(lim = c(-100, 600))+
-  scale_y_continuous(lim = c(-100, 600))
-  
-  return(plot)
-}
-
-eb07 <- energy_balance(df_avg_2007)
-eb08 <- energy_balance(df_avg_2008)
-eb22 <- energy_balance(df_avg_2022)
-eb23 <- energy_balance(df_avg_2023)
-
-grid.arrange(eb07, eb08, eb22, eb23, nrow=2, ncol=2)
-
-
-
-```
-
-
-
-## Temperature Relationship 
-
-Uses non-gap filled data for NEE, nighttime CO2 data
-Uses gap filled data for GPP and RECO
+Uses non-gap filled data for NEE, nighttime CO2 data Uses gap filled data for GPP and RECO
 
 All use half-hourly data
 
@@ -605,16 +709,20 @@ ggplot(data=df_2023)+
     title = "Respiraton vs. Soil Temp"
   ) 
 
-# FC_night used to estimate RECO without temp correlation or gapfilling
-ggplot(data=df_2023)+theme_bw()+geom_hline(yintercept = 0)+geom_vline(xintercept = 0)+
+# FC_night used to estimate RECO without temp correlation or gap filling
+
+ggplot(data=df_2023)+
+  theme_bw()+
+  geom_hline(yintercept = 0)+
+  geom_vline(xintercept = 0)+
   geom_point(aes(x=TS_1_05_1, y=FC_night, col = DOY))+
-#  scale_color_viridis_c(option = "A")+
+scale_color_gradient(low = "navy", high = "salmon")+
   labs(
-    x = "Soil Temp",
-    y = "Nighttime CO2 Flux",
-    title = "Nighttime CO2 Flux vs. Soil Temp"
+    x = expression("5cm Soil Temperature ("*degree*"C)"),
+    y = expression("Half-hourly Nighttime CO"[2] * " Flux"),
+    title = expression("Nighttime CO"[2] * " Flux vs. Soil Temperature")
   )+
-  scale_x_continuous(limits=c(-15,20))+
+  scale_x_continuous(limits=c(-15,18))+
   scale_y_continuous(limits=c(-0.5,4))
 
 #use this plot for poster 
@@ -626,81 +734,52 @@ ggplot(data=df_2023)+theme_bw()+geom_hline(yintercept = 0)+geom_vline(xintercept
 ggplot(data=df_2023)+
   geom_point(aes(x=TS_1_05_1, y=FCH4, col = DOY))+
   labs(
-    x = "Soil Temp",
+    x = "5cm Soil Temp",
     y = "Methane",
     title = "Methane vs. Soil Temp"
   )+
-  scale_x_continuous(limits = c(-2, 2))
+  scale_x_continuous(limits = c(-15, 18))+
+  scale_y_continuous(limits = c(-50, 150))
 
 ```
 
 
-## Soil Temp
 
-2023
-
-Plots both soil profiles and net CO2 flux together
+Exponential model
 
 ```{r}
 
-co2_23 <- ggplot(data = df, aes(x = TIMESTAMP, y = FC_F)) +
-  scale_y_continuous(limits=c(-5, 5))+
-  geom_point()+
-  ggtitle("2023")+
-  scale_x_datetime(limits = as.POSIXct(dates_23))
 
+exponential_fit_plot <- function(data, x_var, y_var) {
+  exp_model <- nls(
+    formula = as.formula(paste(y_var, "~ a * exp(b *", x_var, ")")),
+    data = data,
+    start = list(a = 1, b = 0.1)  # Starting values for the coefficients
+  )
+  
+  # Extract coefficients
+  coef_values <- coef(exp_model)
+  
+  # Create a new column for fitted values
+  data$fit <- coef_values["a"] * exp(coef_values["b"] * data[[x_var]])
+  
+}
 
-soil23_1 <- ggplot(data = df)+ theme_bw()+
-  geom_hline(yintercept = 0)+
-  geom_line(aes(TIMESTAMP,TS_1_0_1))+
-  geom_line(aes(TIMESTAMP,TS_1_05_1))+
-  geom_line(aes(TIMESTAMP,TS_1_1_1))+
-  geom_line(aes(TIMESTAMP,TS_1_2_1))+  
-  geom_line(aes(TIMESTAMP,TS_1_3_1))+
-  geom_line(aes(TIMESTAMP,TS_1_4_1))+
-  geom_line(aes(TIMESTAMP,TS_1_5_1))+
-  geom_line(aes(TIMESTAMP,TS_1_6_1))+
-  geom_line(aes(TIMESTAMP,TS_1_7_1))+
-  geom_line(aes(TIMESTAMP,TS_1_8_1))+
-  geom_line(aes(TIMESTAMP,TS_1_9_1))+
-  geom_line(aes(TIMESTAMP,TS_1_10_1))+
-  scale_x_datetime(limits=as.POSIXct(dates_23))
+exponential_fit_plot(df_2023, "TS_1_05_1", "FC_night")
 
-
-soil23_2 <- ggplot(data = df)+
+ggplot(data=df_2023)+
   theme_bw()+
   geom_hline(yintercept = 0)+
-  geom_line(aes(TIMESTAMP,TS_2_0_1))+
-  geom_line(aes(TIMESTAMP,TS_2_05_1))+
-  geom_line(aes(TIMESTAMP,TS_2_1_1))+
-  geom_line(aes(TIMESTAMP,TS_2_2_1))+  
-  geom_line(aes(TIMESTAMP,TS_2_3_1))+
-  geom_line(aes(TIMESTAMP,TS_2_4_1))+
-  geom_line(aes(TIMESTAMP,TS_2_5_1))+
-  geom_line(aes(TIMESTAMP,TS_2_6_1))+
-  geom_line(aes(TIMESTAMP,TS_2_7_1))+
-  geom_line(aes(TIMESTAMP,TS_2_8_1))+
-  geom_line(aes(TIMESTAMP,TS_2_9_1))+
-  geom_line(aes(TIMESTAMP,TS_2_10_1))+
-  scale_x_datetime(limits=as.POSIXct(dates_23))
-
-
-# Arrange the plots side by side
-grid.arrange(co2_23, soil23_1, soil23_2)
-
-## Shows non-temperature correlated peak in CO2 Flux data during snowmelt
-
-ggplot(data = df_2023) +
-  theme_bw() +
-  geom_point(aes(x = TIMESTAMP, y = FC), color = 'darkgreen') +
-  geom_line(aes(x = TIMESTAMP, y = TS_2_05_1), color = 'deeppink2') +  
-  geom_hline(yintercept = 0) +
-  scale_y_continuous(
-    name = expression('CO2 Flux'),
-    limits = c(-7, 5),
-    sec.axis = sec_axis(~./4, name = "5cm Soil Temp")
-    ) +
-  scale_x_datetime(limits = as.POSIXct(c('2023-05-01', '2023-05-20')))
+  geom_vline(xintercept = 0)+
+  geom_line(aes_string(y = fit), color = "black") +
+  geom_point(aes(x=TS_1_05_1, y=FC_night, col = DOY))+
+scale_color_gradient(low = "navy", high = "salmon")+
+  labs(
+    x = expression("5cm Soil Temperature ("*degree*"C)"),
+    y = expression("Half-hourly Nighttime CO"[2] * " Flux"),
+    title = expression("Nighttime CO"[2] * " Flux vs. Soil Temperature")
+  )+
+  scale_x_continuous(limits=c(-15,18))+
+  scale_y_continuous(limits=c(-0.5,4))
 
 ```
-
