@@ -1,0 +1,62 @@
+rm(list = ls())
+
+
+library(data.table)
+library(ggplot2)
+library(zoo)
+Sys.setenv(TZ = "UTC")
+
+setwd('C:/Users/karndt.WHRC/Desktop/sites/YKD/data/unburned/')
+
+c23 = fread(input = "./YKD_UB_2023_clean.csv")
+c23$ts = as.POSIXct(c23$ts,format = '%m/%d/%Y %H:%M')
+
+ggplot(data = c23)+
+  geom_point(aes(ts,co2_flux.c))
+
+ggplot(data = c23)+
+  geom_point(aes(ts,ch4_flux.c))
+
+ggplot(data = c23)+
+  geom_point(aes(ts,H.c))
+
+ggplot(data = c23)+
+  geom_point(aes(ts,LE.c))
+
+names(c23)
+c23$ALB_1_1_1 = ifelse(c23$ALB_1_1_1 < 0 | c23$ALB_1_1_1 > 1, NA, c23$ALB_1_1_1)
+ggplot(data = c23)+
+  geom_point(aes(ts,ALB_1_1_1))
+
+ggplot(data = c23)+
+  geom_point(aes(ts,LWIN_1_1_1,col='LWIN_1_1_1'))+
+  geom_point(aes(ts,LWOUT_1_1_1,col='LWOUT_1_1_1'))
+  
+ggplot(data = c23)+
+  geom_point(aes(ts,PPFD_1_1_1,col='PPFD_1_1_1'))+
+  geom_point(aes(ts,SWIN_1_1_1,col='SWIN_1_1_1'))+
+  geom_point(aes(ts,SWOUT_1_1_1,col='SWOUT_1_1_1'))
+
+ggplot(data = c23)+
+  geom_point(aes(ts,SHF_1_1_1,col='SHF_1_1_1'))+
+  geom_point(aes(ts,SHF_2_1_1,col='SHF_2_1_1'))+
+  geom_point(aes(ts,SHF_3_1_1,col='SHF_3_1_1'))
+
+ggplot(data = c23)+
+  geom_point(aes(ts,SWC_1_1_1,col='SWC_1_1_1'))+
+  geom_point(aes(ts,SWC_2_1_1,col='SWC_2_1_1'))+
+  geom_point(aes(ts,SWC_3_1_1,col='SWC_3_1_1'))
+
+ggplot(data = c23)+
+  geom_point(aes(ts,TS_1_1_1,col='TS_1_1_1'))+
+  geom_point(aes(ts,TS_2_1_1,col='TS_2_1_1'))+
+  geom_point(aes(ts,TS_3_1_1,col='TS_3_1_1'))
+
+ggplot(data = c23)+
+  geom_point(aes(ts,TA_1_1_1))
+
+
+
+ggplot(data = c23)+
+  geom_point(aes(ts,LE.c))
+
