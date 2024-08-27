@@ -1,6 +1,5 @@
 rm(list = ls())
 
-
 library(data.table)
 library(ggplot2)
 library(zoo)
@@ -10,6 +9,12 @@ setwd('C:/Users/karndt.WHRC/Desktop/sites/YKD/data/unburned/')
 
 c23 = fread(input = "./YKD_UB_2023_clean.csv")
 c23$ts = as.POSIXct(c23$ts,format = '%m/%d/%Y %H:%M')
+
+fullts = seq(from = as.POSIXct('2023-01-01 00:00'), to = as.POSIXct('2023-12-31 23:30'),by = 60*30)
+fullts = as.data.frame(fullts)
+names(fullts) = 'ts'
+
+c23 = merge(fullts,c23,all = T)
 
 ggplot(data = c23)+
   geom_point(aes(ts,co2_flux.c))
@@ -84,6 +89,10 @@ c23$RH_1_1_1.c = ifelse(is.na(c23$TA_1_1_1.c),NA,c23$RH_1_1_1)
 
 ggplot(data = c23)+geom_hline(yintercept = 0)+
   geom_point(aes(ts,RH_1_1_1.c))
+
+
+c23$date = as.POSIXct(c23$date,format = '%m/%d/%Y')
+c23$date.y = as.POSIXct(c23$date.y,format = '%m/%d/%Y')
 
 write.csv(x = c23,file = './YKDUnburned_Cleaned_Met_Flux_2023_Ameriflux.csv',row.names = F)
 
