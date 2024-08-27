@@ -143,19 +143,26 @@ df_2023 <- df_2023 %>%
 
 net_CO2 <- trapz(df_2023$time_minutes, df_2023$FC_F_no_NAs)
 
-# Units start as Nanomoles of CH4/(m^2s), converted to Grams of C/m^2/minute, integrated over minutes to get Grams of C/m^2
+# Units start as micromoles of CH4/(m^2s), converted to Grams of C/m^2/minute, integrated over minutes to get Grams of C/m^2
 
 #Net CH4 Flux
 df_2023 <- df_2023 %>%
-  mutate(FCH4_F_no_NAs = ifelse(is.na(FCH4_F), 0, FCH4_F*60*(1/1000000000)*12))
+  mutate(FCH4_F_no_NAs = ifelse(is.na(FCH4_F), 0, FCH4_F*60*(1/1000000)*12))
+
+ggplot(data=df_2023)+
+  geom_point(aes(x=TIMESTAMP, y=FCH4_F, colour = "red"))+
+  geom_point(aes(x=TIMESTAMP, y=FCH4_F_no_NAs))
 
 net_CH4 <- trapz(df_2023$time_minutes, df_2023$FCH4_F_no_NAs)
 
+net_CH4_sum <- sum(df_2023$FCH4_F_no_NAs)
+
+## change to ameriflux submission to get different value? 11/12 ish?
 
 # Use IPCC Sixth Assessment Report (AR6) global warming potentials, 100 year time period - could use paper gwp* or 20 yr time period later? 
 
 net_CH4_CO2e <- net_CH4*27.2
-sum = net_CO2+net_CH4_CO2e
+sum = net_CO2+net_CH4
 
 #Dataframe created to generate bar graph
 
@@ -163,7 +170,7 @@ sum = net_CO2+net_CH4_CO2e
 
 net_wp_2023 <- data.frame(
   Category = c("CO2", "CH4", "Total"),
-  Value = c(round(net_CO2, 2), round(net_CH4_CO2e, 2), round(sum, 2) 
+  Value = c(round(net_CO2, 2), round(net_CH4, 2), round(sum, 2) 
 ))
 
 #Plot here
@@ -173,11 +180,12 @@ ggplot(net_wp_2023, aes(x = Category, y = Value)) +
   geom_bar(stat = "identity", position = "dodge", fill = "turquoise3") +
   geom_hline(yintercept=0, colour = "black")+
   labs(
-    x = "Source",
-    y = "Net warming potental (in 100 yr CO2 Equivalents)"
-  ) +
+    x = "",
+    y = expression("Net Carbon Flux (g C"~m^-2~y^-1*")")) +
   geom_label(aes(label = Value), vjust = ifelse(net_wp_2023$Value >= 0, -0.7, 1.5), colour = "black", fill ="white")+
-  scale_y_continuous(limits=c(-13.5, 2))
+  scale_y_continuous(limits=c(-15, 13))
+
+#remove warming potential
 
 
 
@@ -296,13 +304,15 @@ Definition of seasons: 3+ days of the sign of FC_F changing??
 
 ```{r}
 
+#change units to grams/day
+
 ggplot(data = df_avg_2023) +
   theme_bw() +
   geom_hline(yintercept=0, colour = "black")+
   geom_line(aes(x = day, y = TS_1_0_1/15, colour = "10cm Soil Temperature")) +
   geom_line(aes(x = day, y = TA/15, colour = "Air Temperature")) +
-  geom_point(aes(x = day, y = FC_F, colour = "Net CO2 Flux"))+
-  scale_y_continuous(name = expression(" CO"[2] * " Flux (Micromoles of CO"[2] * "/ m"^2*"s)"), sec.axis = sec_axis(~ . * 15, name = "Temperature (C)"))+
+  geom_point(aes(x = day, y = FC_F*60*60*24*(1/1000000)*12, colour = "Net CO2 Flux"))+
+  scale_y_continuous(name = expression("NEE (gC"~m^-2*~d^-1)"), sec.axis = sec_axis(~ . * 15, name = "Temperature (C)"))+
   scale_x_datetime(name="Date")+
   scale_color_manual(
     name = "Plots",
@@ -668,9 +678,8 @@ ggplot(data = df_2023) +
 
 ```
 
-# Analysis of Controls
 
-## Temperature Relationship
+#  [Plots 6/7] Temperature Relationship
 
 Uses non-gap filled data for NEE, nighttime CO2 data Uses gap filled data for GPP and RECO
 
@@ -707,7 +716,7 @@ ggplot(data=df_2023)+
     x = "Soil Temp",
     y = "Respiration",
     title = "Respiraton vs. Soil Temp"
-  ) 
+  )
 
 # FC_night used to estimate RECO without temp correlation or gap filling
 
@@ -719,11 +728,11 @@ ggplot(data=df_2023)+
 scale_color_gradient(low = "navy", high = "salmon")+
   labs(
     x = expression("5cm Soil Temperature ("*degree*"C)"),
-    y = expression("Half-hourly Nighttime CO"[2] * " Flux"),
+    y = expression("Half-hourly nighttime CO"[2] * " Flux ("*m*mol~m^-2~s^-1*")"),
     title = expression("Nighttime CO"[2] * " Flux vs. Soil Temperature")
   )+
-  scale_x_continuous(limits=c(-15,18))+
-  scale_y_continuous(limits=c(-0.5,4))
+  scale_x_continuous(limits=c(-15,25))+
+  scale_y_continuous(limits=c(-0.5,2.5))
 
 #use this plot for poster 
 
@@ -732,14 +741,17 @@ scale_color_gradient(low = "navy", high = "salmon")+
 
 
 ggplot(data=df_2023)+
-  geom_point(aes(x=TS_1_05_1, y=FCH4, col = DOY))+
+  geom_vline(xintercept=0)+
+  theme_bw()+
+  geom_point(aes(x=TS_1_05_1, y=FCH4*(1/1000), col = DOY))+
+scale_color_gradient(low = "navy", high = "salmon")+
   labs(
-    x = "5cm Soil Temp",
-    y = "Methane",
-    title = "Methane vs. Soil Temp"
+    x = expression("5 cm Soil Temperature ("*degree*"C)"),
+    y = expression("Half-hourly CH"[4] * " Flux ("*m*mol~m^-2~s^-1*")"),
+    title = expression("CH"[4] * " Flux vs. Soil Temperature")
   )+
-  scale_x_continuous(limits = c(-15, 18))+
-  scale_y_continuous(limits = c(-50, 150))
+  scale_x_continuous(limits = c(-15, 30))+
+  scale_y_continuous(limits = c(-0.04, .150))
 
 ```
 
