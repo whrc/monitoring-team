@@ -43,6 +43,7 @@ gap fill short gaps in the met data first
 ```{r}
 gap = 3
 
+df$TA_1_1_1.c = ifelse(df$ts < as.POSIXct('2023-01-01 00:00'),df$TA_1_1_1,df$TA_1_1_1.c)
 
 #energy fluxes ###########################
 df$SHF_1_1_1.c = na.spline(df$SHF_1_1_1.c,maxgap = gap)
@@ -88,6 +89,7 @@ era = fread('./era5_ykd_unburned.csv')
 
 df$date = df$ts
 
+summary(era$date)
 #merge together
 all = merge(era,df,by = 'date',all = T)
 all = all[!duplicated(all$date),]
