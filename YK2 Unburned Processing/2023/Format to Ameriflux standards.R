@@ -24,39 +24,66 @@ ggplot(data = c23)+
   geom_point(aes(ts,LE.c))
 
 names(c23)
-c23$ALB_1_1_1 = ifelse(c23$ALB_1_1_1 < 0 | c23$ALB_1_1_1 > 1, NA, c23$ALB_1_1_1)
+c23$ALB_1_1_1.c = ifelse(c23$ALB_1_1_1 < 0 | c23$ALB_1_1_1 > 1, NA, c23$ALB_1_1_1)
 ggplot(data = c23)+
-  geom_point(aes(ts,ALB_1_1_1))
+  geom_point(aes(ts,ALB_1_1_1.c))
 
 ggplot(data = c23)+
   geom_point(aes(ts,LWIN_1_1_1,col='LWIN_1_1_1'))+
   geom_point(aes(ts,LWOUT_1_1_1,col='LWOUT_1_1_1'))
   
+c23$LWIN_1_1_1.c = c23$LWIN_1_1_1
+c23$LWOUT_1_1_1.c = c23$LWOUT_1_1_1
+
 ggplot(data = c23)+
   geom_point(aes(ts,PPFD_1_1_1,col='PPFD_1_1_1'))+
   geom_point(aes(ts,SWIN_1_1_1,col='SWIN_1_1_1'))+
   geom_point(aes(ts,SWOUT_1_1_1,col='SWOUT_1_1_1'))
+
+c23$PPFD_1_1_1.c = c23$PPFD_1_1_1
+c23$SWIN_1_1_1.c = c23$SWIN_1_1_1
+c23$SWOUT_1_1_1.c = c23$SWOUT_1_1_1
 
 ggplot(data = c23)+
   geom_point(aes(ts,SHF_1_1_1,col='SHF_1_1_1'))+
   geom_point(aes(ts,SHF_2_1_1,col='SHF_2_1_1'))+
   geom_point(aes(ts,SHF_3_1_1,col='SHF_3_1_1'))
 
+c23$SHF_1_1_1.c = c23$SHF_1_1_1
+c23$SHF_2_1_1.c = c23$SHF_2_1_1
+c23$SHF_3_1_1.c = c23$SHF_3_1_1
+
 ggplot(data = c23)+
   geom_point(aes(ts,SWC_1_1_1,col='SWC_1_1_1'))+
   geom_point(aes(ts,SWC_2_1_1,col='SWC_2_1_1'))+
   geom_point(aes(ts,SWC_3_1_1,col='SWC_3_1_1'))
+
+c23$SWC_1_1_1.c = c23$SWC_1_1_1
+c23$SWC_2_1_1.c = c23$SWC_2_1_1
+c23$SWC_3_1_1.c = c23$SWC_3_1_1
 
 ggplot(data = c23)+
   geom_point(aes(ts,TS_1_1_1,col='TS_1_1_1'))+
   geom_point(aes(ts,TS_2_1_1,col='TS_2_1_1'))+
   geom_point(aes(ts,TS_3_1_1,col='TS_3_1_1'))
 
+c23$TS_1_1_1.c = c23$TS_1_1_1
+c23$TS_2_1_1.c = c23$TS_2_1_1
+c23$TS_3_1_1.c = c23$TS_3_1_1
+
+c23$TA_1_1_1.c = ifelse(c23$TA_1_1_1 > c23$air_t_mean + 5 | c23$TA_1_1_1 < c23$air_t_mean - 5,NA,c23$TA_1_1_1)
+  
+ggplot(data = c23)+geom_hline(yintercept = 0)+
+  geom_point(aes(ts,TA_1_1_1.c-273.15))
+
 ggplot(data = c23)+
-  geom_point(aes(ts,TA_1_1_1))
+  geom_point(aes(air_t_mean-273.15,TA_1_1_1.c-273.15))+
+  geom_abline(intercept = 0,slope = 1,col='red')
 
+c23$RH_1_1_1.c = ifelse(is.na(c23$TA_1_1_1.c),NA,c23$RH_1_1_1)
 
+ggplot(data = c23)+geom_hline(yintercept = 0)+
+  geom_point(aes(ts,RH_1_1_1.c))
 
-ggplot(data = c23)+
-  geom_point(aes(ts,LE.c))
+write.csv(x = c23,file = './YKDUnburned_Cleaned_Met_Flux_2023_Ameriflux.csv',row.names = F)
 
