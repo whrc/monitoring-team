@@ -16,7 +16,9 @@ rm(list = ls())
 library(data.table)
 library(ggplot2)
 library(zoo)
+library(cowplot)
 Sys.setenv(TZ = "UTC")
+setwd('C:/Users/karndt.WHRC/Desktop/sites/YKD/Ameriflux YK/unburned/')
 ```
 
 Load Data
@@ -118,15 +120,14 @@ ggplot(data = all,aes(rh,RH_1_1_1.c))+
 ```{r}
 ggplot(data = all)+
   geom_point(aes(date,airt,col='ERA5'))+
-  geom_point(aes(date,all$TA_1_1_1,col='Site'))
+  geom_point(aes(date,all$TA_1_1_1.c,col='Site'))
 
-
-airt.mod = lm(formula = all$TA_1_1_1 ~ all$airt)
+airt.mod = lm(formula = all$TA_1_1_1.c ~ all$airt)
 summary(airt.mod)
 
 all$airt.eramod = all$airt*airt.mod$coefficients[2] + airt.mod$coefficients[1]     
 
-ggplot(data = all,aes(airt,TA_1_1_1))+theme_bw()+
+ggplot(data = all,aes(airt,TA_1_1_1.c))+theme_bw()+
   geom_point()+
   geom_smooth(method = 'lm')+
   geom_abline(slope = 1,intercept = 0,col='red',lty=2)
@@ -236,11 +237,11 @@ svp = 610.7*10^((7.5*all$airt)/(237.3+all$airt))
 all$vpd.era = ((100 - all$rh)/100)*svp  
 
 #calculate VPD from air t and RH
-svp = 610.7*10^((7.5*all$TA_1_1_1)/(237.3+all$TA_1_1_1))
+svp = 610.7*10^((7.5*all$TA_1_1_1.c)/(237.3+all$TA_1_1_1.c))
 all$vpd.site = ((100 - all$RH_1_1_1.c)/100)*svp 
 
 
-ta = ggplot(data = all,aes(airt,TA_1_1_1))+theme_bw()+
+ta = ggplot(data = all,aes(airt,TA_1_1_1.c))+theme_bw()+
   geom_point(alpha = 0.25)+
   geom_smooth(method = 'lm')+
   geom_abline(slope = 1,intercept = 0,col='red',lty=2)+
@@ -310,9 +311,9 @@ swc = ggplot(data = all,aes(vwc1*100,SWC_1_1_1.c))+theme_bw()+
   scale_x_continuous(expression("ERA5 VWC (%)"))+
   scale_y_continuous(expression("Site VWC (%)"))
 
-png(filename = 'C:/Users/karndt.WHRC/Desktop/sites/YKD/plots/unburnedera5.png',width = 8,height = 8,units = 'in',res = 1500)
+#png(filename = 'C:/Users/karndt.WHRC/Desktop/sites/YKD/plots/unburnedera5.png',width = 8,height = 8,units = 'in',res = 1500)
 plot_grid(ta,rh,vpd,st,sw,ws,le,h,swc)
-dev.off()
+#dev.off()
 ```
 
 
@@ -323,7 +324,7 @@ eras = all[,c('date','rh.eramod','airt.eramod','ws.eramod','rad.eramod','tsoil.e
 df = df[!duplicated(df$date),]
 df = merge(df,eras,by = 'date',all.x = T)
 
-write.csv(x = df,file = './ykd_unburned_2019_2022_era.csv',row.names = F,quote = F)
+write.csv(x = df,file = './ykd_unburned_2019_2023_era.csv',row.names = F,quote = F)
 ```
 
 

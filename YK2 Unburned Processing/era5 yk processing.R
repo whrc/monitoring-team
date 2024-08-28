@@ -107,8 +107,8 @@ unbu$st2 = unbu$st2-273.15
 
 #make negatives NAs so we can fill them using linear interpolation.
 unbu$rad = unbu$rad/3600 #convert from J m-2 to Wm-2, divide by seconds in an hour
-unbu$le = unbu$le/3600 #convert from J m-2 to Wm-2, divide by seconds in an hour
-unbu$h = unbu$h/3600 #convert from J m-2 to Wm-2, divide by seconds in an hour
+unbu$le = unbu$le/-3600 #convert from J m-2 to Wm-2, divide by seconds in an hour
+unbu$h = unbu$h/-3600 #convert from J m-2 to Wm-2, divide by seconds in an hour
 
 #caluclate rh from the dewpoint and temperature
 unbu$rh = 100*(exp((17.625*unbu$dew)/(243.04+unbu$dew))/exp((17.625*unbu$airt)/(243.04+unbu$airt)))
