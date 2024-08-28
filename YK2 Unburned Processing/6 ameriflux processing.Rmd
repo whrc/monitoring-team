@@ -1,5 +1,5 @@
 ---
-title: "Prep for Ameriflux - Churchill"
+title: "Prep for Ameriflux - YKD Unburned"
 author: "Kyle Arndt"
 date: "2024-02-15"
 output: html_document
@@ -22,7 +22,7 @@ Sys.setenv(TZ = 'UTC')
 
 Load Data
 ```{r}
-df = fread(input = "./ykd_unburned_gapfilled_clean_2019_2022.csv")
+df = fread(input = "./ykd_unburned_gapfilled_clean_2019_2023.csv")
 ```
 
 Format the time stamps at start and end
@@ -91,7 +91,7 @@ LE      = df$LE.c
 
 #meteorology and weather #################################
 PA      = df$air_pressure/1000 #air pressure in kPA
-TA      = df$TA_1_1_1    # Air T in Deg C
+TA      = df$TA_1_1_1.c    # Air T in Deg C
 SVP     = 610.7*10^((7.5*TA)/(237.3+TA)) #NOT INCLUDED IN FINAL
 RH      = df$RH_1_1_1.c   #RH in %
 T_SONIC = df$sonic_temperature-273.15 #sonic temp in Deg C
@@ -106,7 +106,7 @@ LW_OUT = df$LWOUT_1_1_1.c # Wm-2
 SW_IN  = df$SWIN_1_1_1.c   # Wm-2
 SW_OUT = df$SWOUT_1_1_1.c # Wm-2
 
-NETRAD = df$RN_1_1_1.c     # Wm-2
+NETRAD = df$RN_1_1_1     # Wm-2
 
 PPFD_IN = df$PPFD_1_1_1.c   # par in umol m-2 s-1
 

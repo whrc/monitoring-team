@@ -26,7 +26,7 @@ Sys.setenv(TZ='UTC')
 
 Load in data
 ```{r,error=FALSE,warning=FALSE}
-cf = fread('./ykd_unburned_2019_2022_era.csv')
+cf = fread('./ykd_unburned_2019_2023_era.csv')
 cf = cf[complete.cases(cf$airt.eramod),]
 
 #create a sub data frame of the variables you want for a neural network
@@ -133,6 +133,7 @@ Filling out the extremes better, no anomalous winter sinks. Looks better than AN
 Validation
 ```{r,error=FALSE,warning=FALSE}
 test.data.nee = merge(test.nee,cf,by = 'date',all.x = T)
+summary(lm(test.data.nee$co2_flux.c ~ test.data.nee$rfnee))
 
 yk2nee = ggplot(data = test.data.nee,aes(rfnee,co2_flux.c))+theme_bw()+
   geom_hline(yintercept = 0,lty=2)+
@@ -142,12 +143,11 @@ yk2nee = ggplot(data = test.data.nee,aes(rfnee,co2_flux.c))+theme_bw()+
   geom_abline(slope = 1,intercept = 0,col='red',lty=1)+
   scale_x_continuous(limits = c(-12,10),expression('Random Forest NEE ('*mu*mol~CO[2]~m^-2~s^-1*')'))+
   scale_y_continuous(limits = c(-12,10),expression('Eddy Covariance NEE ('*mu*mol~CO[2]~m^-2~s^-1*')'))+
-  annotate(geom = 'text',x = 6, y = -8,label=expression(R^2~"= 0.75"),size = 3)+
+  annotate(geom = 'text',x = 6, y = -8,label=expression(R^2~"= 0.74"),size = 3)+
   annotate(geom = 'text',x = 6,y = -10,label=expression(Slope~"= 1.00"),size = 3)+
   theme(text = element_text(size = 8))
 
 yk2nee
-summary(lm(test.data.nee$co2_flux.c ~ test.data.nee$rfnee))
 ```
 
 Examine variable importance
@@ -209,7 +209,7 @@ yk2ch4 = ggplot(data = test.data.ch4,aes(rfch4,ch4_flux.c))+theme_bw()+
   scale_x_continuous(limits = c(-0.05,0.1),expression('Random Forest '*CH[4]~flux~" ("*mu*mol~CH[4]~m^-2~s^-1*')'))+
   scale_y_continuous(limits = c(-0.05,0.1),expression('Eddy Covariance '*CH[4]~flux~" ("*mu*mol~CH[4]~m^-2~s^-1*')'))+
   annotate(geom = 'text',x = 0.07,y = -0.025,label = expression(R^2~"= 0.52"),size = 3)+
-  annotate(geom= 'text',x = 0.07,y = -0.035,label = expression(Slope~"= 1.08"),size = 3)+
+  annotate(geom= 'text',x = 0.07,y = -0.035,label = expression(Slope~"= 1.09"),size = 3)+
   theme(text = element_text(size = 8))
 
 yk2ch4
@@ -220,7 +220,7 @@ summary(lm(test.data.ch4$ch4_flux.c ~ test.data.ch4$rfch4))
 ```{r}
 library(cowplot)
 
-png(filename = 'C:/Users/karndt.WHRC/Desktop/sites/YKD/plots/yk2unburned gapfilling validation.png',width = 6,height = 4,units = 'in',res = 1000)
+png(filename = 'C:/Users/karndt.WHRC/Desktop/sites/YKD/plots/2023 yk2unburned gapfilling validation.png',width = 6,height = 4,units = 'in',res = 1000)
 plot_grid(yk2nee,yk2ch4)
 dev.off()
 ```
@@ -228,5 +228,5 @@ dev.off()
 
 save off the data
 ```{r,error=FALSE,warning=FALSE}
-write.csv(x = cf,file = "./ykd_unburned_2019_2022_gf.csv",quote = F,row.names = F)
+write.csv(x = cf,file = "./ykd_unburned_2019_2023_gf.csv",quote = F,row.names = F)
 ```
