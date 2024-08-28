@@ -164,3 +164,4 @@ ggplot(data = unbum)+theme_bw()+geom_hline(yintercept = 0)+
 
 #resave off for comparison
 write.csv(x = unbum,file = './data/era5_ykd_unburned.csv',row.names = F)
+write.csv(x = unbum,file = './Ameriflux YK/unburned/era5_ykd_unburned.csv',row.names = F)
