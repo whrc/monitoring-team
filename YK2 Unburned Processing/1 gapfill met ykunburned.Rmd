@@ -331,7 +331,7 @@ eras = all[,c('date','rh.eramod','airt.eramod','ws.eramod','rad.eramod','tsoil.e
 df = df[!duplicated(df$date),]
 df = merge(df,eras,by = 'date',all.x = T)
 
-write.csv(x = df,file = './ykd_unburned_2019_2024_era.csv',row.names = F)
+write.csv(x = df,file = 'C:/Users/karndt.WHRC/Desktop/sites/YKD/Ameriflux YK/unburned/ykd_unburned_2019_2024_era.csv',row.names = F)
 ```
 
 

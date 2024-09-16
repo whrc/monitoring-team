@@ -41,7 +41,7 @@ burn$ws = sqrt(burn$v^2 + burn$u^2)
 
 #create a date data frame with every half hour in the timeframe of interest
 date = seq(from = as.POSIXct('2017-1-1 00:00',tz='UTC'),
-           to = as.POSIXct('2023-1-1 00:00',tz='UTC'),
+           to = as.POSIXct('2024-9-15 00:00',tz='UTC'),
            by = 60*30)
 datedf = as.data.frame(date)
 
@@ -118,7 +118,7 @@ unbu$ws = sqrt(unbu$v^2 + unbu$u^2)
 
 #create a date data frame with every half hour in the timeframe of interest
 date = seq(from = as.POSIXct('2019-1-1 00:00',tz='UTC'),
-           to = as.POSIXct('2023-12-31 23:30',tz='UTC'),
+           to = as.POSIXct('2024-09-15 23:30',tz='UTC'),
            by = 60*30)
 datedf = as.data.frame(date)
 
@@ -141,32 +141,32 @@ unbum$vwc2  = na.approx(object = unbum$vwc2,maxgap = 6)
 unbum$ws    = na.approx(object = unbum$ws,maxgap = 6)
 
 #check out the data
-ggplot(data = unbum)+theme_bw()+geom_hline(yintercept = 0)+
-  geom_point(aes(date,airt,col='airT'))+
-  geom_point(aes(date,st1,col='soilT1'))+
-  geom_point(aes(date,st2,col='soilT2'))
-
-ggplot(data = unbum)+theme_bw()+geom_hline(yintercept = 0)+
-  geom_point(aes(date,rad))
-
-ggplot(data = unbum)+theme_bw()+geom_hline(yintercept = 0)+
-  geom_point(aes(date,vwc1,col='vwc1'))+
-  geom_point(aes(date,vwc2,col='vwc2'))
-
-ggplot(data = unbum)+theme_bw()+geom_hline(yintercept = 0)+
-  geom_point(aes(date,rh))
-
-ggplot(data = unbum)+theme_bw()+
-  geom_point(aes(date,pres))
-
-ggplot(data = unbum)+theme_bw()+geom_hline(yintercept = 0)+
-  geom_point(aes(date,ws))
-
-ggplot(data = unbum)+theme_bw()+geom_hline(yintercept = 0)+
-  geom_point(aes(date,h))
-
-ggplot(data = unbum)+theme_bw()+geom_hline(yintercept = 0)+
-  geom_point(aes(date,le))
+# ggplot(data = unbum)+theme_bw()+geom_hline(yintercept = 0)+
+#   geom_point(aes(date,airt,col='airT'))+
+#   geom_point(aes(date,st1,col='soilT1'))+
+#   geom_point(aes(date,st2,col='soilT2'))
+# 
+# ggplot(data = unbum)+theme_bw()+geom_hline(yintercept = 0)+
+#   geom_point(aes(date,rad))
+# 
+# ggplot(data = unbum)+theme_bw()+geom_hline(yintercept = 0)+
+#   geom_point(aes(date,vwc1,col='vwc1'))+
+#   geom_point(aes(date,vwc2,col='vwc2'))
+# 
+# ggplot(data = unbum)+theme_bw()+geom_hline(yintercept = 0)+
+#   geom_point(aes(date,rh))
+# 
+# ggplot(data = unbum)+theme_bw()+
+#   geom_point(aes(date,pres))
+# 
+# ggplot(data = unbum)+theme_bw()+geom_hline(yintercept = 0)+
+#   geom_point(aes(date,ws))
+# 
+# ggplot(data = unbum)+theme_bw()+geom_hline(yintercept = 0)+
+#   geom_point(aes(date,h))
+# 
+# ggplot(data = unbum)+theme_bw()+geom_hline(yintercept = 0)+
+#   geom_point(aes(date,le))
 
 #resave off for comparison
 write.csv(x = unbum,file = './data/era5_ykd_unburned.csv',row.names = F)
