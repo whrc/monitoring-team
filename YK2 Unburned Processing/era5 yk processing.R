@@ -8,7 +8,7 @@ library(zoo)
 setwd('C:/Users/karndt.WHRC/Desktop/sites/YKD')
 
 #read in the full dataset
-era = fread('./data/ERA5hourly_2019_2023_YKD.csv')
+era = fread('./data/ERA5hourly_2019_2024_YKD.csv')
 names(era)
 #make more R friendly names
 names(era)[c(1,17:30)] = c('index','date','dew','st1','st2','le','pres','h','rad','airt','ppt','u','v','vwc1','vwc2')
@@ -125,7 +125,7 @@ datedf = as.data.frame(date)
 #merge with era 5
 unbum = merge(datedf,unbu,by = 'date',all = T)
 
-#gapfill middle half hours
+#gap fill middle half hours
 unbum$dew   = na.approx(object = unbum$dew,maxgap = 6)
 unbum$rh    = na.approx(object = unbum$rh,maxgap = 6)
 unbum$st1   = na.approx(object = unbum$st2,maxgap = 6)
@@ -161,6 +161,12 @@ ggplot(data = unbum)+theme_bw()+
 
 ggplot(data = unbum)+theme_bw()+geom_hline(yintercept = 0)+
   geom_point(aes(date,ws))
+
+ggplot(data = unbum)+theme_bw()+geom_hline(yintercept = 0)+
+  geom_point(aes(date,h))
+
+ggplot(data = unbum)+theme_bw()+geom_hline(yintercept = 0)+
+  geom_point(aes(date,le))
 
 #resave off for comparison
 write.csv(x = unbum,file = './data/era5_ykd_unburned.csv',row.names = F)

@@ -152,6 +152,11 @@ ggplot(data = all)+
   geom_point(aes(date,st2,col='ERA5'))+
   geom_point(aes(date,TS_2_1_1.c,col='Site'))+
   geom_point(aes(date,tsoil.eramod,col='Lin. Reg.'))
+
+ggplot(data = all,aes(st2,TS_2_1_1.c))+
+  geom_point()+
+  geom_smooth(method = 'lm')+
+  geom_abline(slope = 1,intercept = 0,col='red',lty=2)
 ```
 
 
@@ -326,7 +331,7 @@ eras = all[,c('date','rh.eramod','airt.eramod','ws.eramod','rad.eramod','tsoil.e
 df = df[!duplicated(df$date),]
 df = merge(df,eras,by = 'date',all.x = T)
 
-write.csv(x = df,file = './ykd_unburned_2019_2023_era.csv',row.names = F,quote = F)
+write.csv(x = df,file = './ykd_unburned_2019_2024_era.csv',row.names = F)
 ```
 
 
