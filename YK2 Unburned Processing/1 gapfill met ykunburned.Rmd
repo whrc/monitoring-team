@@ -84,7 +84,7 @@ df$TS_3_1_1.c = na.spline(df$TS_3_1_1.c-273.15,maxgap = gap)
 
 
 ```{r}
-write.csv(x = df,file = "./ykd_unburned_2019_2024.csv",row.names = F)
+#write.csv(x = df,file = "./ykd_unburned_2019_2024.csv",row.names = F)
 ```
 
 Add ERA5 data
