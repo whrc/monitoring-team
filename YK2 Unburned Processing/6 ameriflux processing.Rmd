@@ -22,7 +22,7 @@ Sys.setenv(TZ = 'UTC')
 
 Load Data
 ```{r}
-df = fread(input = "./ykd_unburned_gapfilled_clean_2019_2023.csv")
+df = fread(input = "./ykd_unburned_gapfilled_clean_2019_2024.csv")
 ```
 
 Format the time stamps at start and end

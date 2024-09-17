@@ -220,13 +220,13 @@ summary(lm(test.data.ch4$ch4_flux.c ~ test.data.ch4$rfch4))
 ```{r}
 library(cowplot)
 
-png(filename = 'C:/Users/karndt.WHRC/Desktop/sites/YKD/plots/2023 yk2unburned gapfilling validation.png',width = 6,height = 4,units = 'in',res = 1000)
+#png(filename = 'C:/Users/karndt.WHRC/Desktop/sites/YKD/plots/2023 yk2unburned gapfilling validation.png',width = 6,height = 4,units = 'in',res = 1000)
 plot_grid(yk2nee,yk2ch4)
-dev.off()
+#dev.off()
 ```
 
 
 save off the data
 ```{r,error=FALSE,warning=FALSE}
-write.csv(x = cf,file = "./ykd_unburned_2019_2024_gf.csv",quote = F,row.names = F)
+write.csv(x = cf,file = "./ykd_unburned_2019_2024_gf.csv",row.names = F)
 ```

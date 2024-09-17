@@ -7,7 +7,7 @@ setwd('C:/Users/karndt.WHRC/Desktop/sites/YKD/Ameriflux YK/unburned/') #use this
 Sys.setenv(TZ='UTC')
 
 #read the ungapfilled data
-dat = fread('./ykd_unburned_2019_2023_gf.csv')
+dat = fread('./ykd_unburned_2019_2024_gf.csv')
 
 #read in the gapfilling output
 gfh  = fread('./data/ykdub-Results_data.txt',header = T,nrows = 0)
@@ -65,4 +65,4 @@ dat = subset(dat,dat$dup == 'FALSE')
 
 summary(dat$ts)
 
-write.csv(x = dat,file = './ykd_unburned_gapfilled_clean_2019_2023.csv',quote = F,row.names = F)
+write.csv(x = dat,file = './ykd_unburned_gapfilled_clean_2019_2024.csv',row.names = F)

@@ -5,7 +5,7 @@ Sys.setenv(TZ='UTC')
 setwd('C:/Users/karndt.WHRC/Desktop/sites/YKD/Ameriflux YK/unburned/') #use this to set your directory
 
 #Prep for Reddy for an initial gap filling
-dat = fread('./ykd_unburned_2019_2024_gf.csv')
+dat = fread('./ykd_unburned_2019_2024_gf.csv',fill = T)
 
 #time variables #########################################################
 dat$ts = as.POSIXct(dat$ts)
