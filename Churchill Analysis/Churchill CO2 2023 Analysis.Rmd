@@ -626,10 +626,10 @@ ggplot(data = df_2023) +
 #Uses depth values in cm for easy coercion to numeric later
 ts_columns <- rep(c("0", "10", "20", "30", "40", "50", "60", "70", "80", "90", "100"), nrow(df_2023))
 
-#Picks columns to move into new dataframe; 5 cm lost to make geom_raster work, could linearly interpolate or use geom_tile later
+#Picks columns to move into new dataframe; 5 cm lost to make geom_raster work, could linearly interpolate or use geom_tile later?
 df_soiltemp = select(df_2023, TIMESTAMP, grep("^TS_1", names(df), value = TRUE), -TS_1_05_1) 
 
-#Changes solumn names to line up with numeric depth values
+#Changes column names to line up with numeric depth values
 colnames(df_soiltemp) = c("Time", "10", "0", "20", "30", "40", "50", "60", "70", "80", "90", "100")
 
 # Uses linear interpolation to fill NAs in data to create smooth plot
@@ -644,7 +644,7 @@ df_soiltemp <- df_soiltemp %>%
 
 names(df_soiltemp)[13] <- "Depth"
 
-#creates empty temp variable to fill with correct values
+#creates empty temp variable to fill with temp values
 df_soiltemp$Temperature = NA
 
 
@@ -664,11 +664,28 @@ summary(df_soiltemp)
 ## Create Plot 
 
 ```{r}
+pal = c('red','orange','yellow','cyan','lightblue','blue','purple','violet')
+pal = c('violet','violet','purple','blue','lightblue','cyan','green','yellow','orange','red','red')
+
 
 ggplot()+
-  geom_raster(data = df_soiltemp)+
+  geom_raster(data = df_soiltemp, interpolate = TRUE)+
   aes(x=Time, y=-Depth, fill= Temperature)+
-  scale_fill_viridis_c()
+#  scale_fill_viridis_c()+
+  scale_fill_gradient2(low = c('pink','violet','purple','blue'),mid = 'cyan',high = c('green','yellow','orange','red'),midpoint = 0,limits = c(-20,20),oob = scales::squish)+
+  # scale_fill_gradientn('Temp.',
+  #                      na.value = 'transparent',
+  #                      colours = pal, # 
+  #                      #trans = 'log',
+  #                      limits = c(-15,20),
+  #                   #   labels = c("Good","Poor"),
+  #                     # breaks = c(0,3.5),
+  #                      oob = scales::squish)+ #out of bounds, squishes everything into scale 
+  # add manual color scale, 0 is tight cyan color, cool negative colors and warm positive colors
+  scale_y_continuous(name = "Depth")
+
+hist(df_soiltemp$Temperature)
+#Stop temp scale at 20, make 20+ its own color to help with skew
   
 
 ```
@@ -760,7 +777,6 @@ scale_color_gradient(low = "navy", high = "salmon")+
 scale_color_gradient(low = "navy", high = "salmon")
 
   
-}
 
 exponential_fit_plot(df_2023, "TS_1_05_1", "FC_night")
 
