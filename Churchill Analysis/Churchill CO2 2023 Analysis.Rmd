@@ -117,7 +117,7 @@ ggplot(data = df_avg_2023, aes(x=day))+
   geom_line(aes(y = FCH4_F*60*60*24*(1/1000000)*12*13, color = "CH4"))+
   geom_hline(yintercept=0, col="black")+
   scale_y_continuous(expression('CO'[2]*' Flux (g C'~m^-2~d^-1*')'),
-  sec.axis = sec_axis(~ . * 13, name = expression('CH'[4]*' Flux (g C'~m^-2~d^-1*')')))+
+  sec.axis = sec_axis(~ . /13, name = expression('CH'[4]*' Flux (g C'~m^-2~d^-1*')')))+
   scale_color_manual(name = " ",
             values = c("GPP" = "navy", 
                       "Respiration" = "turquoise3", 
@@ -250,13 +250,15 @@ Definition of seasons: 3+ days of FC_F>0 for growing season, and 3+ days of air 
 
 df_avg_2023$day <- as.POSIXct(df_avg_2023$day)
 
-## Plot with legend- use only for legend
-ggplot(data = df_avg_2023) +
+
+## CO2 Flux and Soil/Air Temp
+tempplotco2 <- ggplot(data = df_avg_2023) +
   theme_bw() +
   geom_hline(yintercept=0, colour = "black")+
   geom_line(aes(x = day, y = TS_1_05_1/15, colour = "5cm Soil Temperature")) +
   geom_line(aes(x = day, y = TA/15, colour = "Air Temperature")) +
   geom_point(aes(x = day, y = FC_F*60*60*24*(1/1000000)*12, colour = "NEE"))+
+  scale_x_datetime(name = expression(""))+
   scale_y_continuous(
   name = expression("NEE (g C"~m^-2~d^-1~")"),
   sec.axis = sec_axis(~ . * 15, name = expression("Temperature ("*degree*"C)"))) +
@@ -267,9 +269,74 @@ ggplot(data = df_avg_2023) +
   geom_vline(xintercept =  as.POSIXct("2023-06-12"))+ #end of snowmelt, DOY 163
   geom_vline(xintercept =  as.POSIXct("2023-09-06"))+ #end of growing season, DOY 249
   geom_vline(xintercept =  as.POSIXct("2023-10-22"))
-  
-  #end of Fall Senescence, DOY 295
 
+tempplotco2
+
+tempplotch4 <- ggplot(data = df_avg_2023) +
+  theme_bw() +
+  geom_hline(yintercept=0, colour = "black")+
+  geom_line(aes(x = day, y = TS_1_05_1/100, colour = "5cm Soil Temperature")) +
+  geom_line(aes(x = day, y = TA/100, colour = "Air Temperature")) +
+  geom_point(aes(x = day, y = FCH4_F*60*60*24*(1/1000000)*12, colour = "Methane Flux"))+
+  scale_x_datetime(name = expression(""))+
+  scale_y_continuous(
+  name = expression('Methane Flux (g C'~m^-2~d^-1*')'),
+  sec.axis = sec_axis(~ . * 50, name = expression("Temperature ("*degree*"C)"))) +
+  scale_color_manual(
+    name = "",
+    values = c("5cm Soil Temperature" = "darkblue", "Air Temperature" = "salmon", "Methane Flux" = "turquoise3"))+
+  geom_vline(xintercept = as.POSIXct("2023-05-05"))+ #end of winter, DOY 125
+  geom_vline(xintercept =  as.POSIXct("2023-06-12"))+ #end of snowmelt, DOY 163
+  geom_vline(xintercept =  as.POSIXct("2023-09-06"))+ #end of growing season, DOY 249
+  geom_vline(xintercept =  as.POSIXct("2023-10-22"))
+
+tempplotch4
+
+
+## CO2 flux and PAR ratio
+parplot <- ggplot(data = df_avg_2023) +
+  theme_bw() +
+  geom_hline(yintercept=0, colour = "black")+
+  geom_line(aes(x = day, y = (PPFD_OUT) / PPFD_IN, colour = "PAR Out/PAR In")) +
+  #geom_line(aes(x = day, y = D_SNOW/15, colour = "Snow Depth")) +
+  geom_point(aes(x = day, y = FC_F*60*60*24*(1/1000000)*12, colour = "NEE"))+
+  scale_x_datetime(name = expression(""))+
+  scale_y_continuous(
+  name = expression("NEE (g C"~m^-2~d^-1~")"),
+  sec.axis = sec_axis(~ . * 1, name = expression("PAR Out/PAR In"))) +
+  scale_color_manual(
+    name = "",
+    values = c("PAR Out/PAR In" = "salmon", "Snow Depth" = "darkblue", "NEE" = "turquoise3"))+
+  geom_vline(xintercept = as.POSIXct("2023-05-05"))+ #end of winter, DOY 125
+  geom_vline(xintercept =  as.POSIXct("2023-06-12"))+ #end of snowmelt, DOY 163
+  geom_vline(xintercept =  as.POSIXct("2023-09-06"))+ #end of growing season, DOY 249
+  geom_vline(xintercept =  as.POSIXct("2023-10-22"))
+
+parplot
+
+
+
+shfplot <- ggplot(data = df_avg_2023) +
+  theme_bw() +
+  geom_hline(yintercept=0, colour = "black")+
+  geom_line(aes(x = day, y = G_1_1_1/45, colour = "Soil Heat Flux")) +
+  geom_point(aes(x = day, y = FC_F*60*60*24*(1/1000000)*12, colour = "NEE"))+
+  scale_x_datetime(name = expression(""))+
+  scale_y_continuous(
+  name = expression("NEE (g C"~m^-2~d^-1~")"),
+  sec.axis = sec_axis(~ . * 45, name = expression("Soil Heat Flux (W"~m^-2~")"))) +
+  scale_color_manual(
+    name = "",
+    values = c("Soil Heat Flux" =  "salmon", "NEE" = "turquoise3"))+
+  geom_vline(xintercept = as.POSIXct("2023-05-05"))+ #end of winter, DOY 125
+  geom_vline(xintercept =  as.POSIXct("2023-06-12"))+ #end of snowmelt, DOY 163
+  geom_vline(xintercept =  as.POSIXct("2023-09-06"))+ #end of growing season, DOY 249
+  geom_vline(xintercept =  as.POSIXct("2023-10-22"))
+
+shfplot
+
+
+grid.arrange(tempplotco2, tempplotch4, parplot, shfplot, nrow=2, ncol=2)
 
 
 
@@ -589,24 +656,25 @@ ggplot(seasonal_integrals_2023, aes(x = season, y = integral_value)) +
 
 ## May 15: DOY 135
 
-ggplot(data = df_2023) +
+
+ggplot(data = df_avg_2023) +
   theme_bw() +
-  geom_point(aes(x = TIMESTAMP, y = FC), color = 'black') +
-  # geom_point(aes(x = TIMESTAMP, y = FC_night), color = 'deeppink2') +
-  geom_point(aes(x = TIMESTAMP, y = GPP_F), color = 'green') +
-  geom_point(aes(x = TIMESTAMP, y = FCH4_F*7), color = 'orange') +
-  # geom_point(aes(x = TIMESTAMP, y = RECO), color = 'purple') +
-  geom_line(aes(x = TIMESTAMP, y = TS_2_05_1), color = 'blue') + 
-  geom_line(aes(x= TIMESTAMP, y= TA*(1/20)), color="purple")+
-  geom_point(aes(x=TIMESTAMP, y = G_1_1_1*(1/50)), color = "grey")+
+  geom_point(aes(x = day, y = FC), color = 'black') +
+  geom_point(aes(x = day, y = FC_night), color = 'deeppink2') +
+  geom_point(aes(x = day, y = GPP_F), color = 'green') +
+  geom_point(aes(x = day, y = FCH4_F*12), color = 'orange') +
+  geom_point(aes(x = day, y = RECO), color = 'purple') +
+  geom_line(aes(x = day, y = TS_2_05_1/3), color = 'blue') + 
+  # geom_line(aes(x= day, y= TA*(1/20)), color="purple")+
+  # geom_point(aes(x=day, y = G_1_1_1*(1/50)), color = "grey")+
   geom_hline(yintercept = 0) +
   scale_y_continuous(
     name = expression('CO2 Data'),
     limits = c(-7, 5),
     sec.axis = sec_axis(~./4, name = "5cm Soil Temp")
     ) +
-  scale_x_datetime(limits = as.POSIXct(c('2023-05-05', '2023-05-30')))+
-  scale_y_continuous(limits = c(-2.5, 5))
+  scale_x_datetime(limits = as.POSIXct(c('2023-05-05', '2023-07-30')))+
+  scale_y_continuous(limits = c(-2.5, 6))
 
 ```
 
@@ -668,11 +736,11 @@ pal = c('red','orange','yellow','cyan','lightblue','blue','purple','violet')
 pal = c('violet','violet','purple','blue','lightblue','cyan','green','yellow','orange','red','red')
 
 
-ggplot()+
+soiltemp <- ggplot()+
   geom_raster(data = df_soiltemp, interpolate = TRUE)+
   aes(x=Time, y=-Depth, fill= Temperature)+
 #  scale_fill_viridis_c()+
-  scale_fill_gradient2(low = c('pink','violet','purple','blue'),mid = 'cyan',high = c('green','yellow','orange','red'),midpoint = 0,limits = c(-20,20),oob = scales::squish)+
+  scale_fill_gradient2(low = c('pink','violet','purple','blue'),mid = 'cyan',high = c('green','yellow','orange','red'),midpoint = 0,limits = c(-15,20),oob = scales::squish)+
   # scale_fill_gradientn('Temp.',
   #                      na.value = 'transparent',
   #                      colours = pal, # 
@@ -683,6 +751,8 @@ ggplot()+
   #                      oob = scales::squish)+ #out of bounds, squishes everything into scale 
   # add manual color scale, 0 is tight cyan color, cool negative colors and warm positive colors
   scale_y_continuous(name = "Depth")
+
+soiltemp
 
 hist(df_soiltemp$Temperature)
 #Stop temp scale at 20, make 20+ its own color to help with skew
@@ -751,51 +821,51 @@ scale_color_gradient(low = "navy", high = "salmon")+
 
 #### Exponential - doesn't work yet
 
-
+# Daily average values are less noisy, better for analysis
 ```{r}
 
-
-  exp_model <- nls(
-    formula = as.formula(paste(df_2023$FC_night, "~ a * exp(b *", df_2023$TS_1_05_1, ")")),
-    data = df_2023,
-    start = list(a = 1, b = 0.1)  # Starting values for the coefficients
-  )
+ta_fc <- lm(log10(RECO) ~ TS_1_05_1, data = df_avg_2023)
   
-  # Extract coefficients
-  coef_values <- coef(exp_model)
-  
-  # Create a new column for fitted values
-  data$fit <- coef_values["a"] * exp(coef_values["b"] * data[[x_var]])
-  
-  
-  ggplot(data=data)+
-  theme_bw()+
-  geom_hline(yintercept = 0)+
-  geom_vline(xintercept = 0)+
-  geom_line(aes_string(y = fit), x=x_var, color = "black") +
-  geom_point(aes(x=x_var, y=y_var, col = DOY))+
-scale_color_gradient(low = "navy", high = "salmon")
+ta_fc$residuals
+ta_fc$rank
+ta_fc$df.residual
 
-  
+anova(ta_fc)
+summary(ta_fc)
 
-exponential_fit_plot(df_2023, "TS_1_05_1", "FC_night")
+plot(ta_fc)
 
 
 
+plot(df_avg_2023$TS_1_05_1, log10(df_avg_2023$RECO))
+abline(ta_fc)
 
-ggplot(data=df_2023)+
-  theme_bw()+
-  geom_hline(yintercept = 0)+
-  geom_vline(xintercept = 0)+
-  geom_line(aes_string(y = fit), x=TS_1_05_1, color = "black") +
-  geom_point(aes(x=TS_1_05_1, y=FC_night, col = DOY))+
-scale_color_gradient(low = "navy", high = "salmon")+
-  labs(
-    x = expression("5cm Soil Temperature ("*degree*"C)"),
-    y = expression("Half-hourly Nighttime CO"[2] * " Flux"),
-    title = expression("Nighttime CO"[2] * " Flux vs. Soil Temperature")
-  )+
-  scale_x_continuous(limits=c(-15,18))+
-  scale_y_continuous(limits=c(-0.5,4))
+#skewed residuals: model isn't working well
+hist(ta_fc$residuals)
+
+#   ggplot(data=data)+
+#   theme_bw()+
+#   geom_hline(yintercept = 0)+
+#   geom_vline(xintercept = 0)+
+#   geom_line(aes_string(y = fit), x=x_var, color = "black") +
+#   geom_point(aes(x=x_var, y=y_var, col = DOY))+
+# scale_color_gradient(low = "navy", high = "salmon")
+# 
+# 
+# 
+# ggplot(data=df_2023)+
+#   theme_bw()+
+#   geom_hline(yintercept = 0)+
+#   geom_vline(xintercept = 0)+
+#   geom_line(aes_string(y = fit), x=TS_1_05_1, color = "black") +
+#   geom_point(aes(x=TS_1_05_1, y=FC_night, col = DOY))+
+# scale_color_gradient(low = "navy", high = "salmon")+
+#   labs(
+#     x = expression("5cm Soil Temperature ("*degree*"C)"),
+#     y = expression("Half-hourly Nighttime CO"[2] * " Flux"),
+#     title = expression("Nighttime CO"[2] * " Flux vs. Soil Temperature")
+#   )+
+#   scale_x_continuous(limits=c(-15,18))+
+#   scale_y_continuous(limits=c(-0.5,4))
 
 ```
