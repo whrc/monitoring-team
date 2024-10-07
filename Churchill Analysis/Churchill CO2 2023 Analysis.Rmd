@@ -33,6 +33,7 @@ library(gridExtra)
 library(plotly)
 library(RColorBrewer)
 library(pracma)
+library(cowplot)
 ```
 
 # Load data
@@ -52,8 +53,6 @@ df_avg = fread('C:/Users/dtrangmoe/Documents/Churchill/Churchill_Merged_Avg_CF1_
 ```{r}
 #create TIMESTAMP variable that is = to TIMESTAMP_END
 
-df$TIMESTAMP = df$TIMESTAMP_END
-
 year_df <- function(df, year) {
   df %>%
     filter(format(day, "%Y") == as.character(year)) %>%
@@ -71,33 +70,6 @@ df_avg_2023 <- year_df(df_avg, 2023)
 df_2023 <- year_df(df, 2023)
 
 
-```
-
-
-# Nighttime CO2 data
-
-Isolates nighttime CO2 Flux data in the half-hourly dataframe
-
-```{r}
-
-# # Visualize incoming shortwave Data
-# ggplot(data=df_2023)+
-#   geom_point(aes(x=TIMESTAMP, y=SW_IN))+
-#   geom_hline(yintercept = 0)
-
-# Filter CO2 Flux data by incoming shortwave values
-df_2023 <- df_2023 %>%
-  mutate(FC_night = ifelse(SW_IN <= 0, FC, NA))
-
-# # Plot the filtered vs. unfiltered CO2 Flux values to visualize nighttime data
-# ggplot(data = df_2023)+
-#   geom_hline(yintercept = 0)+
-#   geom_point(aes(TIMESTAMP,FC,col='Original'))+
-#   geom_point(aes(TIMESTAMP,FC_night,col='Nighttime CO2 Flux'))+
-#   scale_y_continuous(limits=c(-7,6))+
-#   scale_x_datetime(limits = as.POSIXct(c('2023-01-01','2023-12-01'),format="%F"))+
-#   labs(y = "CO2 Flux", x = "Time") +
-#   scale_color_manual(values=c('deeppink3','black'))
 ```
 
 
@@ -240,7 +212,7 @@ ggplot(data = df_avg_2023) +
 
 
 
-####Simplified Version of Seasonal Plot
+####Split Plots
 
 Plot 5 on Ameriflux poster
 
@@ -264,13 +236,14 @@ tempplotco2 <- ggplot(data = df_avg_2023) +
   sec.axis = sec_axis(~ . * 15, name = expression("Temperature ("*degree*"C)"))) +
   scale_color_manual(
     name = "",
-    values = c("5cm Soil Temperature" = "darkblue", "Air Temperature" = "salmon", "NEE" = "turquoise3"))+
+    values = c( "NEE" = "turquoise3", "5cm Soil Temperature" = "darkblue", "Air Temperature" = "salmon"),
+  breaks = c("NEE", "5cm Soil Temperature", "Air Temperature"))+
   geom_vline(xintercept = as.POSIXct("2023-05-05"))+ #end of winter, DOY 125
   geom_vline(xintercept =  as.POSIXct("2023-06-12"))+ #end of snowmelt, DOY 163
   geom_vline(xintercept =  as.POSIXct("2023-09-06"))+ #end of growing season, DOY 249
   geom_vline(xintercept =  as.POSIXct("2023-10-22"))
 
-tempplotco2
+#tempplotco2
 
 tempplotch4 <- ggplot(data = df_avg_2023) +
   theme_bw() +
@@ -284,13 +257,14 @@ tempplotch4 <- ggplot(data = df_avg_2023) +
   sec.axis = sec_axis(~ . * 50, name = expression("Temperature ("*degree*"C)"))) +
   scale_color_manual(
     name = "",
-    values = c("5cm Soil Temperature" = "darkblue", "Air Temperature" = "salmon", "Methane Flux" = "turquoise3"))+
+    values = c( "Methane Flux" = "turquoise3", "5cm Soil Temperature" = "darkblue", "Air Temperature" = "salmon"),
+  breaks = c("Methane Flux", "5cm Soil Temperature", "Air Temperature"))+
   geom_vline(xintercept = as.POSIXct("2023-05-05"))+ #end of winter, DOY 125
   geom_vline(xintercept =  as.POSIXct("2023-06-12"))+ #end of snowmelt, DOY 163
   geom_vline(xintercept =  as.POSIXct("2023-09-06"))+ #end of growing season, DOY 249
   geom_vline(xintercept =  as.POSIXct("2023-10-22"))
 
-tempplotch4
+#tempplotch4
 
 
 ## CO2 flux and PAR ratio
@@ -312,7 +286,7 @@ parplot <- ggplot(data = df_avg_2023) +
   geom_vline(xintercept =  as.POSIXct("2023-09-06"))+ #end of growing season, DOY 249
   geom_vline(xintercept =  as.POSIXct("2023-10-22"))
 
-parplot
+#parplot
 
 
 
@@ -333,10 +307,14 @@ shfplot <- ggplot(data = df_avg_2023) +
   geom_vline(xintercept =  as.POSIXct("2023-09-06"))+ #end of growing season, DOY 249
   geom_vline(xintercept =  as.POSIXct("2023-10-22"))
 
-shfplot
+#shfplot
 
 
-grid.arrange(tempplotco2, tempplotch4, parplot, shfplot, nrow=2, ncol=2)
+#grid.arrange(tempplotco2, tempplotch4, parplot, shfplot, nrow=4, ncol=1)
+
+plot_row <- plot_grid(tempplotco2, tempplotch4, parplot, shfplot, nrow=4, align = 'v' )
+
+plot_row
 
 
 
@@ -660,7 +638,7 @@ ggplot(seasonal_integrals_2023, aes(x = season, y = integral_value)) +
 ggplot(data = df_avg_2023) +
   theme_bw() +
   geom_point(aes(x = day, y = FC), color = 'black') +
-  geom_point(aes(x = day, y = FC_night), color = 'deeppink2') +
+  # geom_point(aes(x = day, y = FC_night), color = 'deeppink2') +
   geom_point(aes(x = day, y = GPP_F), color = 'green') +
   geom_point(aes(x = day, y = FCH4_F*12), color = 'orange') +
   geom_point(aes(x = day, y = RECO), color = 'purple') +
@@ -737,6 +715,7 @@ pal = c('violet','violet','purple','blue','lightblue','cyan','green','yellow','o
 
 
 soiltemp <- ggplot()+
+  theme_bw()+
   geom_raster(data = df_soiltemp, interpolate = TRUE)+
   aes(x=Time, y=-Depth, fill= Temperature)+
 #  scale_fill_viridis_c()+
@@ -750,7 +729,10 @@ soiltemp <- ggplot()+
   #                     # breaks = c(0,3.5),
   #                      oob = scales::squish)+ #out of bounds, squishes everything into scale 
   # add manual color scale, 0 is tight cyan color, cool negative colors and warm positive colors
-  scale_y_continuous(name = "Depth")
+  scale_y_continuous(name = "Depth (cm)",
+    # trans = "reverse",  # Reverses the direction of the axis
+    breaks = seq(0, -100, by = -10),  # Sets breaks for each 10 cm
+    labels = seq(0, 100, by = 10) )
 
 soiltemp
 
@@ -783,6 +765,8 @@ ggplot(data=df_2023)+
     title = "Respiraton vs. Soil Temp"
   )
 
+## Temp relationship plots with half hourly data
+
 # FC_night vs. soil temp; used to estimate RECO without temp correlation or gap filling
 
 ggplot(data=df_2023)+
@@ -814,6 +798,43 @@ scale_color_gradient(low = "navy", high = "salmon")+
   )+
   scale_x_continuous(limits = c(-15, 30))+
   scale_y_continuous(limits = c(-0.04, .150))
+
+
+
+
+## Temp relationship plots with daily avg data
+
+# FC_night vs. soil temp; used to estimate RECO without temp correlation or gap filling
+
+ggplot(data=df_avg_2023)+
+  theme_bw()+
+  geom_hline(yintercept = 0)+
+  geom_vline(xintercept = 0)+
+  geom_point(aes(x=TS_1_05_1, y=FC_night, col = DOY))+
+scale_color_gradient(low = "navy", high = "salmon")+
+  labs(
+    x = expression("5cm Soil Temperature ("*degree*"C)"),
+    y = expression("Daily Average nighttime CO"[2] * " Flux ("*mu*mol~m^-2~s^-1*")"),
+    title = expression("Nighttime CO"[2] * " Flux vs. Soil Temperature")
+  )+
+  scale_x_continuous(limits=c(-15,18))+
+  scale_y_continuous(limits=c(-0.5,2.1))
+
+
+#Methane vs. soil temp
+
+ggplot(data=df_avg_2023)+
+  geom_vline(xintercept=0)+
+  theme_bw()+
+  geom_point(aes(x=TS_1_05_1, y=FCH4*(1/1000), col = DOY))+
+scale_color_gradient(low = "navy", high = "salmon")+
+  labs(
+    x = expression("5cm Soil Temperature ("*degree*"C)"),
+    y = expression("Daily Average CH"[4] * " Flux ("*mu*mol~m^-2~s^-1*")"),
+    title = expression("CH"[4] * " Flux vs. Soil Temperature")
+  )+
+  scale_x_continuous(limits = c(-15, 20))+
+  scale_y_continuous(limits = c(-0.03, .10))
 
 ```
 
