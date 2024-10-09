@@ -1,19 +1,13 @@
 ---
-title: "Churchill Cleaning"
+title: "Council Cleaning"
 output: pdf_document
-date: "2022-12-08"
+date: "2024-10-09"
+Author: "Kyle Arndt"
 ---
-
-# To Do
-
-
-Make sure all of the timestamps are loaded
-Look at roll apply command
 
 # Loading DF's
 
 Clear Console and add packages
-
 
 # Load 
 
@@ -34,78 +28,47 @@ library(plyr)
 library(dplyr)
 
 
-df = fread('C:/Users/dtrangmoe/Documents/Churchill/churchillFenBiomet_Aug2022-Jan2023.csv',na.strings = c('-9999','NA','NaN','NAN','-7999'))
+df = fread('C:/Users/karndt.WHRC/Desktop/sites/council/council_tower/AMF_US-NGC_BASE-BADM_2-5/AMF_US-NGC_BASE_HH_2-5.csv',na.strings = c('-9999'))
 
-h = fread('C:/Users/dtrangmoe/Documents/Churchill/Churchill_AllBiomet_until20230620.dat',skip=1 ,nrows = 0)
-dat = fread('C:/Users/dtrangmoe/Documents/Churchill/Churchill_AllBiomet_until20230620.dat',skip=4, header = FALSE, na.strings=c('-9999','NA','NaN','NAN',"-7999"))
-
-h2 = fread('C:/Users/dtrangmoe/Documents/Churchill/Churchill_AllBiomet_until20230712.dat',skip=1 ,nrows = 0)
-dat2 = fread('C:/Users/dtrangmoe/Documents/Churchill/Churchill_AllBiomet_until20230712.dat',skip=4, header = FALSE, na.strings=c('-9999','NA','NaN','NAN',"-7999"))
-
-h3 = fread('C:/Users/dtrangmoe/Documents/Churchill/Churchill_AllBiomet.dat',skip=1 ,nrows = 0)
-dat3 = fread('C:/Users/dtrangmoe/Documents/Churchill/Churchill_AllBiomet.dat',skip=4, header = FALSE, na.strings=c('-9999','NA','NaN','NAN',"-7999"))
-
-names(dat) = names(h)
-names(dat2) = names(h2)
-names(dat3) = names(h3)
-
-met= dat
-met2 = dat2
-met3 = dat3
-
-df = rbind.fill(df,met,met2,met3)
-
-df = df[!duplicated(df$TIMESTAMP),]
-
-
-write.csv(x = df,file = 'C:/Users/dtrangmoe/Documents/Churchill/Churchill_met_merged.csv',row.names = F,quote = F)
+df$TIMESTAMP = as.POSIXct(x = as.character(df$TIMESTAMP_END),format = '%Y%m%d%H%M')
 
 #check time stamps to ensure we have a complete series
 TIMESTAMP = seq(from = min(df$TIMESTAMP), to = max(df$TIMESTAMP),by = 60*30,tz = "UTC")
 tsdf = as.data.frame(TIMESTAMP)
 
 df = merge(tsdf,df,by = "TIMESTAMP",all = T)
-
-
-#na.strings not working for numbers for some reason, remove all here
-df[df == -9999] = NA
-df[df == -7999] = NA
-summary(df)
-```
-
-
-Creates a variable to input a date range for the plots in the biomet section of
-cleaning code. Used to easily change date range for different data sets. 
-```{r, warning=FALSE}
-biomet_dates <- c('2022-08-05', '2024-02-28')
+df$doy = as.numeric(format(df$TIMESTAMP,'%j'))
+df$year = format(df$TIMESTAMP,'%Y')
 ```
 
 
 # Air T
 ```{r, warning=FALSE}
 ggplot(data = df)+
-  geom_point(aes(TIMESTAMP,TA_2_1_1_1_1),col='black')+
-  scale_y_continuous(#limits = c(-40,40),
-                     expression('Air Temperature ('*Celsius*')'))+
-  scale_x_datetime(limits = as.POSIXct(biomet_dates))
+  geom_point(aes(TIMESTAMP,df$TA),col='black')+
+  scale_y_continuous(expression('Air Temperature ('*degree*C*')'))
 
-#First we need to just convert from Kelvin to degrees C
-df$TA_2_1_1_1_1 = ifelse(df$TA_2_1_1_1_1 > 200,df$TA_2_1_1_1_1 - 273.15,df$TA_2_1_1_1_1)
+#looks like we just need to remove the one value below -40
+df$TA.c = ifelse(df$TA < -40, NA, df$TA)
 
 ggplot(data = df)+
-  geom_point(aes(TIMESTAMP,TA_2_1_1_1_1),col='black')+
-  scale_y_continuous(limits = c(-40,40),
-                      expression('Air Temperature ('*Celsius*')'))
+  geom_point(aes(TIMESTAMP,TA.c),col='black')+
+  scale_y_continuous(expression('Air Temperature ('*Celsius*')'))
+
+ggplot(data = df)+
+  geom_point(aes(doy,TA.c),col='black')+
+  scale_y_continuous(expression('Air Temperature ('*Celsius*')'))+
+  facet_wrap(~year)
 ```
 
 
 ## Limits
 ```{r, warning=FALSE}
-hist(df$TA_2_1_1_1_1,breaks=100)
-plot(df$TIMESTAMP,df$TA_2_1_1_1_1,ylim = c(-50,50));abline(h=-50, col= 'red');abline(h=50, col='red')
-TA_2_1_1_1_1.limits = replace(df$TA_2_1_1_1_1, df$TA_2_1_1_1_1 < -50 | df$TA_2_1_1_1_1 > 50,NA)
-hist(TA_2_1_1_1_1.limits,breaks=100)
-plot(TA_2_1_1_1_1.limits)
+hist(df$TA.c,breaks=100)
+plot(df$TIMESTAMP,df$TA,ylim = c(-50,50));abline(h=-50, col= 'red');abline(h=50, col='red')
+TA = replace(df$TA, df$TA < -50 | df$TA > 50,NA)
+hist(TA,breaks=100)
+plot(TA)
 ```
 
 
@@ -113,10 +76,15 @@ plot(TA_2_1_1_1_1.limits)
 
 ```{r,warning=FALSE}
 ggplot(data = df)+
-  geom_point(aes(TIMESTAMP,RH_19_3_1_1_1),col='black')+
+  geom_point(aes(TIMESTAMP,RH),col='black')+
   scale_y_continuous(#limits = c(20,100),
-                     expression('Relative Humidity ('*percent*')'))
+                     expression('Relative Humidity (%)'))
 #  scale_x_datetime(limits = as.POSIXct(biomet_dates))
+
+ggplot(data = df)+
+  geom_point(aes(doy,RH),col='black')+
+  scale_y_continuous(expression('Air Temperature ('*Celsius*')'))+
+  facet_wrap(~year)
 ```
 
 
@@ -133,6 +101,11 @@ ggplot(data = df)+
   scale_y_continuous(limits = c(5,100),
                      expression('Relative Humidity ('*percent*')'))+
   scale_x_datetime(limits = as.POSIXct(biomet_dates))
+
+ggplot(data = df)+
+  geom_point(aes(doy,RH),col='black')+
+  scale_y_continuous(expression('Air Temperature ('*Celsius*')'))+
+  facet_wrap(~year)
 ```
 
 # Barometric Pressure 
@@ -178,6 +151,7 @@ ggplot(data = df)+
   scale_y_continuous(limits = c(90,110),
                      expression ('Barometric Pressure ('*kPa*')'))
 ```
+
 ## Rolling MAD
 ```{r, warning=FALSE}
 f = PA_4_2_1_1_1.limits # first make a new flux vector to apply the above filters
@@ -887,16 +861,16 @@ ggplot(data = df)+ theme_bw()+ geom_hline(yintercept = 0)+
                      expression('Open Water Therms Soil T ('*C*')'))+
   scale_x_datetime(limits = as.POSIXct(c("2022-11-16",'2022-11-29')))
 
-TS_2_38_3_1_1.limits = df$TS_2_38_3_1_1
+TS_2_38_3_1_1.limits = df$TIMESTAMP_2_38_3_1_1
 
-TS_2_38_3_1_1.limits = ifelse(df$TS_2_38_3_1_1 < -5 & df$TIMESTAMP >= '2022-11-16' & df$TIMESTAMP <= '2022-11-29' ,NA, TS_2_38_3_1_1.limits)
+TS_2_38_3_1_1.limits = ifelse(df$TIMESTAMP_2_38_3_1_1 < -5 & df$TIMESTAMP >= '2022-11-16' & df$TIMESTAMP <= '2022-11-29' ,NA, TS_2_38_3_1_1.limits)
 
 ggplot(data = df)+ theme_bw()+ geom_hline(yintercept = 0)+
   geom_point(aes(TIMESTAMP, TS_2_38_3_1_1.limits, col = 'Surface'))+
   scale_y_continuous(expression('Open Water Therms Soil T ('*C*')'))+
   scale_x_datetime(limits = as.POSIXct(c("2023-02-09",'2023-06-12')))
 
-TS_2_38_3_1_1.limits = ifelse(df$TS_2_38_3_1_1 <= -100 & df$TIMESTAMP >= '2023-2-1' & df$TIMESTAMP <= '2023-6-12' ,NA, TS_2_38_3_1_1.limits)
+TS_2_38_3_1_1.limits = ifelse(df$TIMESTAMP_2_38_3_1_1 <= -100 & df$TIMESTAMP >= '2023-2-1' & df$TIMESTAMP <= '2023-6-12' ,NA, TS_2_38_3_1_1.limits)
 
 TS_2_38_3_1_1.limits = ifelse(df$TIMESTAMP >= '2023-04-20' & df$TIMESTAMP <= '2023-6-12' ,NA, TS_2_38_3_1_1.limits)
 
@@ -954,13 +928,13 @@ N = 3
 
 #Add clean value to dataframe (_.c)
 
-df$TS_2_38_3_1_1.c = ifelse(abs(TS_2_38_3_1_1.limits - mad_filt) > (N * roll.mad),NA,TS_2_38_3_1_1.limits)
+df$TIMESTAMP_2_38_3_1_1.c = ifelse(abs(TS_2_38_3_1_1.limits - mad_filt) > (N * roll.mad),NA,TS_2_38_3_1_1.limits)
 
 #Compare cleaned vs. uncleaned
 
 ggplot(df)+geom_hline(yintercept = 0)+
   geom_point(aes(TIMESTAMP,TS_2_38_3_1_1.limits,col='Uncleaned'))+
-  geom_point(aes(TIMESTAMP,df$TS_2_38_3_1_1.c,col='Cleaned'))+
+  geom_point(aes(TIMESTAMP,df$TIMESTAMP_2_38_3_1_1.c,col='Cleaned'))+
   scale_y_continuous(limits = c(-15,30))+
   scale_x_datetime(limits = as.POSIXct(biomet_dates,format="%F"))+
   scale_color_manual(values=c('black','red'))
@@ -989,17 +963,17 @@ ggplot(data = df)+ theme_bw()+ geom_hline(yintercept = 0)+
   geom_line(aes(TIMESTAMP, TS_2_38_3_2_1, col = '10 cm'))+
   scale_x_datetime(limits = as.POSIXct(biomet_dates))
 
-TS_2_38_3_2_1.limits = df$TS_2_38_3_2_1
+TS_2_38_3_2_1.limits = df$TIMESTAMP_2_38_3_2_1
 
-TS_2_38_3_2_1.limits = ifelse(df$TS_2_38_3_2_1 <= -25 & df$TIMESTAMP >= '2022-8-1' & df$TIMESTAMP <= '2023-1-30' ,NA, TS_2_38_3_2_1.limits)
+TS_2_38_3_2_1.limits = ifelse(df$TIMESTAMP_2_38_3_2_1 <= -25 & df$TIMESTAMP >= '2022-8-1' & df$TIMESTAMP <= '2023-1-30' ,NA, TS_2_38_3_2_1.limits)
 
-df$TS_2_38_3_2_1.c = TS_2_38_3_2_1.limits
+df$TIMESTAMP_2_38_3_2_1.c = TS_2_38_3_2_1.limits
 
 ggplot(data = df)+ theme_bw()+ geom_hline(yintercept = 0)+
   geom_line(aes(TIMESTAMP, TS_2_38_3_2_1.c, col = '10 cm'))+
   scale_x_datetime(limits = as.POSIXct(c("2022-8-2",'2023-11-1')))
 
-plot(df$TS_2_38_3_2_1.c)
+plot(df$TIMESTAMP_2_38_3_2_1.c)
 ```
 ## Rolling MAD
 NA here
@@ -1021,7 +995,7 @@ ggplot(data = df)+ theme_bw()+ geom_hline(yintercept = 0)+
   scale_x_datetime(limits = as.POSIXct(c("2022-10-18",'2022-10-24')))+
   geom_vline(xintercept=as.POSIXct('2022-10-21 1200'))
 
-TS_2_38_3_3_1.limits = df$TS_2_38_3_3_1
+TS_2_38_3_3_1.limits = df$TIMESTAMP_2_38_3_3_1
 
 TS_2_38_3_3_1.limits = ifelse(df$TIMESTAMP >= '2022-10-21 2300' & df$TIMESTAMP <= '2022-10-22 1000' ,NA, TS_2_38_3_3_1.limits)
 
@@ -1069,7 +1043,7 @@ N = 3
 
 #Add clean value to dataframe (_.c)
 
-df$TS_2_38_3_3_1.c = ifelse(abs(TS_2_38_3_3_1.limits - mad_filt) > (N * roll.mad),NA,TS_2_38_3_3_1.limits)
+df$TIMESTAMP_2_38_3_3_1.c = ifelse(abs(TS_2_38_3_3_1.limits - mad_filt) > (N * roll.mad),NA,TS_2_38_3_3_1.limits)
 
 #Compare cleaned vs. uncleaned
 
@@ -1107,7 +1081,7 @@ ggplot(data = df)+ theme_bw()+ geom_hline(yintercept = 0)+
   scale_x_datetime(limits = as.POSIXct(biomet_dates))
 
 
-TS_2_38_3_4_1.limits = replace(df$TS_2_38_3_4_1, df$TS_2_38_3_4_1 < 15 | df$TS_2_38_3_4_1.limits > -15,NA)
+TS_2_38_3_4_1.limits = replace(df$TIMESTAMP_2_38_3_4_1, df$TIMESTAMP_2_38_3_4_1 < 15 | df$TIMESTAMP_2_38_3_4_1.limits > -15,NA)
 
 ggplot(data = df)+ theme_bw()+ geom_hline(yintercept = 0)+
   geom_point(aes(TIMESTAMP, TS_2_38_3_4_1, col = '20 cm'))+
@@ -1163,7 +1137,7 @@ N = 3
 
 #Add clean value to dataframe (_.c)
 
-df$TS_2_38_3_4_1.c = ifelse(abs(TS_2_38_3_4_1.limits - mad_filt) > (N * roll.mad),NA,TS_2_38_3_4_1.limits)
+df$TIMESTAMP_2_38_3_4_1.c = ifelse(abs(TS_2_38_3_4_1.limits - mad_filt) > (N * roll.mad),NA,TS_2_38_3_4_1.limits)
 
 #Compare cleaned vs. uncleaned
 
@@ -1198,7 +1172,7 @@ ggplot(data = df)+ theme_bw()+ geom_hline(yintercept = 0)+
                      expression('Open Water Therms Soil T ('*C*')'))+
   scale_x_datetime(limits = as.POSIXct(biomet_dates))
 
-TS_2_38_3_5_1.limits = df$TS_2_38_3_5_1
+TS_2_38_3_5_1.limits = df$TIMESTAMP_2_38_3_5_1
 
 ggplot(data = df)+ theme_bw()+ geom_hline(yintercept = 0)+
   geom_point(aes(TIMESTAMP, TS_2_38_3_5_1))+
@@ -1250,7 +1224,7 @@ N = 2
 
 #Add clean value to dataframe (_.c)
 
-df$TS_2_38_3_5_1.c = ifelse(abs(TS_2_38_3_5_1.limits - mad_filt) > (N * roll.mad),NA,TS_2_38_3_5_1.limits)
+df$TIMESTAMP_2_38_3_5_1.c = ifelse(abs(TS_2_38_3_5_1.limits - mad_filt) > (N * roll.mad),NA,TS_2_38_3_5_1.limits)
 
 #Compare cleaned vs. uncleaned
 
@@ -1285,7 +1259,7 @@ ggplot(data = df)+ theme_bw()+ geom_hline(yintercept = 0)+
                      expression('Open Water Therms Soil T ('*C*')'))+
   scale_x_datetime(limits = as.POSIXct(biomet_dates))
 
-TS_2_38_3_6_1.limits = df$TS_2_38_3_6_1
+TS_2_38_3_6_1.limits = df$TIMESTAMP_2_38_3_6_1
 
 TS_2_38_3_6_1.limits = ifelse(df$TIMESTAMP >= '2022-10-21 2300' & df$TIMESTAMP <= '2022-10-22 1000' ,NA, TS_2_38_3_6_1.limits)
 ```
@@ -1328,7 +1302,7 @@ N = 3
 
 #Add clean value to dataframe (_.c)
 
-df$TS_2_38_3_6_1.c = ifelse(abs(TS_2_38_3_6_1.limits - mad_filt) > (N * roll.mad),NA,TS_2_38_3_6_1.limits)
+df$TIMESTAMP_2_38_3_6_1.c = ifelse(abs(TS_2_38_3_6_1.limits - mad_filt) > (N * roll.mad),NA,TS_2_38_3_6_1.limits)
 
 #Compare cleaned vs. uncleaned
 
@@ -1363,7 +1337,7 @@ ggplot(data = df)+ theme_bw()+ geom_hline(yintercept = 0)+
                      expression('Open Water Therms Soil T ('*K*')'))+
   scale_x_datetime(limits = as.POSIXct(biomet_dates))
 
-TS_2_38_3_7_1.limits = df$TS_2_38_3_7_1
+TS_2_38_3_7_1.limits = df$TIMESTAMP_2_38_3_7_1
 
 TS_2_38_3_7_1.limits = ifelse(df$TIMESTAMP >= '2022-10-21 2300' & df$TIMESTAMP <= '2022-10-22 1000' ,NA, TS_2_38_3_7_1.limits)
 ```
@@ -1404,7 +1378,7 @@ N = 3
 
 #Add clean value to dataframe (_.c)
 
-df$TS_2_38_3_7_1.c = ifelse(abs(TS_2_38_3_7_1.limits - mad_filt) > (N * roll.mad),NA,TS_2_38_3_7_1.limits)
+df$TIMESTAMP_2_38_3_7_1.c = ifelse(abs(TS_2_38_3_7_1.limits - mad_filt) > (N * roll.mad),NA,TS_2_38_3_7_1.limits)
 
 #Compare cleaned vs. uncleaned
 
@@ -1438,7 +1412,7 @@ ggplot(data = df)+ theme_bw()+ geom_hline(yintercept = 0)+
                      expression('Open Water Therms Soil T ('*K*')'))+
   scale_x_datetime(limits = as.POSIXct(biomet_dates))
 
-TS_2_38_3_8_1.limits = df$TS_2_38_3_8_1
+TS_2_38_3_8_1.limits = df$TIMESTAMP_2_38_3_8_1
 
 TS_2_38_3_8_1.limits = ifelse(df$TIMESTAMP >= '2022-10-21 2300' & df$TIMESTAMP <= '2022-10-22 1000' ,NA, TS_2_38_3_8_1.limits)
 ```
@@ -1477,7 +1451,7 @@ N = 3
 
 #Add clean value to dataframe (_.c)
 
-df$TS_2_38_3_8_1.c = ifelse(abs(TS_2_38_3_8_1.limits - mad_filt) > (N * roll.mad),NA,TS_2_38_3_8_1.limits)
+df$TIMESTAMP_2_38_3_8_1.c = ifelse(abs(TS_2_38_3_8_1.limits - mad_filt) > (N * roll.mad),NA,TS_2_38_3_8_1.limits)
 
 #Compare cleaned vs. uncleaned
 
@@ -1511,7 +1485,7 @@ ggplot(data = df)+ theme_bw()+ geom_hline(yintercept = 0)+
                      expression('Open Water Therms Soil T ('*K*')'))+
   scale_x_datetime(limits = as.POSIXct(biomet_dates))
 
-TS_2_38_3_9_1.limits = df$TS_2_38_3_9_1
+TS_2_38_3_9_1.limits = df$TIMESTAMP_2_38_3_9_1
 
 TS_2_38_3_9_1.limits = ifelse(df$TIMESTAMP >= '2022-10-21 2300' & df$TIMESTAMP <= '2022-10-22 1000' ,NA, TS_2_38_3_9_1.limits)
 ```
@@ -1550,7 +1524,7 @@ N = 3
 
 #Add clean value to dataframe (_.c)
 
-df$TS_2_38_3_9_1.c = ifelse(abs(TS_2_38_3_9_1.limits - mad_filt) > (N * roll.mad),NA,TS_2_38_3_9_1.limits)
+df$TIMESTAMP_2_38_3_9_1.c = ifelse(abs(TS_2_38_3_9_1.limits - mad_filt) > (N * roll.mad),NA,TS_2_38_3_9_1.limits)
 
 #Compare cleaned vs. uncleaned
 
@@ -1584,7 +1558,7 @@ ggplot(data = df)+ theme_bw()+ geom_hline(yintercept = 0)+
                      expression('Open Water Therms Soil T ('*K*')'))+
   scale_x_datetime(limits = as.POSIXct(biomet_dates))
 
-TS_2_38_3_10_1.limits = df$TS_2_38_3_10_1
+TS_2_38_3_10_1.limits = df$TIMESTAMP_2_38_3_10_1
 
 TS_2_38_3_10_1.limits = ifelse(df$TIMESTAMP >= '2022-10-21 2300' & df$TIMESTAMP <= '2022-10-22 1000' ,NA, TS_2_38_3_10_1.limits)
 ```
@@ -1623,7 +1597,7 @@ N = 4
 
 #Add clean value to dataframe (_.c)
 
-df$TS_2_38_3_10_1.c = ifelse(abs(TS_2_38_3_10_1.limits - mad_filt) > (N * roll.mad),NA,TS_2_38_3_10_1.limits)
+df$TIMESTAMP_2_38_3_10_1.c = ifelse(abs(TS_2_38_3_10_1.limits - mad_filt) > (N * roll.mad),NA,TS_2_38_3_10_1.limits)
 
 #Compare cleaned vs. uncleaned
 
@@ -1659,7 +1633,7 @@ ggplot(data = df)+ theme_bw()+ geom_hline(yintercept = 0)+
                      expression('Open Water Therms Soil T ('*K*')'))+
   scale_x_datetime(limits = as.POSIXct(biomet_dates))
 
-TS_2_38_3_11_1.limits = df$TS_2_38_3_11_1
+TS_2_38_3_11_1.limits = df$TIMESTAMP_2_38_3_11_1
 
 TS_2_38_3_11_1.limits = ifelse(df$TIMESTAMP >= '2022-10-21 2300' & df$TIMESTAMP <= '2022-10-22 1000' ,NA, TS_2_38_3_11_1.limits)
 ```
@@ -1701,7 +1675,7 @@ N = 3
 
 #Add clean value to dataframe (_.c)
 
-df$TS_2_38_3_11_1.c = ifelse(abs(TS_2_38_3_11_1.limits - mad_filt) > (N * roll.mad),NA,TS_2_38_3_11_1.limits)
+df$TIMESTAMP_2_38_3_11_1.c = ifelse(abs(TS_2_38_3_11_1.limits - mad_filt) > (N * roll.mad),NA,TS_2_38_3_11_1.limits)
 
 #Compare cleaned vs. uncleaned
 
@@ -1735,9 +1709,9 @@ ggplot(data = df)+ theme_bw()+ geom_hline(yintercept = 0)+
                      expression('Open Water Therms Soil T ('*K*')'))+
   scale_x_datetime(limits = as.POSIXct(biomet_dates))
 
-TS_2_38_3_12_1.limits = df$TS_2_38_3_12_1
+TS_2_38_3_12_1.limits = df$TIMESTAMP_2_38_3_12_1
 
-TS_2_38_3_12_1.limits = ifelse(df$TS_2_38_3_12_1 <= -40 & df$TIMESTAMP >= '2022-10-15' & df$TIMESTAMP <= '2022-12-15' ,NA, TS_2_38_3_12_1.limits)
+TS_2_38_3_12_1.limits = ifelse(df$TIMESTAMP_2_38_3_12_1 <= -40 & df$TIMESTAMP >= '2022-10-15' & df$TIMESTAMP <= '2022-12-15' ,NA, TS_2_38_3_12_1.limits)
 
 TS_2_38_3_12_1.limits = ifelse(df$TIMESTAMP >= '2022-10-21 2300' & df$TIMESTAMP <= '2022-10-22 1000' ,NA, TS_2_38_3_12_1.limits)
 ```
@@ -1779,7 +1753,7 @@ N = 1.5
 
 #Add clean value to dataframe (_.c)
 
-df$TS_2_38_3_12_1.c = ifelse(abs(TS_2_38_3_12_1.limits - mad_filt) > (N * roll.mad),NA,TS_2_38_3_12_1.limits)
+df$TIMESTAMP_2_38_3_12_1.c = ifelse(abs(TS_2_38_3_12_1.limits - mad_filt) > (N * roll.mad),NA,TS_2_38_3_12_1.limits)
 
 #Compare cleaned vs. uncleaned
 
@@ -1832,7 +1806,7 @@ ggplot(data = df)+ theme_bw()+ geom_hline(yintercept = 0)+
   scale_y_continuous(limits = c(-15,35),
                      expression('Hummock Surface Therm Soil T ('*C*')'))+
   scale_x_datetime(limits = as.POSIXct(biomet_dates))
-TS_2_38_4_1_1 = df$TS_2_38_4_1_1
+TS_2_38_4_1_1 = df$TIMESTAMP_2_38_4_1_1
 ```
 ## Rolling MAD 
 ```{r, warning=FALSE}
@@ -1869,7 +1843,7 @@ N = 3
 
 #Add clean value to dataframe (_.c)
 
-df$TS_2_38_4_1_1.c = ifelse(abs(TS_2_38_4_1_1 - mad_filt) > (N * roll.mad),NA,TS_2_38_4_1_1)
+df$TIMESTAMP_2_38_4_1_1.c = ifelse(abs(TS_2_38_4_1_1 - mad_filt) > (N * roll.mad),NA,TS_2_38_4_1_1)
 
 #Compare cleaned vs. uncleaned
 
@@ -1901,7 +1875,7 @@ ggplot(data = df)+ theme_bw()+ geom_hline(yintercept = 0)+
   scale_y_continuous(limits = c(-15,30),
                      expression('Hummock Therms Soil T ('*C*')'))+
   scale_x_datetime(limits = as.POSIXct(biomet_dates))
-TS_2_38_4_2_1 = df$TS_2_38_4_2_1
+TS_2_38_4_2_1 = df$TIMESTAMP_2_38_4_2_1
 ```
 ## Rolling MAD 
 ```{r, warning=FALSE}
@@ -1940,7 +1914,7 @@ N = 3
 
 #Add clean value to dataframe (_.c)
 
-df$TS_2_38_4_2_1.c = ifelse(abs(TS_2_38_4_2_1 - mad_filt) > (N * roll.mad),NA,TS_2_38_4_2_1)
+df$TIMESTAMP_2_38_4_2_1.c = ifelse(abs(TS_2_38_4_2_1 - mad_filt) > (N * roll.mad),NA,TS_2_38_4_2_1)
 
 #Compare cleaned vs. uncleaned
 
@@ -1973,7 +1947,7 @@ ggplot(data = df)+ theme_bw()+ geom_hline(yintercept = 0)+
   scale_y_continuous(limits = c(-15,25),
                      expression('Hummock 10 cm Therms Soil T ('*C*')'))+
   scale_x_datetime(limits = as.POSIXct(biomet_dates))
-TS_2_38_4_3_1 = df$TS_2_38_4_3_1
+TS_2_38_4_3_1 = df$TIMESTAMP_2_38_4_3_1
 ```
 
 
@@ -2015,7 +1989,7 @@ N = 3
 
 #Add clean value to dataframe (_.c)
 
-df$TS_2_38_4_3_1.c = ifelse(abs(TS_2_38_4_3_1 - mad_filt) > (N * roll.mad),NA,TS_2_38_4_3_1)
+df$TIMESTAMP_2_38_4_3_1.c = ifelse(abs(TS_2_38_4_3_1 - mad_filt) > (N * roll.mad),NA,TS_2_38_4_3_1)
 
 #Compare cleaned vs. uncleaned
 
@@ -2047,7 +2021,7 @@ ggplot(data = df)+ theme_bw()+ geom_hline(yintercept = 0)+
   scale_y_continuous(limits = c(-15,15),
                      expression('Hummock Therms 20 cm Soil T ('*C*')'))+
   scale_x_datetime(limits = as.POSIXct(biomet_dates))
-TS_2_38_4_4_1 = df$TS_2_38_4_4_1
+TS_2_38_4_4_1 = df$TIMESTAMP_2_38_4_4_1
 ```
 
 
@@ -2087,7 +2061,7 @@ N = 3
 
 #Add clean value to dataframe (_.c)
 
-df$TS_2_38_4_4_1.c = ifelse(abs(TS_2_38_4_4_1 - mad_filt) > (N * roll.mad),NA,TS_2_38_4_4_1)
+df$TIMESTAMP_2_38_4_4_1.c = ifelse(abs(TS_2_38_4_4_1 - mad_filt) > (N * roll.mad),NA,TS_2_38_4_4_1)
 
 #Compare cleaned vs. uncleaned
 
@@ -2121,7 +2095,7 @@ ggplot(data = df)+ theme_bw()+ geom_hline(yintercept = 0)+
   scale_y_continuous(limits = c(-12,10),
                      expression('Hummock Therms Soil T ('*C*')'))+
   scale_x_datetime(limits = as.POSIXct(biomet_dates))
-TS_2_38_4_5_1 = df$TS_2_38_4_5_1
+TS_2_38_4_5_1 = df$TIMESTAMP_2_38_4_5_1
 
 
 ```
@@ -2163,7 +2137,7 @@ N = 3
 
 #Add clean value to dataframe (_.c)
 
-df$TS_2_38_4_5_1.c = ifelse(abs(TS_2_38_4_5_1 - mad_filt) > (N * roll.mad),NA,TS_2_38_4_5_1)
+df$TIMESTAMP_2_38_4_5_1.c = ifelse(abs(TS_2_38_4_5_1 - mad_filt) > (N * roll.mad),NA,TS_2_38_4_5_1)
 
 #Compare cleaned vs. uncleaned
 
@@ -2195,7 +2169,7 @@ ggplot(data = df)+ theme_bw()+ geom_hline(yintercept = 0)+
   scale_y_continuous(limits = c(-15,15),
                      expression('Hummock Therms Soil T ('*C*')'))+
   scale_x_datetime(limits = as.POSIXct(biomet_dates))
-TS_2_38_4_6_1 = df$TS_2_38_4_6_1
+TS_2_38_4_6_1 = df$TIMESTAMP_2_38_4_6_1
 ```
 ## Rolling MAD 
 ```{r, warning=FALSE}
@@ -2232,7 +2206,7 @@ N = 3
 
 #Add clean value to dataframe (_.c)
 
-df$TS_2_38_4_6_1.c = ifelse(abs(TS_2_38_4_6_1 - mad_filt) > (N * roll.mad),NA,TS_2_38_4_6_1)
+df$TIMESTAMP_2_38_4_6_1.c = ifelse(abs(TS_2_38_4_6_1 - mad_filt) > (N * roll.mad),NA,TS_2_38_4_6_1)
 
 #Compare cleaned vs. uncleaned
 
@@ -2265,7 +2239,7 @@ ggplot(data = df)+ theme_bw()+ geom_hline(yintercept = 0)+
   scale_y_continuous(limits = c(-10,7.5),
                      expression('Hummock Therms Soil T ('*C*')'))+
   scale_x_datetime(limits = as.POSIXct(biomet_dates))
-TS_2_38_4_7_1 = df$TS_2_38_4_7_1
+TS_2_38_4_7_1 = df$TIMESTAMP_2_38_4_7_1
 ```
 ## Rolling MAD 
 ```{r, warning=FALSE}
@@ -2303,7 +2277,7 @@ N = 3
 
 #Add clean value to dataframe (_.c)
 
-df$TS_2_38_4_7_1.c = ifelse(abs(TS_2_38_4_7_1 - mad_filt) > (N * roll.mad),NA,TS_2_38_4_7_1)
+df$TIMESTAMP_2_38_4_7_1.c = ifelse(abs(TS_2_38_4_7_1 - mad_filt) > (N * roll.mad),NA,TS_2_38_4_7_1)
 
 #Compare cleaned vs. uncleaned
 ggplot(data = df)+geom_hline(yintercept = 0)+
@@ -2333,7 +2307,7 @@ ggplot(data = df)+ theme_bw()+ geom_hline(yintercept = 0)+
   scale_y_continuous(limits = c(-10,10),
                      expression('Hummock Therms Soil T ('*K*')'))+
   scale_x_datetime(limits = as.POSIXct(biomet_dates))
-TS_2_38_4_8_1 = df$TS_2_38_4_8_1
+TS_2_38_4_8_1 = df$TIMESTAMP_2_38_4_8_1
 ```
 
 ## Rolling MAD 
@@ -2372,7 +2346,7 @@ N = 3
 
 #Add clean value to dataframe (_.c)
 
-df$TS_2_38_4_8_1.c = ifelse(abs(TS_2_38_4_8_1 - mad_filt) > (N * roll.mad),NA,TS_2_38_4_8_1)
+df$TIMESTAMP_2_38_4_8_1.c = ifelse(abs(TS_2_38_4_8_1 - mad_filt) > (N * roll.mad),NA,TS_2_38_4_8_1)
 
 #Compare cleaned vs. uncleaned
 ggplot(data = df)+geom_hline(yintercept = 0)+
@@ -2402,7 +2376,7 @@ ggplot(data = df)+ theme_bw()+ geom_hline(yintercept = 0)+
   scale_y_continuous(limits = c(-10,5),
                      expression('Hummock Therms Soil T ('*C*')'))+
   scale_x_datetime(limits = as.POSIXct(biomet_dates))
-TS_2_38_4_9_1 = df$TS_2_38_4_9_1
+TS_2_38_4_9_1 = df$TIMESTAMP_2_38_4_9_1
 ```
 
 ## Rolling MAD 
@@ -2440,7 +2414,7 @@ N = 3
 
 #Add clean value to dataframe (_.c)
 
-df$TS_2_38_4_9_1.c = ifelse(abs(TS_2_38_4_9_1 - mad_filt) > (N * roll.mad),NA,TS_2_38_4_9_1)
+df$TIMESTAMP_2_38_4_9_1.c = ifelse(abs(TS_2_38_4_9_1 - mad_filt) > (N * roll.mad),NA,TS_2_38_4_9_1)
 
 #Compare cleaned vs. uncleaned
 ggplot(data = df)+geom_hline(yintercept = 0)+
@@ -2470,7 +2444,7 @@ ggplot(data = df)+ theme_bw()+ geom_hline(yintercept = 0)+
   scale_y_continuous(limits = c(-10,5),
                      expression('Hummock Therms Soil T ('*C*')'))+
   scale_x_datetime(limits = as.POSIXct(biomet_dates))
-TS_2_38_4_10_1 = df$TS_2_38_4_10_1
+TS_2_38_4_10_1 = df$TIMESTAMP_2_38_4_10_1
 ```
 
 
@@ -2509,7 +2483,7 @@ N = 3
 
 #Add clean value to dataframe (_.c)
 
-df$TS_2_38_4_10_1.c = ifelse(abs(TS_2_38_4_10_1 - mad_filt) > (N * roll.mad),NA,TS_2_38_4_10_1)
+df$TIMESTAMP_2_38_4_10_1.c = ifelse(abs(TS_2_38_4_10_1 - mad_filt) > (N * roll.mad),NA,TS_2_38_4_10_1)
 
 #Compare cleaned vs. uncleaned
 ggplot(data = df)+geom_hline(yintercept = 0)+
@@ -2541,7 +2515,7 @@ ggplot(data = df)+ theme_bw()+ geom_hline(yintercept = 0)+
                      expression('Hummock Therms Soil T ('*C*')'))+
   scale_x_datetime(limits = as.POSIXct(c("2022-9-6",'2023-11-1')))
 
-TS_2_38_4_11_1.limits = df$TS_2_38_4_11_1
+TS_2_38_4_11_1.limits = df$TIMESTAMP_2_38_4_11_1
 ```
 ## Limits
 ```{r, warning=FALSE}
@@ -2552,7 +2526,7 @@ ggplot(data = df)+ theme_bw()+ geom_hline(yintercept = 0)+
                      expression('Hummock Therms Soil T ('*C*')'))+
   scale_x_datetime(limits = as.POSIXct(c("2022-9-6",'2022-11-20')))
 
-TS_2_38_4_11_1.limits = ifelse(df$TS_2_38_4_11_1 <= -1 & df$TIMESTAMP >= '2022-10-15' & df$TIMESTAMP <= '2022-11-15' ,NA, TS_2_38_4_11_1.limits)
+TS_2_38_4_11_1.limits = ifelse(df$TIMESTAMP_2_38_4_11_1 <= -1 & df$TIMESTAMP >= '2022-10-15' & df$TIMESTAMP <= '2022-11-15' ,NA, TS_2_38_4_11_1.limits)
 
 ggplot(data = df)+ theme_bw()+ geom_hline(yintercept = 0)+
   geom_line(aes(TIMESTAMP, TS_2_38_4_11_1.limits, col = '90cm'))+
@@ -2567,10 +2541,10 @@ ggplot(data = df)+ theme_bw()+ geom_hline(yintercept = 0)+
   scale_x_datetime(limits = as.POSIXct(c("2022-11-20",'2023-1-20')))
 
 
-TS_2_38_4_11_1.limits = ifelse(df$TS_2_38_4_11_1 <= -2 & df$TIMESTAMP >= '2022-11-20' & df$TIMESTAMP <= '2023-1-20' ,NA, TS_2_38_4_11_1.limits)
+TS_2_38_4_11_1.limits = ifelse(df$TIMESTAMP_2_38_4_11_1 <= -2 & df$TIMESTAMP >= '2022-11-20' & df$TIMESTAMP <= '2023-1-20' ,NA, TS_2_38_4_11_1.limits)
 
 
-TS_2_38_4_11_1.limits = ifelse(df$TS_2_38_4_11_1 <= -1 & df$TIMESTAMP >= '2022-11-20' & df$TIMESTAMP <= '2022-12-20' ,NA, TS_2_38_4_11_1.limits)
+TS_2_38_4_11_1.limits = ifelse(df$TIMESTAMP_2_38_4_11_1 <= -1 & df$TIMESTAMP >= '2022-11-20' & df$TIMESTAMP <= '2022-12-20' ,NA, TS_2_38_4_11_1.limits)
 
 ggplot(data = df)+ theme_bw()+ geom_hline(yintercept = 0)+
   geom_line(aes(TIMESTAMP, TS_2_38_4_11_1.limits, col = '90cm'))+
@@ -2584,7 +2558,7 @@ ggplot(data = df)+ theme_bw()+ geom_hline(yintercept = 0)+
                      expression('Hummock Therms Soil T ('*C*')'))+
   scale_x_datetime(limits = as.POSIXct(c("2023-1-20",'2023-2-1')))
 
-TS_2_38_4_11_1.limits = ifelse(df$TS_2_38_4_11_1 <= -1 & df$TIMESTAMP >= '2023-1-20' & df$TIMESTAMP <= '2023-2-1' ,NA, TS_2_38_4_11_1.limits)
+TS_2_38_4_11_1.limits = ifelse(df$TIMESTAMP_2_38_4_11_1 <= -1 & df$TIMESTAMP >= '2023-1-20' & df$TIMESTAMP <= '2023-2-1' ,NA, TS_2_38_4_11_1.limits)
 
 
 ggplot(data = df)+ theme_bw()+ geom_hline(yintercept = 0)+
@@ -2600,7 +2574,7 @@ ggplot(data = df)+ theme_bw()+ geom_hline(yintercept = 0)+
   scale_x_datetime(limits = as.POSIXct(c("2023-2-1",'2023-2-14')))
 
 
-TS_2_38_4_11_1.limits = ifelse(df$TS_2_38_4_11_1 <= -4 & df$TIMESTAMP >= '2023-2-1' & df$TIMESTAMP <= '2023-2-14' ,NA, TS_2_38_4_11_1.limits)
+TS_2_38_4_11_1.limits = ifelse(df$TIMESTAMP_2_38_4_11_1 <= -4 & df$TIMESTAMP >= '2023-2-1' & df$TIMESTAMP <= '2023-2-14' ,NA, TS_2_38_4_11_1.limits)
 
 ggplot(data = df)+ theme_bw()+ geom_hline(yintercept = 0)+
   geom_line(aes(TIMESTAMP, TS_2_38_4_11_1.limits, col = '90cm'))+
@@ -2614,7 +2588,7 @@ ggplot(data = df)+ theme_bw()+ geom_hline(yintercept = 0)+
                      expression('Hummock Therms Soil T ('*C*')'))+
   scale_x_datetime(limits = as.POSIXct(c("2023-2-14",'2023-2-20')))
 
-TS_2_38_4_11_1.limits = ifelse(df$TS_2_38_4_11_1 <= -4.25 & df$TIMESTAMP >= '2023-2-14' & df$TIMESTAMP <= '2023-2-20' ,NA, TS_2_38_4_11_1.limits)
+TS_2_38_4_11_1.limits = ifelse(df$TIMESTAMP_2_38_4_11_1 <= -4.25 & df$TIMESTAMP >= '2023-2-14' & df$TIMESTAMP <= '2023-2-20' ,NA, TS_2_38_4_11_1.limits)
 
 ggplot(data = df)+ theme_bw()+ geom_hline(yintercept = 0)+
   geom_line(aes(TIMESTAMP, TS_2_38_4_11_1.limits, col = '90cm'))+
@@ -2628,7 +2602,7 @@ ggplot(data = df)+ theme_bw()+ geom_hline(yintercept = 0)+
                      expression('Hummock Therms Soil T ('*C*')'))+
   scale_x_datetime(limits = as.POSIXct(c("2023-2-20",'2023-2-28')))
 
-TS_2_38_4_11_1.limits = ifelse(df$TS_2_38_4_11_1 <= -5 & df$TIMESTAMP >= '2023-2-20' & df$TIMESTAMP <= '2023-2-23' ,NA, TS_2_38_4_11_1.limits)
+TS_2_38_4_11_1.limits = ifelse(df$TIMESTAMP_2_38_4_11_1 <= -5 & df$TIMESTAMP >= '2023-2-20' & df$TIMESTAMP <= '2023-2-23' ,NA, TS_2_38_4_11_1.limits)
 
 ggplot(data = df)+ theme_bw()+ geom_hline(yintercept = 0)+
   geom_line(aes(TIMESTAMP, TS_2_38_4_11_1.limits, col = '90cm'))+
@@ -2642,7 +2616,7 @@ ggplot(data = df)+ theme_bw()+ geom_hline(yintercept = 0)+
                      expression('Hummock Therms Soil T ('*C*')'))+
   scale_x_datetime(limits = as.POSIXct(c("2023-5-10",'2023-5-24')))
 
-TS_2_38_4_11_1.limits = ifelse(df$TS_2_38_4_11_1 <= -2.5 & df$TIMESTAMP >= '2023-5-14' & df$TIMESTAMP <= '2023-6-23' ,NA, TS_2_38_4_11_1.limits)
+TS_2_38_4_11_1.limits = ifelse(df$TIMESTAMP_2_38_4_11_1 <= -2.5 & df$TIMESTAMP >= '2023-5-14' & df$TIMESTAMP <= '2023-6-23' ,NA, TS_2_38_4_11_1.limits)
 ```
 
 ## Rolling MAD 
@@ -2680,7 +2654,7 @@ N = 3
 
 #Add clean value to dataframe (_.c)
 
-df$TS_2_38_4_11_1.c = ifelse(abs(TS_2_38_4_11_1.limits - mad_filt) > (N * roll.mad),NA,TS_2_38_4_11_1.limits)
+df$TIMESTAMP_2_38_4_11_1.c = ifelse(abs(TS_2_38_4_11_1.limits - mad_filt) > (N * roll.mad),NA,TS_2_38_4_11_1.limits)
 
 #Compare cleaned vs. uncleaned
 
@@ -2713,7 +2687,7 @@ ggplot(data = df)+ theme_bw()+ geom_hline(yintercept = 0)+
                      expression('Hummock Therms Soil T ('*C*')'))+
   scale_x_datetime(limits = as.POSIXct(biomet_dates))
 
-TS_2_38_4_12_1.limits = df$TS_2_38_4_12_1
+TS_2_38_4_12_1.limits = df$TIMESTAMP_2_38_4_12_1
 
 ggplot(data = df)+ theme_bw()+ geom_hline(yintercept = 0)+
   geom_line(aes(TIMESTAMP, TS_2_38_4_12_1, col = 'Surface'))+
@@ -2721,7 +2695,7 @@ ggplot(data = df)+ theme_bw()+ geom_hline(yintercept = 0)+
                      expression('Hummock Therms Soil T ('*C*')'))+
   scale_x_datetime(limits = as.POSIXct(c("2023-6-6",'2023-7-15')))
 
-TS_2_38_4_12_1.limits = ifelse(df$TS_2_38_4_12_1 >= -.80 & df$TIMESTAMP >= '2023-06-15' & df$TIMESTAMP <= '2023-07-01' ,NA, TS_2_38_4_12_1.limits)
+TS_2_38_4_12_1.limits = ifelse(df$TIMESTAMP_2_38_4_12_1 >= -.80 & df$TIMESTAMP >= '2023-06-15' & df$TIMESTAMP <= '2023-07-01' ,NA, TS_2_38_4_12_1.limits)
 
 ggplot(data = df)+ theme_bw()+ geom_hline(yintercept = 0)+
   geom_line(aes(TIMESTAMP, TS_2_38_4_12_1.limits, col = 'Surface'))+
@@ -2735,7 +2709,7 @@ ggplot(data = df)+ theme_bw()+ geom_hline(yintercept = 0)+
                      expression('Hummock Therms Soil T ('*C*')'))+
   scale_x_datetime(limits = as.POSIXct(c("2023-7-2",'2023-8-10')))
 
-TS_2_38_4_12_1.limits = ifelse(df$TS_2_38_4_12_1 <= -.90 & df$TIMESTAMP >= '2023-07-18' & df$TIMESTAMP <= '2023-08-10' ,NA, TS_2_38_4_12_1.limits)
+TS_2_38_4_12_1.limits = ifelse(df$TIMESTAMP_2_38_4_12_1 <= -.90 & df$TIMESTAMP >= '2023-07-18' & df$TIMESTAMP <= '2023-08-10' ,NA, TS_2_38_4_12_1.limits)
 
 ggplot(data = df)+ theme_bw()+ geom_hline(yintercept = 0)+
   geom_line(aes(TIMESTAMP, TS_2_38_4_12_1.limits, col = 'Surface'))+
@@ -2749,7 +2723,7 @@ ggplot(data = df)+ theme_bw()+ geom_hline(yintercept = 0)+
                      expression('Hummock Therms Soil T ('*C*')'))+
   scale_x_datetime(limits = as.POSIXct(c("2023-6-30",'2023-7-20')))
 
-TS_2_38_4_12_1.limits = ifelse(df$TS_2_38_4_12_1 < -1.1 & df$TIMESTAMP >= '2023-07-2' & df$TIMESTAMP <= '2023-07-18' ,NA, TS_2_38_4_12_1.limits)
+TS_2_38_4_12_1.limits = ifelse(df$TIMESTAMP_2_38_4_12_1 < -1.1 & df$TIMESTAMP >= '2023-07-2' & df$TIMESTAMP <= '2023-07-18' ,NA, TS_2_38_4_12_1.limits)
 
 ggplot(data = df)+ theme_bw()+ geom_hline(yintercept = 0)+
   geom_line(aes(TIMESTAMP, TS_2_38_4_12_1.limits, col = 'Surface'))+
@@ -2794,7 +2768,7 @@ N = 3
 
 #Add clean value to dataframe (_.c)
 
-df$TS_2_38_4_12_1.c = ifelse(abs(TS_2_38_4_12_1.limits - mad_filt) > (N * roll.mad),NA,TS_2_38_4_12_1.limits)
+df$TIMESTAMP_2_38_4_12_1.c = ifelse(abs(TS_2_38_4_12_1.limits - mad_filt) > (N * roll.mad),NA,TS_2_38_4_12_1.limits)
 
 #Compare cleaned vs. uncleaned
 
@@ -2884,7 +2858,7 @@ met = fread('C:/Users/dtrangmoe/Documents/Churchill/Churchill_met_clean.csv')
 
 df = fread('C:/Users/dtrangmoe/Documents/Churchill/Churchill_fluxes_merged.csv')
 
-df$TIMESTAMP = df$ts
+df$TIMESTAMP = df$TIMESTAMP
 
 df= merge(df,met,by='TIMESTAMP',all = T)
 
@@ -2921,10 +2895,10 @@ plot(df$met, df$flux)
 plot all solar radiation
 
 ```{r, warning=FALSE}
-plot(df$ts,df$SWIN_6_10_1_1_1.c)
-plot(df$ts,df$SWOUT_6_11_1_1_1.c)
-plot(df$ts,df$LWIN_6_14_1_1_1.c,ylim = c(0,800))
-plot(df$ts,df$LWOUT_6_15_1_1_1.c,ylim = c(0,800))
+plot(df$TIMESTAMP,df$SWIN_6_10_1_1_1.c)
+plot(df$TIMESTAMP,df$SWOUT_6_11_1_1_1.c)
+plot(df$TIMESTAMP,df$LWIN_6_14_1_1_1.c,ylim = c(0,800))
+plot(df$TIMESTAMP,df$LWOUT_6_15_1_1_1.c,ylim = c(0,800))
 ```
 
 create and plot mismatch variable between met and flux
@@ -2937,7 +2911,7 @@ create and plot mismatch variable between met and flux
 #mismatch.limits = replace(df$mismatch, df$mismatch < -10 | df$mismatch > 10,NA)
 
 
-#plot(df$ts,mismatch.limits,)
+#plot(df$TIMESTAMP,mismatch.limits,)
 ```
 
 plot energy balance
@@ -2988,18 +2962,17 @@ look for absolute outliers and manually set some absolute limits to remove crazy
 Plot Tau Histogram
 
 ```{r, warning=FALSE}
-hist(df$Tau,breaks=100)
+hist(df$TAU,breaks=100)
 ```
 
 Cut the crazy data and create new variable (Tau.limits)
 
 ```{r, warning=FALSE}
 
-Tau.limits = df$Tau
-Tau.limits = replace(df$Tau,df$Tau < -1 | df$Tau > .2,NA)
+Tau.limits = df$TAU
+Tau.limits = replace(df$TAU,df$TAU < -1 | df$TAU > .2,NA)
 
 plot(Tau.limits)
-
 ```
 
 ### NEE
@@ -3007,24 +2980,27 @@ plot(Tau.limits)
 Plot NEE Histogram and what we might clean
 
 ```{r, warning=FALSE}
-hist(df$co2_flux,breaks=100)
+hist(df$FC,breaks=100)
+plot(df$FC)
 
 #for 2022
-plot(df$ts,df$co2_flux,ylim = c(-25,25));abline(h=10, col= 'red');abline(h=-14, col='red')
+plot(df$TIMESTAMP,df$FC,ylim = c(-25,25));abline(h=10, col= 'red');abline(h=-14, col='red')
 
 # for 2023 and on
-plot(df$ts,df$co2_flux,ylim = c(-25,25));abline(h=7, col= 'red');abline(h=-10, col='red')
+plot(df$TIMESTAMP,df$FC,ylim = c(-25,25));abline(h=7, col= 'red');abline(h=-10, col='red')
 ```
 
 Clean based on graphs, create new variable (co2_flux.limits), and see cleaned product
 
 ```{r, warning=FALSE}
-co2_flux.limits = replace(df$co2_flux,(df$co2_flux > 7 | df$co2_flux < -10) & df$TIMESTAMP >= '2023-01-01' | (df$co2_flux > 10 | df$co2_flux < -14),NA)
+co2_flux.limits = df$FC
 
-
-plot(df$ts,co2_flux.limits,ylim = c(-25,25));abline(h=7, col= 'red');abline(h=-10, col='red')
-
-hist(co2_flux.limits,breaks=100)
+# co2_flux.limits = replace(df$co2_flux,(df$co2_flux > 7 | df$co2_flux < -10) & df$TIMESTAMP >= '2023-01-01' | (df$co2_flux > 10 | df$co2_flux < -14),NA)
+# 
+# 
+# plot(df$TIMESTAMP,co2_flux.limits,ylim = c(-25,25));abline(h=7, col= 'red');abline(h=-10, col='red')
+# 
+# hist(co2_flux.limits,breaks=100)
 ```
 
 ### CH4
@@ -3032,31 +3008,29 @@ hist(co2_flux.limits,breaks=100)
 Plot CH4 Histogram and what we might clean
 
 ```{r, warning=FALSE}
-hist(df$ch4_flux,breaks=100)
+hist(df$FCH4,breaks=100)
 
-plot(df$ts,df$ch4_flux,ylim = c(-.3,.35));abline(h=.3, col= 'red');abline(h=-.20, col='red'); abline(h=0,col= 'black')
+plot(df$TIMESTAMP,df$FCH4,ylim = c(-30,350));abline(h=.3, col= 'red');abline(h=-.20, col='red'); abline(h=0,col= 'black')
 ```
 
 Clean based on graphs, create new variable (ch4_flux.limits), and see cleaned product
 
 ```{r, warning=FALSE}
-
-
 CH4MOLE = ggplot(data = df)+geom_hline(yintercept = 0)+
-  geom_point(aes(x=ts,y=ch4_mole_fraction))+
+  geom_point(aes(x=TIMESTAMP,y=df$CH4))+
   geom_vline(xintercept = as.POSIXct('2023-9-14 16:30'),col = 'red')+
   geom_vline(xintercept = as.POSIXct('2023-9-21 11:00'),col = 'red')+
   scale_y_continuous(limits = c(0,4))+
   scale_x_datetime(limits = as.POSIXct(c('2023-9-5','2023-10-2'),format="%F"))
 CH4MOLE
 
-ch4_flux.limits = df$ch4_flux
+ch4_flux.limits = df$FCH4
 
-ch4_flux.limits = ifelse(df$ch4_flux < 3 & df$ts <= '2023-9-21 11:00' & df$ts >='2023-9-14 16:30',NA,
-                          ifelse(df$ch4_flux < -.20,NA,
-                                 ifelse(df$ch4_flux > .3,NA,ch4_flux.limits)))
-                                        
-                                
+# ch4_flux.limits = ifelse(df$ch4_flux < 3 & df$TIMESTAMP <= '2023-9-21 11:00' & df$TIMESTAMP >='2023-9-14 16:30',NA,
+#                           ifelse(df$ch4_flux < -.20,NA,
+#                                  ifelse(df$ch4_flux > .3,NA,ch4_flux.limits)))
+
+
 hist(ch4_flux.limits,breaks = 100)
 plot(ch4_flux.limits)
 
@@ -3074,13 +3048,13 @@ Plot H Histogram and what we might clean
 ```{r, warning=FALSE}
 hist(df$H,breaks=100)
 
-plot(df$ts,df$H,ylim = c(-250,450));abline(h=-150, col= 'red');abline(h=360, col='red')
+plot(df$TIMESTAMP,df$H,ylim = c(-250,450));abline(h=-175, col= 'red');abline(h=360, col='red')
 ```
 
 Clean based on graphs, create new variable (H.limits), and see cleaned product
 
 ```{r, warning=FALSE}
-H.limits = replace(df$H, df$H < -150 | df$H > 360,NA)
+H.limits = replace(df$H, df$H < -175 | df$H > 360,NA)
 hist(H.limits,breaks = 100)
 plot(H.limits)
 ```
@@ -3093,13 +3067,13 @@ Plot LE Histogram and what we might clean
 ```{r, warning=FALSE}
 hist(df$LE,breaks=100)
 
-plot(df$ts,df$LE,ylim = c(-40,450));abline(h=-40, col= 'red');abline(h=390, col='red')
+plot(df$TIMESTAMP,df$LE,ylim = c(-200,450));abline(h=-120, col= 'red');abline(h=390, col='red')
 ```
 
 Clean based on graphs, create new variable (H.limits), and see cleaned product
 
 ```{r, warning=FALSE}
-LE.limits = replace(df$LE, df$LE < -40 | df$LE > 390,NA)
+LE.limits = replace(df$LE, df$LE < -120 | df$LE > 390,NA)
 hist(LE.limits)
 plot(LE.limits)
 ```
@@ -3110,10 +3084,10 @@ use night-time only flux values and plot Ustar based on data drop off
 
 ```{r, warning=FALSE}
 df$nightCO2 = co2_flux.limits
-df$nightCO2 = replace(df$nightCO2,df$SWIN_6_10_1_1_1 > 10,NA)
+df$nightCO2 = replace(df$nightCO2,df$SW_IN > 10,NA)
 
-Uthreshold=0.065
-ggplot(data = df,aes(`u*`,nightCO2))+
+Uthreshold=0.08
+ggplot(data = df,aes(USTAR,nightCO2))+
   ylab(expression(paste("Flux (g-C", ~CO[2], ~"m",""^"-2","d",""^"-1",")")))+
   geom_point()+xlab("U*")+
   scale_x_continuous(limits = c(0,1))+
@@ -3121,12 +3095,12 @@ ggplot(data = df,aes(`u*`,nightCO2))+
 
 ```
 
-pick threshold and filter based on plots above, I liked .065
+pick threshold and filter based on plots above, I liked .08
 
 
 created flag to indicate where u* values are below our threshold- makes cleaning with u* optional but easy when using cleaned data sets
 ```{r, warning=FALSE}
-df$u_flag = ifelse(df$`u*` < Uthreshold,1,0)
+df$u_flag = ifelse(df$USTAR < Uthreshold,1,0)
 ```
 
 ## Combine Cleaning
@@ -3134,21 +3108,21 @@ df$u_flag = ifelse(df$`u*` < Uthreshold,1,0)
 investigate the previous limits and combine all to create a new variable (clean), plot to see difference
 
 ```{r, warning=FALSE}
-co2fluxclean = ifelse(is.na(co2_flux.qc) | is.na(co2_flux.limits),NA,df$co2_flux)
+co2fluxclean = ifelse(is.na(co2_flux.limits) | df$u_flag ==1 ,NA,df$FC)
 
-ch4fluxclean = ifelse(is.na(ch4_flux.qc) | is.na(ch4_flux.limits),NA,df$ch4_flux)
+ch4fluxclean = ifelse(is.na(ch4_flux.limits) | df$u_flag ==1 ,NA,df$FCH4)
 
-Hclean = ifelse(is.na(H.qc) | is.na(H.limits),NA,df$H)
+Hclean = ifelse(is.na(H.limits) | df$u_flag ==1 ,NA,df$H)
 
-LEclean = ifelse(is.na(LE.qc) | is.na(LE.limits),NA,df$LE)
+LEclean = ifelse(is.na(LE.limits) | df$u_flag ==1 ,NA,df$LE)
 
-Tauclean = ifelse(is.na(Tau.qc) | is.na(Tau.limits),NA,df$Tau)
+Tauclean = ifelse(is.na(Tau.limits)| df$u_flag ==1 ,NA,df$TAU)
 
-plot(df$ts,co2fluxclean)
-plot(df$ts,ch4fluxclean)
-plot(df$ts,Hclean)
-plot(df$ts,LEclean)
-plot(df$ts,Tauclean)
+plot(df$TIMESTAMP,co2fluxclean)
+plot(df$TIMESTAMP,ch4fluxclean)
+plot(df$TIMESTAMP,Hclean)
+plot(df$TIMESTAMP,LEclean)
+plot(df$TIMESTAMP,Tauclean)
 ```
 
 Add cleaned tau to dataframe (no MAD filter)
@@ -3181,11 +3155,11 @@ roll.mad = rollapply(data = Flux_filt,
 roll.mad[is.na(Flux_filt)] = NA  #make NA values where NAs exist in the real data
 
 ggplot(df)+geom_hline(yintercept = 0)+
-  geom_point(aes(ts,co2fluxclean,col='CO2 flux'))+
-  geom_line(aes(ts,Flux_filt,col='Filter'))+
-  geom_line(aes(ts,roll.mad,col='MAD'))+
+  geom_point(aes(TIMESTAMP,co2fluxclean,col='CO2 flux'))+
+  geom_line(aes(TIMESTAMP,Flux_filt,col='Filter'))+
+  geom_line(aes(TIMESTAMP,roll.mad,col='MAD'))+
   scale_y_continuous(limits = c(-10,10))+
-  scale_x_datetime(limits = as.POSIXct(flux_dates,format="%F"))+
+  scale_x_datetime(limits = as.POSIXct(c("2019-07-01","2019-07-30")))+
   scale_color_manual(values=c('black','yellow','red'))+
   geom_vline(xintercept = as.POSIXct('2024-01-01'))
 ```
@@ -3194,32 +3168,31 @@ now filter the data based on this signal
 
 ```{r, warning=FALSE}
 #adjust this value (N) to tweak how many MADs to be away from the norm
-N = 3
+N = 6
 
 #Add clean value to dataframe (_.c)
-
-df$co2_flux.c = ifelse(abs(co2fluxclean - Flux_filt) > (N * roll.mad),NA,co2fluxclean)
+df$FC.c = ifelse(abs(co2fluxclean - Flux_filt) > (N * roll.mad),NA,co2fluxclean)
 
 #Compare cleaned vs. uncleaned
 ggplot(data = df)+geom_hline(yintercept = 0)+
-  geom_point(aes(TIMESTAMP,co2_flux),col='red')+
-  geom_point(aes(TIMESTAMP,co2_flux.c),col='black')+
-  scale_y_continuous(limits=c(-12,8))+
-  scale_x_datetime(limits = as.POSIXct(flux_dates,format="%F"))
+  geom_point(aes(TIMESTAMP,FC),col='red')+
+  geom_point(aes(TIMESTAMP,FC.c),col='black')
+#  scale_y_continuous(limits=c(-12,8))
+  #scale_x_datetime(limits = as.POSIXct(flux_dates,format="%F"))
 ```
 
 ```{r, warning=FALSE}
 
 ggplot(data = df)+theme_bw()+geom_hline(yintercept = 0)+
-  geom_point(aes(ts,co2_flux), col='red')+
-  geom_point(aes(ts,co2_flux.c), col='black')+
-  scale_x_datetime(limits = as.POSIXct(c('2022-8-14','2022-8-28'),format="%F"))+
+  geom_point(aes(ts,FC), col='red')+
+  geom_point(aes(ts,FC.c), col='black')+
+#  scale_x_datetime(limits = as.POSIXct(c('2022-8-14','2022-8-28'),format="%F"))+
   scale_y_continuous (expression('NEE ('*mu*mol~m^-2~s^-1*')'),
                       limits = c(-20,20))
 
 ggplot(data = df)+theme_bw()+geom_hline(yintercept = 0)+
-  geom_point(aes(ts,co2_flux))+
-  scale_x_datetime(limits = as.POSIXct(c('2022-9-24','2022-10-8'),format="%F"))+
+  geom_point(aes(ts,FC))+
+#  scale_x_datetime(limits = as.POSIXct(c('2022-9-24','2022-10-8'),format="%F"))+
   scale_y_continuous (expression('NEE ('*mu*mol~m^-2~s^-1*')'),
                       limits = c(-5,5))
 ```
@@ -3228,14 +3201,14 @@ See data with multiple layers of the MAD filter to see if it should be changed
 
 ```{r, warning=FALSE}
 ggplot(data = df)+
-  geom_ribbon(aes(x = ts,ymax = Flux_filt+roll.mad*6,ymin = Flux_filt-roll.mad*6,fill='6'))+
-  geom_ribbon(aes(x = ts,ymax = Flux_filt+roll.mad*3,ymin = Flux_filt-roll.mad*3,fill='3'))+
-  geom_ribbon(aes(x = ts,ymax = Flux_filt+roll.mad*2,ymin = Flux_filt-roll.mad*2,fill='2'))+
-  geom_ribbon(aes(x = ts,ymax = Flux_filt+roll.mad*1,ymin = Flux_filt-roll.mad*1,fill='1'))+
-  geom_point(aes(ts,co2fluxclean),col='red')+
-  geom_point(aes(ts,co2_flux.c),col='black')+
-  scale_y_continuous(limits = c(-1,1))+
-scale_x_datetime(limits = as.POSIXct(c('2023-2-3','2023-3-15'),format="%F"))
+  geom_ribbon(aes(x = TIMESTAMP,ymax = Flux_filt+roll.mad*6,ymin = Flux_filt-roll.mad*6,fill='6'))+
+  geom_ribbon(aes(x = TIMESTAMP,ymax = Flux_filt+roll.mad*3,ymin = Flux_filt-roll.mad*3,fill='3'))+
+  geom_ribbon(aes(x = TIMESTAMP,ymax = Flux_filt+roll.mad*2,ymin = Flux_filt-roll.mad*2,fill='2'))+
+  geom_ribbon(aes(x = TIMESTAMP,ymax = Flux_filt+roll.mad*1,ymin = Flux_filt-roll.mad*1,fill='1'))+
+  geom_point(aes(TIMESTAMP,co2fluxclean),col='red')+
+  geom_point(aes(TIMESTAMP,FC.c),col='black')+
+  scale_y_continuous(limits = c(-15,12))+
+  scale_x_datetime(limits = as.POSIXct(c('2020-09-01','2020-12-30'),format="%F"))
 ```
 
 ## CH4
@@ -3261,11 +3234,11 @@ roll.mad = rollapply(data = Flux_filt,
 roll.mad[is.na(Flux_filt)] = NA  #make NA values where NAs exist in the real data
 
 ggplot(df)+geom_hline(yintercept = 0)+
-  geom_point(aes(ts,ch4fluxclean,col='CH4 flux'))+
-  geom_line(aes(ts,Flux_filt,col='Filter'))+
-  geom_line(aes(ts,roll.mad,col='MAD'))+
-  scale_y_continuous(limits = c(-.25,.3))+
-  scale_x_datetime(limits = as.POSIXct(flux_dates,format="%F"))+
+  geom_point(aes(TIMESTAMP,ch4fluxclean,col='CH4 flux'))+
+  geom_line(aes(TIMESTAMP,Flux_filt,col='Filter'))+
+  geom_line(aes(TIMESTAMP,roll.mad,col='MAD'))+
+#  scale_y_continuous(limits = c(-.25,.3))+
+ # scale_x_datetime(limits = as.POSIXct(flux_dates,format="%F"))+
   scale_color_manual(values=c('black','yellow','red'))
 ```
 
@@ -3273,44 +3246,17 @@ adjust this (N) to tweak how many MADs to be away from the norm, CH4 deserves mo
 
 
 ```{r, warning=FALSE}
-N = 6 
+N = 8 
 
-df$ch4_flux.c = ifelse(abs(ch4fluxclean - Flux_filt) > (N * roll.mad),NA,ch4fluxclean)
+df$FCH4.c = ifelse(abs(ch4fluxclean - Flux_filt) > (N * roll.mad),NA,ch4fluxclean)
 
 ggplot(data = df)+geom_hline(yintercept = 0)+
-  geom_point(aes(TIMESTAMP,ch4_flux,col='uncleaned'))+
-  geom_point(aes(TIMESTAMP,ch4_flux.c,col='cleaned'))+
-  scale_y_continuous(limits = c(-.25,.3))+
-  scale_x_datetime(limits = as.POSIXct(flux_dates,format="%F"))+
+  geom_point(aes(TIMESTAMP,FCH4,col='uncleaned'))+
+  geom_point(aes(TIMESTAMP,FCH4.c,col='cleaned'))+
+#  scale_y_continuous(limits = c(-.25,.3))+
+#  scale_x_datetime(limits = as.POSIXct(flux_dates,format="%F"))+
   scale_color_manual(values=c('black','red'))
 ```
-
-See data with multiple layers of the MAD filter to see if it should be changed
-
-```{r, warning=FALSE}
-CH4Filter = ggplot(data = df)+geom_hline(yintercept = 0)+
-  geom_point(aes(df$ts,ch4fluxclean),col='red')+
-  geom_point(aes(df$ts,ch4_flux.c),col='black')+
-  scale_y_continuous(limits = c(-.22,.25))+
-  scale_x_datetime(limits = as.POSIXct(c('2023-9-1','2023-11-2'),format="%F"))
-
-CH4RSSI = ggplot(data = df)+geom_hline(yintercept = 0)+
-  geom_line(aes(x=ts,y=rssi_77_mean))+
-  scale_y_continuous(limits = c(-1,78))+
-  scale_x_datetime(limits = as.POSIXct(c('2023-9-1','2023-11-2'),format="%F"))
-
-
-CH4MOLE = ggplot(data = df)+geom_hline(yintercept = 0)+
-  geom_point(aes(x=ts,y=ch4_mole_fraction))+
-  scale_y_continuous(limits = c(0,4))+
-  scale_x_datetime(limits = as.POSIXct(c('2023-9-1','2023-11-2'),format="%F"))
-CH4MOLE
-
-CH4_FALLSOILTCOMP = plot_grid(CH4Filter,CH4RSSI,CH4MOLE,nrow=3,align = 'v')
-CH4_FALLSOILTCOMP
-
-```
-
 
 ## H
 ```{r, warning=FALSE}
@@ -3335,11 +3281,11 @@ roll.mad = rollapply(data = Flux_filt,
 roll.mad[is.na(Flux_filt)] = NA  #make NA values where NAs exist in the real data
 
 ggplot(df)+geom_hline(yintercept = 0)+
-  geom_point(aes(ts,Hclean,col='H'))+
-  geom_line(aes(ts,Flux_filt,col='Filter'))+
-  geom_line(aes(ts,roll.mad,col='MAD'))+
+  geom_point(aes(TIMESTAMP,Hclean,col='H'))+
+  geom_line(aes(TIMESTAMP,Flux_filt,col='Filter'))+
+  geom_line(aes(TIMESTAMP,roll.mad,col='MAD'))+
   scale_y_continuous(limits = c(-180,350))+
-  scale_x_datetime(limits = as.POSIXct(flux_dates,format="%F"))+
+#  scale_x_datetime(limits = as.POSIXct(flux_dates,format="%F"))+
   scale_color_manual(values=c('yellow','black','red'))
 ```
 
@@ -3354,7 +3300,7 @@ ggplot(data = df)+geom_hline(yintercept = 0)+
   geom_point(aes(TIMESTAMP,Hclean,col='uncleaned'))+
   geom_point(aes(TIMESTAMP,H.c,col='cleaned'))+
   scale_y_continuous(limits=c(-150,350))+
-  scale_x_datetime(limits = as.POSIXct(flux_dates,format="%F"))+
+#  scale_x_datetime(limits = as.POSIXct(flux_dates,format="%F"))+
   scale_color_manual(values=c('black','red'))
 ```
 
@@ -3362,14 +3308,14 @@ See data with multiple layers of the MAD filter to see if it should be changed
 
 ```{r, warning=FALSE}
 ggplot(data = df)+
-  geom_ribbon(aes(x = df$ts,ymax = Flux_filt+roll.mad*6,ymin = Flux_filt-roll.mad*6,fill='6'))+
-  geom_ribbon(aes(x = df$ts,ymax = Flux_filt+roll.mad*3,ymin = Flux_filt-roll.mad*3,fill='3'))+
-  geom_ribbon(aes(x = df$ts,ymax = Flux_filt+roll.mad*2,ymin = Flux_filt-roll.mad*2,fill='2'))+
-  geom_ribbon(aes(x = df$ts,ymax = Flux_filt+roll.mad*1,ymin = Flux_filt-roll.mad*1,fill='1'))+
-  geom_point(aes(df$ts,Hclean),col='red')+
-  geom_point(aes(df$ts,H.c),col='black')+
+  geom_ribbon(aes(x = df$TIMESTAMP,ymax = Flux_filt+roll.mad*6,ymin = Flux_filt-roll.mad*6,fill='6'))+
+  geom_ribbon(aes(x = df$TIMESTAMP,ymax = Flux_filt+roll.mad*3,ymin = Flux_filt-roll.mad*3,fill='3'))+
+  geom_ribbon(aes(x = df$TIMESTAMP,ymax = Flux_filt+roll.mad*2,ymin = Flux_filt-roll.mad*2,fill='2'))+
+  geom_ribbon(aes(x = df$TIMESTAMP,ymax = Flux_filt+roll.mad*1,ymin = Flux_filt-roll.mad*1,fill='1'))+
+  geom_point(aes(df$TIMESTAMP,Hclean),col='red')+
+  geom_point(aes(df$TIMESTAMP,H.c),col='black')+
   scale_y_continuous(limits = c(-100,100))+
-  scale_x_datetime(limits = as.POSIXct(c('2023-1-19','2023-2-24')))
+  scale_x_datetime(limits = as.POSIXct(c('2019-1-19','2019-2-24')))
 ```
 
 ## LE
@@ -3396,11 +3342,11 @@ roll.mad = rollapply(data = Flux_filt,
 roll.mad[is.na(Flux_filt)] = NA  #make NA values where NAs exist in the real data
 
 ggplot(df)+geom_hline(yintercept = 0)+
-  geom_point(aes(ts,LEclean,col='LE'))+
-  geom_line(aes(ts,Flux_filt,col='Filter'))+
-  geom_line(aes(ts,roll.mad,col='MAD'))+
+  geom_point(aes(TIMESTAMP,LEclean,col='LE'))+
+  geom_line(aes(TIMESTAMP,Flux_filt,col='Filter'))+
+  geom_line(aes(TIMESTAMP,roll.mad,col='MAD'))+
   scale_y_continuous(limits = c(-50,400))+
-  scale_x_datetime(limits = as.POSIXct(flux_dates,format="%F"))+
+ # scale_x_datetime(limits = as.POSIXct(flux_dates,format="%F"))+
   scale_color_manual(values=c('yellow','black','red'))
 ```
 
@@ -3415,7 +3361,7 @@ ggplot(data = df)+geom_hline(yintercept = 0)+
   geom_point(aes(TIMESTAMP,LEclean,col='uncleaned'))+
   geom_point(aes(TIMESTAMP,LE.c,col='cleaned'))+
   scale_y_continuous(limits=c(-100,400))+
-  scale_x_datetime(limits = as.POSIXct(flux_dates,format="%F"))+
+#  scale_x_datetime(limits = as.POSIXct(flux_dates,format="%F"))+
   scale_color_manual(values=c('black','red'))
 ```
 
@@ -3423,12 +3369,12 @@ See data with multiple layers of the MAD filter to see if it should be changed
 
 ```{r, warning=FALSE}
 ggplot(data = df)+
-  geom_ribbon(aes(x = df$ts,ymax = Flux_filt+roll.mad*6,ymin = Flux_filt-roll.mad*6,fill='6'))+
-  geom_ribbon(aes(x = df$ts,ymax = Flux_filt+roll.mad*3,ymin = Flux_filt-roll.mad*3,fill='3'))+
-  geom_ribbon(aes(x = df$ts,ymax = Flux_filt+roll.mad*2,ymin = Flux_filt-roll.mad*2,fill='2'))+
-  geom_ribbon(aes(x = df$ts,ymax = Flux_filt+roll.mad*1,ymin = Flux_filt-roll.mad*1,fill='1'))+
-  geom_point(aes(df$ts,LEclean),col='red')+
-  geom_point(aes(df$ts,LE.c),col='black')+
+  geom_ribbon(aes(x = df$TIMESTAMP,ymax = Flux_filt+roll.mad*6,ymin = Flux_filt-roll.mad*6,fill='6'))+
+  geom_ribbon(aes(x = df$TIMESTAMP,ymax = Flux_filt+roll.mad*3,ymin = Flux_filt-roll.mad*3,fill='3'))+
+  geom_ribbon(aes(x = df$TIMESTAMP,ymax = Flux_filt+roll.mad*2,ymin = Flux_filt-roll.mad*2,fill='2'))+
+  geom_ribbon(aes(x = df$TIMESTAMP,ymax = Flux_filt+roll.mad*1,ymin = Flux_filt-roll.mad*1,fill='1'))+
+  geom_point(aes(df$TIMESTAMP,LEclean),col='red')+
+  geom_point(aes(df$TIMESTAMP,LE.c),col='black')+
   scale_y_continuous(limits = c(-20,20))+
   scale_x_datetime(limits = as.POSIXct(c('2022-11-20','2023-2-15')))
 ```
@@ -3437,30 +3383,30 @@ ggplot(data = df)+
 
 ```{r, warning=FALSE}
 ggplot(data = df)+theme_bw()+geom_hline(yintercept = 0)+
-  geom_point(aes(ts,LE,col='Filt.'))+
-  geom_point(aes(ts,LE.c,col='clean'))+
+  geom_point(aes(TIMESTAMP,LE,col='Filt.'))+
+  geom_point(aes(TIMESTAMP,LE.c,col='clean'))+
   scale_y_continuous(expression('LE ('*W~m^-2*')'))+
   scale_color_manual(values = c('black','red'))
   
 
 ggplot(data = df)+theme_bw()+geom_hline(yintercept = 0)+
-  geom_point(aes(ts,H,col='Filt.'))+
-  geom_point(aes(ts,H.c,col='clean'))+
+  geom_point(aes(TIMESTAMP,H,col='Filt.'))+
+  geom_point(aes(TIMESTAMP,H.c,col='clean'))+
   scale_y_continuous(expression('H ('*W~m^-2*')'))+
   scale_color_manual(values = c('black','red'))
 
 ggplot(data = df)+theme_bw()+geom_hline(yintercept = 0)+
-  geom_point(aes(ts,co2_flux,col='Filt.'))+
-  geom_point(aes(ts,co2_flux.c,col='clean'))+
+  geom_point(aes(TIMESTAMP,FC,col='Filt.'))+
+  geom_point(aes(TIMESTAMP,FC.c,col='clean'))+
   scale_y_continuous (expression('NEE ('*mu*mol~m^-2~s^-1*')'),
                       limits = c(-20,20))+
   scale_color_manual(values = c('black','red'))
 
 ggplot(data = df)+theme_bw()+geom_hline(yintercept = 0)+
-  geom_point(aes(ts,ch4_flux*43.2,col='Filt.'))+
-  geom_point(aes(ts,ch4_flux.c*43.2,col='clean'))+
+  geom_point(aes(TIMESTAMP,FCH4,col='Filt.'))+
+  geom_point(aes(TIMESTAMP,FCH4.c,col='clean'))+
   scale_y_continuous(expression(CH[4]~'flux ('*mu*mol~m^-2~s^-1*')'),
-                     limits = c(-3,8))+
+                     limits = c(-100,120))+
   scale_color_manual(values = c('black','red'))
 
 ```
@@ -3470,12 +3416,12 @@ ggplot(data = df)+theme_bw()+geom_hline(yintercept = 0)+
 set hour and month vectors to be able to take the averages
 
 ```{r, warning=FALSE}
-df$hour = as.numeric(format(df$ts,'%H'))
-df$month = as.numeric(format(df$ts,'%m'))
+df$hour = as.numeric(format(df$TIMESTAMP,'%H'))
+df$month = as.numeric(format(df$TIMESTAMP,'%m'))
 
 diel = df %>%
   group_by(hour,month) %>%
-  select(co2_flux.c,ch4_flux.c,LE.c,H.c,hour,month) %>%
+  select(FC.c,FCH4.c,LE.c,H.c,hour,month) %>%
   summarise_all(.funs = c(median,sd),na.rm=T)
 
 diel = subset(diel,!is.na(diel$month))
@@ -3485,10 +3431,10 @@ diel = subset(diel,!is.na(diel$month))
 
 ```{r, warning=FALSE}
 ggplot(data = diel)+geom_hline(yintercept = 0)+
-  geom_line(aes(hour,co2_flux.c_fn1),lty=2)+
-  geom_ribbon(aes(x = hour,y = co2_flux.c_fn1,
-                  ymax = co2_flux.c_fn1 + co2_flux.c_fn2,
-                  ymin = co2_flux.c_fn1 - co2_flux.c_fn2),
+  geom_line(aes(hour,FC.c_fn1),lty=2)+
+  geom_ribbon(aes(x = hour,y = FC.c_fn1,
+                  ymax = FC.c_fn1 + FC.c_fn2,
+                  ymin = FC.c_fn1 - FC.c_fn2),
               alpha= 0.5)+
   facet_wrap(~month)
 levels(diel$month)
