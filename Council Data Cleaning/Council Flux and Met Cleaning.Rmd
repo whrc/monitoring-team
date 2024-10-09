@@ -2871,11 +2871,6 @@ df = merge(tsdf,df,by = "TIMESTAMP",all = T)
 ```
 
 
-Creates a variable to input a date range for the plots in the flux section of
-cleaning code. Used to easily change date range for different data sets. 
-```{r, warning=FALSE}
-flux_dates <- c('2022-08-05', '2024-01-15')
-```
 # Initial Clean
 
 ## Energy Balance
@@ -3035,8 +3030,8 @@ hist(ch4_flux.limits,breaks = 100)
 plot(ch4_flux.limits)
 
 ggplot(data = df)+geom_hline(yintercept = 0)+
-  geom_point(aes(x=ts,y=ch4_flux),col = 'red')+
-  geom_point(aes(x=ts,y=ch4_flux.limits),col = 'black')+
+  geom_point(aes(x=TIMESTAMP,y=ch4_flux),col = 'red')+
+  geom_point(aes(x=TIMESTAMP,y=ch4_flux.limits),col = 'black')+
   scale_y_continuous(limits = c(-.35,.75))+
   scale_x_datetime(limits = as.POSIXct(c('2023-8-5','2023-10-12'),format="%F"))
 ```
@@ -3177,21 +3172,19 @@ df$FC.c = ifelse(abs(co2fluxclean - Flux_filt) > (N * roll.mad),NA,co2fluxclean)
 ggplot(data = df)+geom_hline(yintercept = 0)+
   geom_point(aes(TIMESTAMP,FC),col='red')+
   geom_point(aes(TIMESTAMP,FC.c),col='black')
-#  scale_y_continuous(limits=c(-12,8))
-  #scale_x_datetime(limits = as.POSIXct(flux_dates,format="%F"))
 ```
 
 ```{r, warning=FALSE}
 
 ggplot(data = df)+theme_bw()+geom_hline(yintercept = 0)+
-  geom_point(aes(ts,FC), col='red')+
-  geom_point(aes(ts,FC.c), col='black')+
+  geom_point(aes(TIMESTAMP,FC), col='red')+
+  geom_point(aes(TIMESTAMP,FC.c), col='black')+
 #  scale_x_datetime(limits = as.POSIXct(c('2022-8-14','2022-8-28'),format="%F"))+
   scale_y_continuous (expression('NEE ('*mu*mol~m^-2~s^-1*')'),
                       limits = c(-20,20))
 
 ggplot(data = df)+theme_bw()+geom_hline(yintercept = 0)+
-  geom_point(aes(ts,FC))+
+  geom_point(aes(TIMESTAMP,FC))+
 #  scale_x_datetime(limits = as.POSIXct(c('2022-9-24','2022-10-8'),format="%F"))+
   scale_y_continuous (expression('NEE ('*mu*mol~m^-2~s^-1*')'),
                       limits = c(-5,5))
@@ -3237,8 +3230,6 @@ ggplot(df)+geom_hline(yintercept = 0)+
   geom_point(aes(TIMESTAMP,ch4fluxclean,col='CH4 flux'))+
   geom_line(aes(TIMESTAMP,Flux_filt,col='Filter'))+
   geom_line(aes(TIMESTAMP,roll.mad,col='MAD'))+
-#  scale_y_continuous(limits = c(-.25,.3))+
- # scale_x_datetime(limits = as.POSIXct(flux_dates,format="%F"))+
   scale_color_manual(values=c('black','yellow','red'))
 ```
 
@@ -3253,8 +3244,6 @@ df$FCH4.c = ifelse(abs(ch4fluxclean - Flux_filt) > (N * roll.mad),NA,ch4fluxclea
 ggplot(data = df)+geom_hline(yintercept = 0)+
   geom_point(aes(TIMESTAMP,FCH4,col='uncleaned'))+
   geom_point(aes(TIMESTAMP,FCH4.c,col='cleaned'))+
-#  scale_y_continuous(limits = c(-.25,.3))+
-#  scale_x_datetime(limits = as.POSIXct(flux_dates,format="%F"))+
   scale_color_manual(values=c('black','red'))
 ```
 
@@ -3285,7 +3274,6 @@ ggplot(df)+geom_hline(yintercept = 0)+
   geom_line(aes(TIMESTAMP,Flux_filt,col='Filter'))+
   geom_line(aes(TIMESTAMP,roll.mad,col='MAD'))+
   scale_y_continuous(limits = c(-180,350))+
-#  scale_x_datetime(limits = as.POSIXct(flux_dates,format="%F"))+
   scale_color_manual(values=c('yellow','black','red'))
 ```
 
@@ -3300,7 +3288,6 @@ ggplot(data = df)+geom_hline(yintercept = 0)+
   geom_point(aes(TIMESTAMP,Hclean,col='uncleaned'))+
   geom_point(aes(TIMESTAMP,H.c,col='cleaned'))+
   scale_y_continuous(limits=c(-150,350))+
-#  scale_x_datetime(limits = as.POSIXct(flux_dates,format="%F"))+
   scale_color_manual(values=c('black','red'))
 ```
 
@@ -3346,7 +3333,6 @@ ggplot(df)+geom_hline(yintercept = 0)+
   geom_line(aes(TIMESTAMP,Flux_filt,col='Filter'))+
   geom_line(aes(TIMESTAMP,roll.mad,col='MAD'))+
   scale_y_continuous(limits = c(-50,400))+
- # scale_x_datetime(limits = as.POSIXct(flux_dates,format="%F"))+
   scale_color_manual(values=c('yellow','black','red'))
 ```
 
@@ -3361,7 +3347,6 @@ ggplot(data = df)+geom_hline(yintercept = 0)+
   geom_point(aes(TIMESTAMP,LEclean,col='uncleaned'))+
   geom_point(aes(TIMESTAMP,LE.c,col='cleaned'))+
   scale_y_continuous(limits=c(-100,400))+
-#  scale_x_datetime(limits = as.POSIXct(flux_dates,format="%F"))+
   scale_color_manual(values=c('black','red'))
 ```
 
