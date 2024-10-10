@@ -44,7 +44,7 @@ library(RColorBrewer)
 
 
 ```{r, warning=FALSE, echo=FALSE}
-df3 = fread('C:/Users/dtrangmoe/Documents/Churchill/CA_CF3.csv', na.strings="-9999")
+df3 = fread('C:/Users/dtrangmoe/Documents/Churchill/Data/CA_CF3.csv', na.strings="-9999")
 ```
 
 
@@ -246,35 +246,50 @@ df <- df %>%
 
 ```{r}
 
-df$day = as.Date(df$TIMESTAMP_END)
+df$date = as.Date(df$TIMESTAMP_END)
 
-day = unique(df$day)
-df_avg = as.data.frame(day)
+date = unique(df$date)
 
+#average entire dataframe with tighter threshold
+df_avg = as.data.frame(date)
+df_avg <- timeAverage(df, avg.time = "day", data.thresh = 50)
 
-## average variables by day to create daily average dataframe
-for (i in 1:ncol(df)) {
-  if (class(df[[i]])[1] == 'numeric'){
+#average dataframe with lighter threshold to get good nighttime data coverage
+df_avg_night = as.data.frame(date)
+df_avg_night <- timeAverage(df, avg.time = "day", data.thresh = 10)
 
-  colname = colnames(df)[i]
+#add nighttime average data back into full dataset
+df_avg$FC_night = df_avg_night$FC_night
+df_avg$FC_night_F = df_avg_night$FC_night_F
 
-  daily_avg_val <- aggregate(df[[colname]] ~ day, data = df, FUN = mean, na.action=na.omit)
-
-  colnames(daily_avg_val)[2] <- colname
-
-df_avg = left_join(df_avg, daily_avg_val, by='day')
-
-  }
-  else{
-    next
-  }
-}
+rm(df_avg_night)
 
 
-plot(df_avg$day, df_avg$FC_F)
-plot(df_avg$day, df_avg$GPP_F)
-plot(df_avg$day, df_avg$RECO)
-plot(df_avg$day, df_avg$FC_night_F)
+
+# #for viewing data coverage
+# 
+# 
+# plot(df_avg$FC_night)
+# 
+# year_df <- function(df, year) {
+#   df %>%
+#     filter(format(date, "%Y") == as.character(year)) %>%
+#     mutate(DOY = yday(date))
+# }
+# 
+# df_avg_2023 <- year_df(df_avg, 2023)
+# 
+# summary(df_avg_2023)
+# 
+# plot(df_avg_2023$FC_night)
+# 
+# plot(df_avg_2023$TS_1_05_1, df_avg_2023$FC_night)
+
+
+# plot(df_avg$date, df_avg$FC_F)
+# plot(df_avg$date, df_avg$GPP_F)
+# plot(df_avg$date, df_avg$RECO)
+# plot(df_avg$date, df_avg$FC_night_F)
 
 
 ```
@@ -284,8 +299,8 @@ plot(df_avg$day, df_avg$FC_night_F)
 
 ```{r}
 
-write.csv(x = df,file = 'C:/Users/dtrangmoe/Documents/Churchill/Churchill_Merged_CF1_CF3.csv',row.names = F,quote = F)
+write.csv(x = df,file = 'C:/Users/dtrangmoe/Documents/Churchill/Data/Churchill_Merged_CF1_CF3.csv',row.names = F,quote = F)
 
-write.csv(x = df_avg,file = 'C:/Users/dtrangmoe/Documents/Churchill/Churchill_Merged_Avg_CF1_CF3.csv',row.names = F,quote = F)
+write.csv(x = df_avg,file = 'C:/Users/dtrangmoe/Documents/Churchill/Data/Churchill_Merged_Avg_CF1_CF3.csv',row.names = F,quote = F)
 
 ```
