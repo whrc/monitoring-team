@@ -2932,8 +2932,8 @@ create new variable _.energy
 #Tau.energy  = replace(df$Tau ,abs(df$mismatch)>10,NA)
 #H.energy    = replace(df$H   ,abs(df$mismatch)>10,NA)
 #LE.energy   = replace(df$LE  ,abs(df$mismatch)>10,NA)
-#co2_flux.energy   = replace(df$co2_flux  ,abs(df$mismatch)>10,NA)
-#ch4_flux.energy = replace(df$ch4_flux,abs(df$mismatch)>10,NA)
+#FC.energy   = replace(df$FC  ,abs(df$mismatch)>10,NA)
+#FCH4.energy = replace(df$FCH4,abs(df$mismatch)>10,NA)
 ```
 
 ## EP QC
@@ -2941,11 +2941,11 @@ create new variable _.energy
 filter by the eddypro flags and create new variable _.qc
 
 ```{r, warning=FALSE}
-Tau.qc      = replace(df$Tau,df$qc_Tau == 2,NA)
-co2_flux.qc = replace(df$co2_flux,df$qc_co2_flux == 2,NA)
-ch4_flux.qc = replace(df$ch4_flux,df$qc_ch4_flux == 2,NA)
-LE.qc       = replace(df$LE,df$qc_LE == 2,NA)
-H.qc        = replace(df$H,df$qc_H == 2,NA)
+Tau.qc      = ifelse(df$Tau,df$qc_Tau == 2,NA)
+FC.qc       = ifelse(df$FC_qc == 2,'EP.QC','clean')
+FCH4.qc     = ifelse(df$FCH4,df$qc_FCH4 == 2,NA)
+LE.qc       = ifelse(df$LE,df$qc_LE == 2,NA)
+H.qc        = ifelse(df$H,df$qc_H == 2,NA)
 ```
 
 ## Clear Outliers
@@ -2965,9 +2965,10 @@ Cut the crazy data and create new variable (Tau.limits)
 ```{r, warning=FALSE}
 
 Tau.limits = df$TAU
-Tau.limits = replace(df$TAU,df$TAU < -1 | df$TAU > .2,NA)
+df$Tau.limits = ifelse(df$TAU < -1 | df$TAU > .2,1,0)
 
-plot(Tau.limits)
+ggplot(data = df)+
+  geom_point(aes(TIMESTAMP,TAU,color = Tau.limits))
 ```
 
 ### NEE
@@ -2979,23 +2980,24 @@ hist(df$FC,breaks=100)
 plot(df$FC)
 
 #for 2022
-plot(df$TIMESTAMP,df$FC,ylim = c(-25,25));abline(h=10, col= 'red');abline(h=-14, col='red')
+plot(df$TIMESTAMP,df$FC,ylim = c(-40,40));abline(h=25, col= 'red');abline(h=-25, col='red')
 
 # for 2023 and on
 plot(df$TIMESTAMP,df$FC,ylim = c(-25,25));abline(h=7, col= 'red');abline(h=-10, col='red')
 ```
 
-Clean based on graphs, create new variable (co2_flux.limits), and see cleaned product
+Clean based on graphs, create new variable (FC.limits), and see cleaned product
 
 ```{r, warning=FALSE}
-co2_flux.limits = df$FC
+FC.limits = df$FC
 
-# co2_flux.limits = replace(df$co2_flux,(df$co2_flux > 7 | df$co2_flux < -10) & df$TIMESTAMP >= '2023-01-01' | (df$co2_flux > 10 | df$co2_flux < -14),NA)
-# 
-# 
-# plot(df$TIMESTAMP,co2_flux.limits,ylim = c(-25,25));abline(h=7, col= 'red');abline(h=-10, col='red')
-# 
-# hist(co2_flux.limits,breaks=100)
+FC.limits = ifelse(df$FC > 25 | df$FC < -25,1,0)
+
+plot(df$TIMESTAMP,df$FC,ylim = c(-25,25))
+
+ggplot(data = df)+
+  geom_point(aes(TIMESTAMP,FC,color = FC.limits))
+# hist(FC.limits,breaks=100)
 ```
 
 ### CH4
@@ -3008,7 +3010,7 @@ hist(df$FCH4,breaks=100)
 plot(df$TIMESTAMP,df$FCH4,ylim = c(-30,350));abline(h=.3, col= 'red');abline(h=-.20, col='red'); abline(h=0,col= 'black')
 ```
 
-Clean based on graphs, create new variable (ch4_flux.limits), and see cleaned product
+Clean based on graphs, create new variable (FCH4.limits), and see cleaned product
 
 ```{r, warning=FALSE}
 CH4MOLE = ggplot(data = df)+geom_hline(yintercept = 0)+
@@ -3019,19 +3021,19 @@ CH4MOLE = ggplot(data = df)+geom_hline(yintercept = 0)+
   scale_x_datetime(limits = as.POSIXct(c('2023-9-5','2023-10-2'),format="%F"))
 CH4MOLE
 
-ch4_flux.limits = df$FCH4
+FCH4.limits = df$FCH4
 
-# ch4_flux.limits = ifelse(df$ch4_flux < 3 & df$TIMESTAMP <= '2023-9-21 11:00' & df$TIMESTAMP >='2023-9-14 16:30',NA,
-#                           ifelse(df$ch4_flux < -.20,NA,
-#                                  ifelse(df$ch4_flux > .3,NA,ch4_flux.limits)))
+# FCH4.limits = ifelse(df$FCH4 < 3 & df$TIMESTAMP <= '2023-9-21 11:00' & df$TIMESTAMP >='2023-9-14 16:30',NA,
+#                           ifelse(df$FCH4 < -.20,NA,
+#                                  ifelse(df$FCH4 > .3,NA,FCH4.limits)))
 
 
-hist(ch4_flux.limits,breaks = 100)
-plot(ch4_flux.limits)
+hist(FCH4.limits,breaks = 100)
+plot(FCH4.limits)
 
 ggplot(data = df)+geom_hline(yintercept = 0)+
-  geom_point(aes(x=TIMESTAMP,y=ch4_flux),col = 'red')+
-  geom_point(aes(x=TIMESTAMP,y=ch4_flux.limits),col = 'black')+
+  geom_point(aes(x=TIMESTAMP,y=FCH4),col = 'red')+
+  geom_point(aes(x=TIMESTAMP,y=FCH4.limits),col = 'black')+
   scale_y_continuous(limits = c(-.35,.75))+
   scale_x_datetime(limits = as.POSIXct(c('2023-8-5','2023-10-12'),format="%F"))
 ```
@@ -3078,8 +3080,8 @@ plot(LE.limits)
 use night-time only flux values and plot Ustar based on data drop off
 
 ```{r, warning=FALSE}
-df$nightCO2 = co2_flux.limits
-df$nightCO2 = replace(df$nightCO2,df$SW_IN > 10,NA)
+df$nightCO2 = ifelse(FC.limits == 1,NA,df$FC)
+df$nightCO2 = replace(df$nightCO2,df$SW_IN > 0,NA)
 
 Uthreshold=0.08
 ggplot(data = df,aes(USTAR,nightCO2))+
@@ -3103,9 +3105,9 @@ df$u_flag = ifelse(df$USTAR < Uthreshold,1,0)
 investigate the previous limits and combine all to create a new variable (clean), plot to see difference
 
 ```{r, warning=FALSE}
-co2fluxclean = ifelse(is.na(co2_flux.limits) | df$u_flag ==1 ,NA,df$FC)
+co2fluxclean = ifelse(FC.limits == 1 | df$u_flag == 1 ,NA,df$FC)
 
-ch4fluxclean = ifelse(is.na(ch4_flux.limits) | df$u_flag ==1 ,NA,df$FCH4)
+ch4fluxclean = ifelse(is.na(FCH4.limits) | df$u_flag ==1 ,NA,df$FCH4)
 
 Hclean = ifelse(is.na(H.limits) | df$u_flag ==1 ,NA,df$H)
 
@@ -3114,6 +3116,13 @@ LEclean = ifelse(is.na(LE.limits) | df$u_flag ==1 ,NA,df$LE)
 Tauclean = ifelse(is.na(Tau.limits)| df$u_flag ==1 ,NA,df$TAU)
 
 plot(df$TIMESTAMP,co2fluxclean)
+ggplot(data = df)+
+  geom_point(aes(TIMESTAMP,FC,color = u_flag))+
+  scale_x_datetime(limits = as.POSIXct(c('2019-07-01','2019-07-14')))
+
+ggplot(data = df)+
+  geom_point(aes(TIMESTAMP,FC,color = FC.limits))
+
 plot(df$TIMESTAMP,ch4fluxclean)
 plot(df$TIMESTAMP,Hclean)
 plot(df$TIMESTAMP,LEclean)
@@ -3163,18 +3172,20 @@ now filter the data based on this signal
 
 ```{r, warning=FALSE}
 #adjust this value (N) to tweak how many MADs to be away from the norm
-N = 6
+N = 3
 
 #Add clean value to dataframe (_.c)
-df$FC.c = ifelse(abs(co2fluxclean - Flux_filt) > (N * roll.mad),NA,co2fluxclean)
+df$FC.roll = ifelse(abs(co2fluxclean - Flux_filt) > (N * roll.mad),1,0)
 
 #Compare cleaned vs. uncleaned
 ggplot(data = df)+geom_hline(yintercept = 0)+
-  geom_point(aes(TIMESTAMP,FC),col='red')+
-  geom_point(aes(TIMESTAMP,FC.c),col='black')
+  geom_point(aes(TIMESTAMP,FC,col=FC.roll))+
+  scale_x_datetime(limits = as.POSIXct(c('2019-07-01','2019-08-25')))
 ```
 
 ```{r, warning=FALSE}
+
+df$FC.c = ifelse(FC.limits == 1 | df$FC.roll == 1,NA,df$FC)
 
 ggplot(data = df)+theme_bw()+geom_hline(yintercept = 0)+
   geom_point(aes(TIMESTAMP,FC), col='red')+
@@ -3184,10 +3195,11 @@ ggplot(data = df)+theme_bw()+geom_hline(yintercept = 0)+
                       limits = c(-20,20))
 
 ggplot(data = df)+theme_bw()+geom_hline(yintercept = 0)+
-  geom_point(aes(TIMESTAMP,FC))+
-#  scale_x_datetime(limits = as.POSIXct(c('2022-9-24','2022-10-8'),format="%F"))+
+  geom_point(aes(TIMESTAMP,FC), col='red')+
+  geom_point(aes(TIMESTAMP,FC.c), col='black')+
+  scale_x_datetime(limits = as.POSIXct(c('2019-7-14','2019-8-28'),format="%F"))+
   scale_y_continuous (expression('NEE ('*mu*mol~m^-2~s^-1*')'),
-                      limits = c(-5,5))
+                      limits = c(-20,20))
 ```
 
 See data with multiple layers of the MAD filter to see if it should be changed
@@ -3429,18 +3441,18 @@ levels(diel$month)
 
 ```{r, warning=FALSE}
 ggplot(data = diel)+geom_hline(yintercept = 0)+
-  geom_line(aes(hour,ch4_flux.c_fn1),lty=2)+
-  geom_ribbon(aes(x = hour,y = ch4_flux.c_fn1,
-                  ymax = ch4_flux.c_fn1 + ch4_flux.c_fn2,
-                  ymin = ch4_flux.c_fn1 - ch4_flux.c_fn2),
+  geom_line(aes(hour,FCH4.c_fn1),lty=2)+
+  geom_ribbon(aes(x = hour,y = FCH4.c_fn1,
+                  ymax = FCH4.c_fn1 + FCH4.c_fn2,
+                  ymin = FCH4.c_fn1 - FCH4.c_fn2),
               alpha= 0.5)+
   facet_wrap(~month)
 
 ggplot(data = diel)+geom_hline(yintercept = 0)+
-  geom_line(aes(hour,ch4_flux.c_fn1*43.2),lty=2)+
-  geom_ribbon(aes(x = hour,y = ch4_flux.c_fn1*43.2,
-                  ymax = ch4_flux.c_fn1*43.2 + ch4_flux.c_fn2*43.2,
-                  ymin = ch4_flux.c_fn1*43.2 - ch4_flux.c_fn2*43.2),
+  geom_line(aes(hour,FCH4.c_fn1*43.2),lty=2)+
+  geom_ribbon(aes(x = hour,y = FCH4.c_fn1*43.2,
+                  ymax = FCH4.c_fn1*43.2 + FCH4.c_fn2*43.2,
+                  ymin = FCH4.c_fn1*43.2 - FCH4.c_fn2*43.2),
               alpha= 0.5)+
   scale_y_continuous(limits = c(-1,6))+
   facet_wrap(~month)
