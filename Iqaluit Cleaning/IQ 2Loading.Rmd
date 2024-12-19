@@ -1,0 +1,155 @@
+---
+title: "IQ Loading"
+output:
+  pdf_document: default
+  html_document: default
+date: "`r Sys.Date()`"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+## IQ Loading Script
+
+Designed to read in EddyPro full output flux data and datalogger biomet data for analysis & cleaning
+
+
+Clear console and load packages 
+```{r, warning=FALSE, echo=FALSE}
+
+rm(list = ls())
+
+library(data.table)
+library(plyr)
+library(ggplot2)
+library(cowplot)
+library(openair)
+library(viridis)
+library(dplyr)
+library(lubridate)
+```
+
+
+## IQ2
+
+#### Flux Loading EddyPro Output
+
+Loads & merges EddyPro full output files 
+
+```{r, warning=FALSE}
+
+#load in the full output flux data ##################
+fp = 'C:/Users/klynoe/Documents/iqaluit-tundra-2/eddypro/'
+files = list.files(path = fp,pattern = '*full_output.+csv$',recursive = T,full.names = T)
+
+#load the headers and data into their own lists
+h   = lapply(files, fread,skip = 1,nrow = 0)
+dat = lapply(files, fread,skip = 3,header = F,na.strings=c('-9999'))
+
+ls()
+
+
+#assign the headers to the data
+for (i in 1:length(h)) {
+  names(dat[[i]]) = names(h[[i]])
+}
+df = dat[[1]]
+
+
+ #make all the lists into one dataframe - only for more than one file
+ for (i in 2:length(dat)) {
+ df = rbind.fill(df,dat[[i]])
+ }
+
+#create a timestamp from the date and time
+df$ts = as.POSIXct(x = paste(df$date,df$time,sep = ' '),tz = 'UTC')
+df = df[!duplicated(df$ts),]
+
+#take the min and max date rounding to the nearest full month
+## create NAs for beginning & end of partial months: add unit='months'
+mindate = floor_date(min(df$ts))
+maxdate = ceiling_date(max(df$ts))
+
+#create a timestamp variable every half hour
+ts = seq(from = mindate,to = maxdate,by = 60*30)
+ts = as.data.frame(ts)
+
+
+#merge with the flux data frame to create NAs where data is missing
+df = merge(ts,df,by = 'ts',all.x = T)
+
+
+#save off flux data
+write.csv(df, 'C:/Users/klynoe/Documents/iqaluit-tundra-2/R_outputs/flux/IQ2_fluxes_merged_24.csv',row.names = F)
+
+
+plot(df$ts, df$co2_flux)
+
+plot(df$ts, df$h2o_flux)
+
+
+
+plot(df$ts, df$H)
+
+plot(df$ts, df$LE)
+
+```
+
+
+
+#### Datalogger Biomet Loading
+
+Loads datalogger output files for cleaning 
+```{r, warning=FALSE}
+fp = 'C:/Users/dtrangmoe/Documents/IQ/IQ2'
+files = list.files(path = fp,pattern = '*IQ2tundra_met.+dat$',recursive = T,full.names = T)
+
+#load the headers and data into their own lists
+h   = lapply(files, fread,skip = 1,nrow = 0)
+dat = lapply(files, fread,skip = 4,header = F)
+
+ls()
+
+
+#assign the headers to the data
+for (i in 1:length(h)) {
+  names(dat[[i]]) = names(h[[i]])
+}
+
+df = dat[[1]] 
+
+df$ts = df$TIMESTAMP
+
+#make all the lists into one dataframe - only for more than one file
+# for (i in 2:length(dat)) {
+#  df = rbind.fill(df,dat[[i]])
+# }
+
+
+
+#take the min and max date rounding to the nearest full month
+## create NAs for beginning & end of partial months: add unit='months'
+mindate = floor_date(min(df$TIMESTAMP))
+maxdate = ceiling_date(max(df$TIMESTAMP))
+
+#create a timestamp variable every half hour to the full months
+ts = seq(from = mindate,to = maxdate,by = 60*30)
+ts = as.data.frame(ts)
+
+
+#merge with the flux data frame to create NAs where data is missing
+df = merge(ts,df, by='ts', all.x = T)
+
+# colSums(is.na(df))
+
+#save off loaded met data 
+write.csv(df,'C:/Users/dtrangmoe/Documents/IQ/IQ Loading & Cleaning/tidy_IQ2metdata.csv',row.names = F)
+write.csv(df,'C:/Users/dtrangmoe/Documents/IQ/IQ2/tidy_IQ2metdata.csv',row.names = F)
+
+
+```
+
+
+
