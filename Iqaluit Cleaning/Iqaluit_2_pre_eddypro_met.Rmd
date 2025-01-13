@@ -1,0 +1,232 @@
+---
+title: "Iqaluit"
+author: "Kaj"
+date: "2024-11-14"
+output: pdf_document
+---
+
+
+```{r, warning=FALSE}
+rm(list = ls())
+Sys.setenv(TZ = "UTC")
+
+library(data.table)
+library(ggplot2)
+library(cowplot)
+library(openair)
+library(plotrix)
+library(signal)
+library(svMisc)
+library(zoo)
+library(stringr)
+library(plyr)
+library(dplyr)
+
+
+df = fread('C:/Users/klynoe/Documents/iqaluit-tundra-2/met/IQtundra2_met.dat',skip=4, header = F
+           , na.strings = c('-9999','NA','NaN','NAN','-7999'))
+
+h = fread('C:/Users/klynoe/Documents/iqaluit-tundra-2/met/IQtundra2_met.dat',skip=1, nrows = 0 ,
+          na.strings = c('-9999','NA','NaN','NAN','-7999'))
+
+
+names(df) = names(h)
+#names(dat) = names(h)
+#met= df
+
+#df = rbind.fill(df,met)
+df = df[!duplicated(df$TIMESTAMP),]
+
+#df = df [!(df$TIMESTAMP <= "2024-07-26 15:00:00"),]# for erasing all data prior site install
+
+#write.csv(x = df,file = 'C:/Users/klynoe/Documents/resolute_bay/R_outputs/resolute_bay_met_202410.csv',row.names = F,quote = F)
+
+#check time stamps to ensure we have a complete series
+TIMESTAMP = seq(from = min(df$TIMESTAMP), to = max(df$TIMESTAMP),by = 60*30,tz = "UTC")
+tsdf = as.data.frame(TIMESTAMP)
+
+
+df = merge(tsdf,df,by = "TIMESTAMP",all = T)
+
+
+#na.strings not working for numbers for some reason, remove all here
+df[df == -9999] = NA
+df[df == -7999] = NA
+
+ epdf <- dat %>%
+  select(
+    TIMESTAMP = 1,
+    TA_1_1_1 = 20,
+    RH_1_1_1 = 21,
+    P_RAIN_1_1_1 = 22,
+    SHF_1_1_1 = 17,
+    SHF_2_1_1 = 18,
+    SHF_3_1_1 = 19,
+    PPFD_1_1_1 = 16,
+    SWIN_1_1_1 = 5,
+    SWOUT_1_1_1 = 6,
+    LWIN_1_1_1 = 11,
+    LWOUT_1_1_1 = 10
+  )  
+ 
+```
+
+
+
+
+```{r , warning=FALSE}
+
+library(data.table)
+library(ggplot2)
+library(dplyr)
+library(tidyr)
+library(purrr)
+library(here)
+
+
+ ###########
+
+# Define a vector for NA strings to avoid redundancy
+na_strings <- c('-9999', 'NA', 'NaN', 'NAN', '-7999')
+
+# Function to read data and set column names
+read_and_name <- function(file_path, skip_lines) {
+  # Read the data
+  data = fread(file_path, skip = skip_lines, na.strings = na_strings, header = FALSE)
+  
+  # Read header names
+  header = fread(file_path, skip = 1, nrows = 0, na.strings = na_strings)
+  
+  # Set names
+  setnames(data, names(header))
+  
+  return(data)
+}
+
+# Read and name data for both files
+df = read_and_name('C:/Users/klynoe/Documents/iqaluit-tundra-2/met/IQtundra2_met.dat', skip_lines = 4)
+df1 = read_and_name('C:/Users/klynoe/Documents/iqaluit-tundra-2/met/IQtundra2_met.dat', skip_lines = 4)
+
+#############
+
+epdf = df1 %>%
+  select(
+    TIMESTAMP = 1,
+    TA_1_1_1 = 20,
+    RH_1_1_1 = 21,
+    P_RAIN_1_1_1 = 22,
+    SHF_1_1_1 = 17,
+    SHF_2_1_1 = 18,
+    SHF_3_1_1 = 19,
+    PPFD_1_1_1 = 16,
+    SWIN_1_1_1 = 5,
+    SWOUT_1_1_1 = 6,
+    LWIN_1_1_1 = 11,
+    LWOUT_1_1_1 = 10
+  ) 
+
+str(epdf)
+
+###subset the data by year and month and write/save them as individual files
+
+#############
+
+# Define the base file path
+base_path = "C:/Users/klynoe/Documents/iqaluit-tundra-2/R_outputs/met/"
+
+# Nest the data and prepare for saving
+data_nested = epdf %>%
+  mutate(TIMESTAMP = as.POSIXct(TIMESTAMP, format = "%Y-%m-%d %H:%M")) %>%
+  mutate(year_month = format(TIMESTAMP, "%Y%m")) %>%
+  group_by(year_month) %>%
+  nest() %>%
+  ungroup() %>%  # Important to prevent errors with grouped data
+  mutate(file_path = paste0(base_path, year_month, ".csv"))
+  
+####MAKE A FOR LOOP TO INCLUDE ALL NESTED FILES
+
+data_nested$data[[1]]$TIMESTAMP_1 = as.character(data_nested$data[[1]]$TIMESTAMP)
+
+year = format(data_nested$data[[]]$TIMESTAMP,'%Y')
+month = format(data_nested$data[[]]$TIMESTAMP,'%m')
+day = format(data_nested$data$TIMESTAMP,'%d')
+hour = format(data_nested$data$TIMESTAMP,'%H')
+minute = format(data_nested$data$TIMESTAMP,'%M')
+
+date = paste(year,month,day,sep='-')
+time = paste(hour,minute,sep=':')
+timestamp = paste(date,time,sep=' ')
+
+timestamp
+
+########
+
+# Define the units row as a data frame, ensuring all types are character
+units_row = data.frame(
+  TIMESTAMP = "yyyy-mm-dd HH:MM", 
+  SWOUT_1_1_1 = "W+1m-2", 
+  SWIN_1_1_1 = "W+1m-2", 
+  LWIN_1_1_1 = "W+1m-2", 
+  LWOUT_1_1_1 = "W+1m-2",
+  PPFD_1_1_1 = "umol+1m-2s-1", 
+  TA_1_1_1 = "C", 
+  RH_1_1_1 = "%", 
+  SHF_1_1_1 = "W+1m-2", 
+  SHF_2_1_1 = "W+1m-2",
+  SHF_3_1_1 = "W+1m-2",
+  P_RAIN_1_1_1 = "mm",
+  stringsAsFactors = FALSE  # Ensure strings are not converted to factors
+)
+
+# Write each nested data frame to the specified file path, adding the units row
+walk2(
+  .x = data_nested$data, 
+  .y = data_nested$file_path, 
+  ~ {
+    # Ensure the nested data frame has the same column names and types as units_row
+    .x[] <- lapply(.x, as.character)  # Convert all columns to character
+    
+    # Combine units_row and the nested data frame
+    combined_data <- bind_rows(units_row, .x)
+    
+    # Write to CSV
+    write.csv(combined_data, .y, row.names = FALSE)
+  }
+)
+
+
+
+```
+
+
+```{r , warning=FALSE}
+
+
+# Iterate over each nested data frame within data_nested$data
+for (i in seq_along(data_nested$data)) {
+  
+  # Convert TIMESTAMP to character format for each nested data frame
+  data_nested$data[[i]]$TIMESTAMP_1 = as.character(data_nested$data[[i]]$TIMESTAMP)
+  
+  # Extract year, month, day, hour, and minute from TIMESTAMP
+  year <- format(data_nested$data[[i]]$TIMESTAMP, '%Y')
+  month <- format(data_nested$data[[i]]$TIMESTAMP, '%m')
+  day <- format(data_nested$data[[i]]$TIMESTAMP, '%d')
+  hour <- format(data_nested$data[[i]]$TIMESTAMP, '%H')
+  minute <- format(data_nested$data[[i]]$TIMESTAMP, '%M')
+  
+  
+  date <- paste(year, month, day, sep = '-')
+  time <- paste(hour, minute, sep = ':')
+  timestamp <- paste(date, time, sep = ' ')
+  
+  # Store the final timestamp in the nested data frame
+  data_nested$data[[i]]$timestamp_formatted <- timestamp
+}
+
+# The updated nested data frames now include a `timestamp_formatted` column
+
+
+
+```
+
