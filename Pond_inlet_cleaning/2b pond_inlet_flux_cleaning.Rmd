@@ -1,0 +1,919 @@
+---
+title: "Pond Inlet Flux Cleaning"
+author: "Kaj"
+date: "2024-12-23"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(error = TRUE)
+```
+
+# Flux Cleaning
+
+
+```{r, warning=FALSE}
+rm(list = ls())
+
+library(data.table)
+library(ggplot2)
+library(cowplot)
+library(openair)
+library(plotrix)
+library(signal)
+library(svMisc)
+library(zoo)
+library(stringr)
+library(plyr)
+library(dplyr)
+```
+
+Load in eddypro output files
+
+```{r warning=FALSE}
+
+met = fread('C:/Users/klynoe/Documents/pond_inlet/R_outputs/pondinlet_met_clean_202411.csv')
+
+df = fread('C:/Users/klynoe/Documents/pond_inlet/R_outputs/pond_inlet_fluxes_merged_2024_07_11.csv')
+
+df$TIMESTAMP = df$ts
+
+# Ensure TIMESTAMP is in POSIXct format with UTC timezone
+df$TIMESTAMP <- as.POSIXct(df$TIMESTAMP, tz = "UTC")
+
+# Filter rows with TIMESTAMP greater than "2024-07-26 16:30:00"
+filter_date <- as.POSIXct("2024-07-26 16:30:00", tz = "UTC")
+#filter_date <- as.POSIXct("2024-10-30 16:30:00", tz = "UTC")
+#df <- df[!(df$TIMESTAMP <= filter_date), ]
+#df <- df[!is.na(df$TIMESTAMP), ]
+
+met <- met[!(met$TIMESTAMP <= filter_date), ]
+met <- met[!is.na(met$TIMESTAMP), ]
+
+
+df= merge(df,met,by='TIMESTAMP',all = T)
+
+#check time stamps to ensure we have a complete series
+TIMESTAMP = seq(from = min(df$TIMESTAMP), to = max(df$TIMESTAMP),by = 60*30,tz = "UTC")
+tsdf = as.data.frame(TIMESTAMP)
+
+df = merge(tsdf,df,by = "TIMESTAMP",all = T)
+
+```
+
+
+#Creates a variable to input a date range for the plots in the flux section of
+#cleaning code. Used to easily change date range for different data sets. 
+```{r, warning=FALSE}
+flux_dates <- c("2024-07-26",'2024-12-01')
+```
+
+#Create Flags
+```{r, warning=FALSE}
+df$Tau.flag <- as.numeric(df$qc_Tau)
+df$co2_flux.flag <- as.numeric(df$qc_co2_flux)
+df$ch4_flux.flag <- as.numeric(df$qc_ch4_flux)
+df$LE.flag <- as.numeric(df$qc_LE)
+df$H.flag <- as.numeric(df$qc_H)
+
+
+#check that it worked
+plot(df$qc_co2_flux, df$co2_flux.flag)
+
+```
+
+
+# Initial Clean
+
+## Energy Balance
+
+combine energy fluxes by met and flux components
+
+```{r}
+df$met = (df$LWIN_6_14_1_1_1.c + df$SWIN_6_10_1_1_1.c) - (df$LWOUT_6_15_1_1_1.c + df$SWOUT_6_11_1_1_1.c)
+df$flux = df$H + df$LE
+
+plot(df$met, df$flux)
+
+#add better plot here! with 1:1 line and better axis ratio
+
+```
+
+plot all solar radiation
+
+```{r, warning=FALSE}
+plot(df$ts,df$SWIN_6_10_1_1_1.c)
+plot(df$ts,df$SWOUT_6_11_1_1_1.c)
+plot(df$ts,df$LWIN_6_14_1_1_1.c,ylim = c(0,800))
+plot(df$ts,df$LWOUT_6_15_1_1_1.c,ylim = c(0,800))
+```
+
+create and plot mismatch variable between met and flux
+
+```{r, warning=FALSE}
+#df$mismatch = df$flux/df$met
+
+#mismatch.limits = ifelse(df$mismatch > 10 & df$mismatch < -10, NA,mismatch.limits)
+
+#mismatch.limits = replace(df$mismatch, df$mismatch < -10 | df$mismatch > 10,NA)
+
+
+#plot(df$ts,mismatch.limits,)
+```
+
+plot energy balance
+
+```{r, echo=FALSE}
+
+#mismatch = df$mismatch
+
+#ggplot(data = df)+ theme_bw()+ geom_abline(intercept = 1,color='blue')+
+  #geom_point(aes(met,flux,color=mismatch.limits))+
+  #scale_x_continuous(limits = c(-200,600))+
+  #scale_y_continuous(limits = c(-200,600))+
+  #scale_color_viridis()
+    
+#plot(df$met,df$flux, abline(0, 1, col= 'blue'))
+```
+
+NEED TO REASSESS OR GET RID OF THIS CHUNK ---- removes where the energy balance is off by more than a factor of 10, not sure I like this, mostly removes small fluxes where the factor would have a larger relative mismatch
+
+create new variable _.energy
+
+```{r, warning=FALSE}
+#Tau.energy  = replace(df$Tau ,abs(df$mismatch)>10,NA)
+#H.energy    = replace(df$H   ,abs(df$mismatch)>10,NA)
+#LE.energy   = replace(df$LE  ,abs(df$mismatch)>10,NA)
+#co2_flux.energy   = replace(df$co2_flux  ,abs(df$mismatch)>10,NA)
+#ch4_flux.energy = replace(df$ch4_flux,abs(df$mismatch)>10,NA)
+```
+
+## EP QC
+
+filter by the eddypro flags and create new variable _.qc
+
+```{r, warning=FALSE}
+Tau.qc      = replace(df$Tau,df$qc_Tau == 2,NA)
+co2_flux.qc = replace(df$co2_flux,df$qc_co2_flux == 2,NA)
+ch4_flux.qc = replace(df$ch4_flux,df$qc_ch4_flux == 2,NA)
+LE.qc       = replace(df$LE,df$qc_LE == 2,NA)
+H.qc        = replace(df$H,df$qc_H == 2,NA)
+```
+
+## Clear Outliers
+
+look for absolute outliers and manually set some absolute limits to remove crazy data
+
+### Tau
+
+Plot Tau Histogram
+
+```{r, warning=FALSE}
+hist(df$Tau,breaks=100)
+```
+
+Cut the crazy data and create new variable (Tau.limits)
+
+```{r, warning=FALSE}
+
+Tau.limits = df$Tau
+Tau.limits = replace(df$Tau,df$Tau < -1 | df$Tau > .2,NA)
+
+plot(Tau.limits)
+
+```
+
+### NEE
+
+Plot NEE Histogram and what we might clean
+
+```{r, warning=FALSE}
+hist(co2_flux.qc,breaks=100)
+
+#
+plot(df$ts,co2_flux.qc,ylim = c(-25,25));abline(h=20, col= 'red');abline(h=-20, col='red')
+
+# 
+plot(df$ts,co2_flux.qc,ylim = c(-25,25));abline(h=7, col= 'red');abline(h=-10, col='red')
+```
+
+Clean based on graphs, create new variable (co2_flux.limits), and see cleaned product
+
+```{r, warning=FALSE}
+co2_flux.limits = replace(df$co2_flux,(df$co2_flux > 7 | df$co2_flux < -10) & df$TIMESTAMP >= '2024-07-26' | (df$co2_flux > 10 | df$co2_flux < -14),NA)
+
+# Make .flag = 3 everywhere where cleaning is done via absolute limits
+df$co2_flux.flag <- ifelse(is.na(co2_flux.limits) & !is.na(df$co2_flux) & df$co2_flux.flag != 2, 3, df$co2_flux.flag)
+
+
+plot(df$ts,co2_flux.limits,ylim = c(-25,25));abline(h=7, col= 'red');abline(h=-10, col='red')
+
+hist(co2_flux.limits,breaks=100)
+```
+
+### CH4
+
+Plot CH4 Histogram and what we might clean
+
+```{r, warning=FALSE}
+hist(df$ch4_flux,breaks=100)
+
+plot(df$ts,df$ch4_flux,ylim = c(-.3,.35));abline(h=.3, col= 'red');abline(h=-.20, col='red'); abline(h=0,col= 'black')
+```
+
+Clean based on graphs, create new variable (ch4_flux.limits), and see cleaned product
+
+```{r, warning=FALSE}
+
+
+CH4MOLE = ggplot(data = df)+geom_hline(yintercept = 0)+
+  geom_point(aes(x=ts,y=ch4_mole_fraction))+
+  geom_vline(xintercept = as.POSIXct('2024-7-26 16:30'),col = 'red')+
+  geom_vline(xintercept = as.POSIXct('2024-12-01 11:00'),col = 'red')+
+  scale_y_continuous(limits = c(0,4))
+ 
+
+ch4_flux.limits = df$ch4_flux
+
+# Make .flag = 3 everywhere where cleaning is done via absolute limits
+df$ch4_flux.flag <- ifelse(is.na(ch4_flux.limits) & !is.na(df$ch4_flux) & df$ch4_flux.flag != 2, 3, df$ch4_flux.flag)
+         
+                                        
+hist(ch4_flux.limits,breaks = 100)
+plot(ch4_flux.limits)
+
+ggplot(data = df)+geom_hline(yintercept = 0)+
+  geom_point(aes(x=ts,y=ch4_flux),col = 'red')+
+  geom_point(aes(x=ts,y=ch4_flux.limits),col = 'black')+
+  scale_y_continuous(limits = c(-.15,.15))
+```
+
+### H
+
+Plot H Histogram and what we might clean
+
+```{r, warning=FALSE}
+hist(df$H,breaks=100)
+
+plot(df$ts,df$H,ylim = c(-250,450));abline(h=-150, col= 'red');abline(h=360, col='red')
+```
+
+Clean based on graphs, create new variable (H.limits), and see cleaned product
+
+```{r, warning=FALSE}
+H.limits = replace(df$H, df$H < -150 | df$H > 360,NA)
+
+# Make .flag = 3 everywhere where cleaning is done via absolute limits
+df$H.flag <- ifelse(is.na(H.limits) & !is.na(df$H) & df$H.flag != 2, 3, df$H.flag)
+
+hist(H.limits,breaks = 100)
+plot(H.limits)
+```
+
+### LE
+
+Plot LE Histogram and what we might clean
+
+
+```{r, warning=FALSE}
+hist(df$LE,breaks=100)
+
+plot(df$ts,df$LE,ylim = c(-40,450));abline(h=-40, col= 'red');abline(h=390, col='red')
+```
+
+Clean based on graphs, create new variable (H.limits), and see cleaned product
+
+```{r, warning=FALSE}
+LE.limits = replace(df$LE, df$LE < -40 | df$LE > 390,NA)
+
+# Make .flag = 3 everywhere where cleaning is done via absolute limits
+df$LE.flag <- ifelse(is.na(LE.limits) & !is.na(df$LE) & df$LE.flag != 2, 3, df$LE.flag)
+
+hist(LE.limits)
+plot(LE.limits)
+```
+
+## USTAR
+
+use night-time only flux values and plot Ustar based on data drop off
+
+```{r, warning=FALSE}
+df$nightCO2 = co2_flux.limits
+df$nightCO2 = replace(df$nightCO2,df$SWIN_6_10_1_1_1 > 5,NA)
+
+Uthreshold=0.075
+ggplot(data = df,aes(`u*`,nightCO2))+
+  ylab(expression(paste("Flux (g-C", ~CO[2], ~"m",""^"-2","d",""^"-1",")")))+
+  geom_point()+xlab("U*")+
+  scale_x_continuous(limits = c(0,1))+
+  geom_vline(xintercept = Uthreshold,col='red')
+
+```
+
+pick threshold and filter based on plots above, I liked .065
+
+
+created flag to indicate where u* values are below our threshold- makes cleaning with u* optional but easy when using cleaned data sets
+```{r, warning=FALSE}
+df$u_flag = ifelse(df$`u*` < Uthreshold,1,0)
+```
+
+## Combine Cleaning
+
+investigate the previous limits and combine all to create a new variable (clean), plot to see difference
+
+```{r, warning=FALSE}
+co2fluxclean = ifelse(is.na(co2_flux.qc) | is.na(co2_flux.limits),NA,df$co2_flux)
+
+ch4fluxclean = ifelse(is.na(ch4_flux.qc) | is.na(ch4_flux.limits),NA,df$ch4_flux)
+
+Hclean = ifelse(is.na(H.qc) | is.na(H.limits),NA,df$H)
+
+LEclean = ifelse(is.na(LE.qc) | is.na(LE.limits),NA,df$LE)
+
+Tauclean = ifelse(is.na(Tau.qc) | is.na(Tau.limits),NA,df$Tau)
+
+plot(df$ts,co2fluxclean)
+#plot(df$ts,ch4fluxclean)
+plot(df$ts,Hclean)
+plot(df$ts,LEclean)
+plot(df$ts,Tauclean)
+```
+
+Add cleaned tau to dataframe (no MAD filter)
+```{r, warning=FALSE}
+df$Tau.c = Tauclean
+```
+
+# MAD Filter
+
+Now, Spike filtering on half-hourly fluxes. For this type of data, filters based on median rather than std perform better. Use Unsymmetric Distributions and double MAD -MAD=Median Absolute Deviation for more info see link below <https://eurekastatistics.com/using-the-median-absolute-deviation-to-find-outliers/>
+
+## NEE
+```{r, warning=FALSE}
+f = co2fluxclean # first make a new flux vector to apply the above filters
+# prepare the inputs for a zero-phase (forward and reverse) filter  
+ind       = which(complete.cases(f))   # first save the index of all the NAs
+b         = rep(1,8)/8                 # moving average coefficient
+a         = 1                          # coefficient of the ARMA filter
+Flux_i    = filtfilt(b, a, na.omit(f)) #create a forward and reverse ARMA filter
+Flux_filt = f                          # make a copy of the full fluxes again
+Flux_filt[ind] = Flux_i                # apply the filter where the real data exist
+
+n = 7*48 # set the length of the rolling filter, 48 half hours in day * x days
+roll.mad = rollapply(data = Flux_filt,
+                     width = n,
+                     FUN = mad,
+                     partial = TRUE,
+                     na.rm = T,
+                     fill = NA)  #create a rolling MAD or sd or other
+roll.mad[is.na(Flux_filt)] = NA  #make NA values where NAs exist in the real data
+
+ggplot(df)+geom_hline(yintercept = 0)+
+  geom_point(aes(ts,co2fluxclean,col='CO2 flux'))+
+  geom_line(aes(ts,Flux_filt,col='Filter'))+
+  geom_line(aes(ts,roll.mad,col='MAD'))+
+  scale_y_continuous(limits = c(-10,10))+
+  scale_x_datetime(limits = as.POSIXct(flux_dates,format="%F"))+
+  scale_color_manual(values=c('black','yellow','red'))+
+  geom_vline(xintercept = as.POSIXct('2024-01-01'))
+```
+
+now filter the data based on this signal
+
+```{r, warning=FALSE}
+#adjust this value (N) to tweak how many MADs to be away from the norm
+N =1
+
+#Add clean value to dataframe (_.c)
+
+df$co2_flux.c = ifelse(abs(co2fluxclean - Flux_filt) > (N * roll.mad),NA,co2fluxclean)
+```
+
+ADD THE FLAGS
+
+```{r, warning=FALSE}
+df$co2_flux.flag <- ifelse(is.na(df$co2_flux.c) & !is.na(co2fluxclean) & df$co2_flux.flag != 2 & df$co2_flux.flag != 3, 4, df$co2_flux.flag)
+
+df$co2_flux.flag <- as.factor(df$co2_flux.flag)
+summary(df$co2_flux.flag)
+
+
+color_map = c("0" = "yellow3", "1" = "darkblue" , "2" =  "red4", "3" = "pink3", "4" = "green4")
+
+ggplot(data = df)+geom_hline(yintercept = 0)+
+  geom_point(aes(TIMESTAMP,co2_flux,color = co2_flux.flag))+
+  #geom_point(aes(TIMESTAMP,co2_flux.c),col='black')+
+  scale_y_continuous(limits=c(-12,8))+
+  scale_x_datetime(limits = as.POSIXct(flux_dates,format="%F"))+
+scale_color_manual(values = color_map, name = "QC CO2 Flux")
+
+ggplot(data = df)+geom_hline(yintercept = 0)+
+  geom_point(aes(TIMESTAMP,co2_flux,color = co2_flux.flag))+
+  geom_point(aes(TIMESTAMP,co2_flux.c),col='black')+
+  scale_y_continuous(limits=c(-12,8))+
+  scale_x_datetime(limits = as.POSIXct(flux_dates,format="%F"))+
+scale_color_manual(values = color_map, name = "QC CO2 Flux")
+
+
+```
+
+#Compare cleaned vs. uncleaned
+```{r, warning=FALSE}
+
+ggplot(data = df)+geom_hline(yintercept = 0)+
+  geom_point(aes(TIMESTAMP,co2_flux),col='red')+
+  geom_point(aes(TIMESTAMP,co2_flux.c),col='black')+
+  scale_y_continuous(limits=c(-12,8))+
+    #scale_x_datetime(limits = as.POSIXct(c('2024-09-01','2024-09-12'),format="%F"))
+ scale_x_datetime(limits = as.POSIXct(flux_dates,format="%F"))
+
+ggplot(data = df)+geom_hline(yintercept = 0)+
+  geom_point(aes(TIMESTAMP,co2_flux,colour = qc_co2_flux))+
+  geom_point(aes(TIMESTAMP,co2_flux.c),col='black')+
+  scale_y_continuous(limits=c(-12,8))+
+    #scale_x_datetime(limits = as.POSIXct(c('2024-09-01','2024-09-12'),format="%F"))
+ scale_x_datetime(limits = as.POSIXct(flux_dates,format="%F"))
+
+ggplot(data = df)+geom_hline(yintercept = 0)+
+  geom_point(aes(TIMESTAMP,co2_flux,color = co2_flux.flag))+
+  scale_y_continuous(limits=c(-12,8))+
+  scale_x_datetime(limits = as.POSIXct(flux_dates,format="%F"))+
+scale_color_manual(values = color_map, name = "QC CO2 Flux")  
+ 
+ ggplot(data = df)+geom_hline(yintercept = 0)+
+  geom_point(aes(TIMESTAMP,co2_flux,color = co2_flux.flag))+
+  geom_point(aes(TIMESTAMP,co2_flux.c),col='black')+
+  scale_y_continuous(limits=c(-12,8))+
+  scale_x_datetime(limits = as.POSIXct(flux_dates,format="%F"))+
+scale_color_manual(values = color_map, name = "QC CO2 Flux")  
+```
+
+```{r, warning=FALSE}
+
+ggplot(data = df)+theme_bw()+geom_hline(yintercept = 0)+
+  geom_point(aes(ts,co2_flux), col='red')+
+  geom_point(aes(ts,co2_flux.c), col='black')+
+  #scale_x_datetime(limits = as.POSIXct(c("2024-07-25",'2024-10-22'),format="%F"))+
+  scale_y_continuous (expression('NEE ('*mu*mol~m^-2~s^-1*')'),
+                      limits = c(-20,20))
+
+ggplot(data = df)+theme_bw()+geom_hline(yintercept = 0)+
+  geom_point(aes(ts,co2_flux))+
+  #scale_x_datetime(limits = as.POSIXct(c("2024-07-25",'2024-10-22'),format="%F"))+
+  scale_y_continuous (expression('NEE ('*mu*mol~m^-2~s^-1*')'),
+                      limits = c(-5,5))
+```
+
+See data with multiple layers of the MAD filter to see if it should be changed
+
+```{r, warning=FALSE}
+ggplot(data = df)+
+  geom_ribbon(aes(x = ts,ymax = Flux_filt+roll.mad*6,ymin = Flux_filt-roll.mad*6,fill='6'))+
+  geom_ribbon(aes(x = ts,ymax = Flux_filt+roll.mad*3,ymin = Flux_filt-roll.mad*3,fill='3'))+
+  geom_ribbon(aes(x = ts,ymax = Flux_filt+roll.mad*2,ymin = Flux_filt-roll.mad*2,fill='2'))+
+  geom_ribbon(aes(x = ts,ymax = Flux_filt+roll.mad*1,ymin = Flux_filt-roll.mad*1,fill='1'))+
+  geom_point(aes(ts,co2fluxclean),col='red')+
+  geom_point(aes(ts,co2_flux.c),col='black')+
+  scale_y_continuous(limits = c(-10,10))
+```
+
+## CH4
+```{r, warning=FALSE}
+ #apply the moving window filter
+f = ch4fluxclean # first make a new flux vector to apply the above filters
+
+# prepare the inputs for a zero-phase (forward and reverse) filter  
+ind       = which(complete.cases(f))   # first save the index of all the NAs
+b         = rep(1,8)/8                 # moving average coefficient
+a         = 1                          # coefficient of the ARMA filter
+Flux_i    = filtfilt(b, a, na.omit(f)) #create a forward and reverse ARMA filter
+Flux_filt = f                          # make a copy of the full fluxes again
+Flux_filt[ind] = Flux_i                # apply the filter where the real data exist
+
+n = 7*48 # set the length of the rolling filter, 48 half hours in day * x days
+roll.mad = rollapply(data = Flux_filt,
+                     width = n,
+                     FUN = mad,
+                     partial = TRUE,
+                     na.rm = T,
+                     fill = NA)  #create a rolling MAD or sd or other
+roll.mad[is.na(Flux_filt)] = NA  #make NA values where NAs exist in the real data
+
+ggplot(df)+geom_hline(yintercept = 0)+
+  geom_point(aes(ts,ch4fluxclean,col='CH4 flux'))+
+  geom_line(aes(ts,Flux_filt,col='Filter'))+
+  geom_line(aes(ts,roll.mad,col='MAD'))+
+  scale_y_continuous(limits = c(-.25,.3))+
+  scale_x_datetime(limits = as.POSIXct(flux_dates,format="%F"))+
+  scale_color_manual(values=c('black','yellow','red'))
+```
+
+adjust this (N) to tweak how many MADs to be away from the norm, CH4 deserves more because of it's nature, add clean value to the dataframe (_.c) and compare cleaned vs. uncleaned
+
+
+```{r, warning=FALSE}
+N = 6 
+
+df$ch4_flux.c = ifelse(abs(ch4fluxclean - Flux_filt) > (N * roll.mad),NA,ch4fluxclean)
+
+ggplot(data = df)+geom_hline(yintercept = 0)+
+  geom_point(aes(TIMESTAMP,ch4_flux,col='uncleaned'))+
+  geom_point(aes(TIMESTAMP,ch4_flux.c,col='cleaned'))+
+  scale_y_continuous(limits = c(-.25,.3))+
+  scale_x_datetime(limits = as.POSIXct(flux_dates,format="%F"))+
+  scale_color_manual(values=c('black','red'))
+```
+
+
+Add flag data
+```{r}
+
+df$ch4_flux.flag <- ifelse(is.na(df$ch4_flux.c) & !is.na(ch4fluxclean) & df$ch4_flux.flag != 2 & df$ch4_flux.flag != 3, 4, df$ch4_flux.flag)
+
+df$ch4_flux.flag <- as.factor(df$ch4_flux.flag)
+summary(df$ch4_flux.flag)
+
+
+color_map = c("0" = "yellow3", "1" = "darkblue" , "2" =  "red4", "3" = "pink3", "4" = "green4")
+
+ggplot(data = df)+geom_hline(yintercept = 0)+
+  geom_point(aes(TIMESTAMP,ch4_flux,color = ch4_flux.flag))+
+  #geom_point(aes(TIMESTAMP,ch4_flux.c),col='black')+
+  #scale_y_continuous(limits=c(-12,8))+
+  scale_x_datetime(limits = as.POSIXct(flux_dates,format="%F"))+
+scale_color_manual(values = color_map, name = "QC ch4 Flux")
+
+ggplot(data = df)+geom_hline(yintercept = 0)+
+  geom_point(aes(TIMESTAMP,ch4_flux,color = ch4_flux.flag))+
+  geom_point(aes(TIMESTAMP,ch4_flux.c),col='black')+
+  #scale_y_continuous(limits=c(-12,8))+
+  scale_x_datetime(limits = as.POSIXct(flux_dates,format="%F"))+
+scale_color_manual(values = color_map, name = "QC ch4 Flux")
+
+```
+
+See data with multiple layers of the MAD filter to see if it should be changed
+
+```{r, warning=FALSE}
+CH4Filter = ggplot(data = df)+geom_hline(yintercept = 0)+
+  geom_point(aes(df$ts,ch4fluxclean),col='red')+
+  geom_point(aes(df$ts,ch4_flux.c),col='black')+
+  scale_y_continuous(limits = c(-.22,.25))
+
+CH4RSSI = ggplot(data = df)+geom_hline(yintercept = 0)+
+  geom_line(aes(x=ts,y=rssi_77_mean))+
+  scale_y_continuous(limits = c(-1,78))
+
+
+CH4MOLE = ggplot(data = df)+geom_hline(yintercept = 0)+
+  geom_point(aes(x=ts,y=ch4_mole_fraction))+
+  scale_y_continuous(limits = c(0,4))
+
+CH4_FALLSOILTCOMP = plot_grid(CH4Filter,CH4RSSI,CH4MOLE,nrow=3,align = 'v')
+CH4_FALLSOILTCOMP
+
+```
+#Compare cleaned vs. uncleaned
+```{r, warning=FALSE}
+
+ggplot(data = df)+geom_hline(yintercept = 0)+
+  geom_point(aes(TIMESTAMP,ch4_flux),col='red')+
+  geom_point(aes(TIMESTAMP,ch4_flux.c),col='black')+
+  scale_y_continuous(limits=c(-.5,.8))+
+    #scale_x_datetime(limits = as.POSIXct(c('2024-09-01','2024-09-12'),format="%F"))
+ scale_x_datetime(limits = as.POSIXct(flux_dates,format="%F"))
+
+ggplot(data = df)+geom_hline(yintercept = 0)+
+  geom_point(aes(TIMESTAMP,ch4_flux,colour = qc_ch4_flux))+
+  geom_point(aes(TIMESTAMP,ch4_flux.c),col='black')+
+  scale_y_continuous(limits=c(-.5,.8))+
+    #scale_x_datetime(limits = as.POSIXct(c('2024-09-01','2024-09-12'),format="%F"))
+ scale_x_datetime(limits = as.POSIXct(flux_dates,format="%F"))
+
+ggplot(data = df)+geom_hline(yintercept = 0)+
+  geom_point(aes(TIMESTAMP,ch4_flux,color = ch4_flux.flag))+
+  scale_y_continuous(limits=c(-.5,.8))+
+  scale_x_datetime(limits = as.POSIXct(flux_dates,format="%F"))+
+scale_color_manual(values = color_map, name = "QC CH4 Flux")  
+ 
+ ggplot(data = df)+geom_hline(yintercept = 0)+
+  geom_point(aes(TIMESTAMP,ch4_flux,color = ch4_flux.flag))+
+  geom_point(aes(TIMESTAMP,ch4_flux.c),col='black')+
+  scale_y_continuous(limits=c(-.5,.8))+
+  scale_x_datetime(limits = as.POSIXct(flux_dates,format="%F"))+
+scale_color_manual(values = color_map, name = "QC CH4 Flux")  
+```
+
+## H
+```{r, warning=FALSE}
+# apply the moving window filter
+f = Hclean # first make a new flux vector to apply the above filters
+
+# prepare the inputs for a zero-phase (forward and reverse) filter  
+ind       = which(complete.cases(f))   # first save the index of all the NAs
+b         = rep(1,8)/8                 # moving average coefficient
+a         = 1                          # coefficient of the ARMA filter
+Flux_i    = filtfilt(b, a, na.omit(f)) #create a forward and reverse ARMA filter
+Flux_filt = f                          # make a copy of the full fluxes again
+Flux_filt[ind] = Flux_i                # apply the filter where the real data exist
+
+n = 7*48 # set the length of the rolling filter, 48 half hours in day * x days
+roll.mad = rollapply(data = Flux_filt,
+                     width = n,
+                     FUN = mad,
+                     partial = TRUE,
+                     na.rm = T,
+                     fill = NA)  #create a rolling MAD or sd or other
+roll.mad[is.na(Flux_filt)] = NA  #make NA values where NAs exist in the real data
+
+ggplot(df)+geom_hline(yintercept = 0)+
+  geom_point(aes(ts,Hclean,col='H'))+
+  geom_line(aes(ts,Flux_filt,col='Filter'))+
+  geom_line(aes(ts,roll.mad,col='MAD'))+
+  scale_y_continuous(limits = c(-180,350))+
+  scale_x_datetime(limits = as.POSIXct(flux_dates,format="%F"))+
+  scale_color_manual(values=c('yellow','black','red'))
+```
+
+Now filter the data based on this signal (N) adjust this to tweak how many MADs to be away from the norm, add clean value to dataframe (_.c) and Compare Clean vs. Uncleaned
+
+```{r, warning=FALSE}
+N = 3
+
+df$H.c = ifelse(abs(Hclean - Flux_filt) > (N * roll.mad),NA,Hclean)
+
+ggplot(data = df)+geom_hline(yintercept = 0)+
+  geom_point(aes(TIMESTAMP,Hclean,col='uncleaned'))+
+  geom_point(aes(TIMESTAMP,H.c,col='cleaned'))+
+  scale_y_continuous(limits=c(-150,350))+
+  scale_x_datetime(limits = as.POSIXct(flux_dates,format="%F"))+
+  scale_color_manual(values=c('black','red'))
+```
+
+See data with multiple layers of the MAD filter to see if it should be changed
+
+```{r, warning=FALSE}
+ggplot(data = df)+
+  geom_ribbon(aes(x = df$ts,ymax = Flux_filt+roll.mad*6,ymin = Flux_filt-roll.mad*6,fill='6'))+
+  geom_ribbon(aes(x = df$ts,ymax = Flux_filt+roll.mad*3,ymin = Flux_filt-roll.mad*3,fill='3'))+
+  geom_ribbon(aes(x = df$ts,ymax = Flux_filt+roll.mad*2,ymin = Flux_filt-roll.mad*2,fill='2'))+
+  geom_ribbon(aes(x = df$ts,ymax = Flux_filt+roll.mad*1,ymin = Flux_filt-roll.mad*1,fill='1'))+
+  geom_point(aes(df$ts,Hclean),col='red')+
+  geom_point(aes(df$ts,H.c),col='black')+
+  scale_y_continuous(limits = c(-100,100))
+```
+
+Add flag data
+```{r}
+
+df$H.flag <- ifelse(is.na(df$H.c) & !is.na(Hclean) & df$H.flag != 2 & df$H.flag != 3, 4, df$H.flag)
+
+df$H.flag <- as.factor(df$H.flag)
+summary(df$H.flag)
+
+color_map = c("0" = "yellow3", "1" = "darkblue" , "2" =  "red4", "3" = "pink3", "4" = "green4")
+
+ggplot(data = df)+geom_hline(yintercept = 0)+
+  geom_point(aes(TIMESTAMP,H,color = H.flag))+
+  #geom_point(aes(TIMESTAMP,H.c),col='black')+
+  #scale_y_continuous(limits=c(-12,8))+
+  scale_x_datetime(limits = as.POSIXct(flux_dates,format="%F"))+
+scale_color_manual(values = color_map, name = "QC H Flux")
+
+ggplot(data = df)+geom_hline(yintercept = 0)+
+  geom_point(aes(TIMESTAMP,H,color = H.flag))+
+  geom_point(aes(TIMESTAMP,H.c),col='black')+
+  #scale_y_continuous(limits=c(-12,8))+
+  scale_x_datetime(limits = as.POSIXct(flux_dates,format="%F"))+
+scale_color_manual(values = color_map, name = "QC H Flux")
+
+
+```
+## LE
+
+```{r, warning=FALSE}
+# apply the moving window filter
+f = LEclean # first make a new flux vector to apply the above filters
+
+# prepare the inputs for a zero-phase (forward and reverse) filter  
+ind       = which(complete.cases(f))   # first save the index of all the NAs
+b         = rep(1,8)/8                 # moving average coefficient
+a         = 1                          # coefficient of the ARMA filter
+Flux_i    = filtfilt(b, a, na.omit(f)) #create a forward and reverse ARMA filter
+Flux_filt = f                          # make a copy of the full fluxes again
+Flux_filt[ind] = Flux_i                # apply the filter where the real data exist
+
+n = 7*48 # set the length of the rolling filter, 48 half hours in day * x days
+roll.mad = rollapply(data = Flux_filt,
+                     width = n,
+                     FUN = mad,
+                     partial = TRUE,
+                     na.rm = T,
+                     fill = NA)  #create a rolling MAD or sd or other
+roll.mad[is.na(Flux_filt)] = NA  #make NA values where NAs exist in the real data
+
+ggplot(df)+geom_hline(yintercept = 0)+
+  geom_point(aes(ts,LEclean,col='LE'))+
+  geom_line(aes(ts,Flux_filt,col='Filter'))+
+  geom_line(aes(ts,roll.mad,col='MAD'))+
+  scale_y_continuous(limits = c(-50,200))+
+  scale_x_datetime(limits = as.POSIXct(flux_dates,format="%F"))+
+  scale_color_manual(values=c('yellow','black','red'))
+```
+
+Now filter the data based on this signal (N) adjust this to tweak how many MADs to be away from the norm
+
+```{r, warning=FALSE}
+N = 6
+
+df$LE.c = ifelse(abs(LEclean - Flux_filt) > (N * roll.mad),NA,LEclean)
+
+ggplot(data = df)+geom_hline(yintercept = 0)+
+  geom_point(aes(TIMESTAMP,LEclean,col='uncleaned'))+
+  geom_point(aes(TIMESTAMP,LE.c,col='cleaned'))+
+  scale_y_continuous(limits=c(-100,200))+
+  scale_x_datetime(limits = as.POSIXct(flux_dates,format="%F"))+
+  scale_color_manual(values=c('black','red'))
+```
+
+See data with multiple layers of the MAD filter to see if it should be changed
+
+```{r, warning=FALSE}
+ggplot(data = df)+
+  geom_ribbon(aes(x = df$ts,ymax = Flux_filt+roll.mad*6,ymin = Flux_filt-roll.mad*6,fill='6'))+
+  geom_ribbon(aes(x = df$ts,ymax = Flux_filt+roll.mad*3,ymin = Flux_filt-roll.mad*3,fill='3'))+
+  geom_ribbon(aes(x = df$ts,ymax = Flux_filt+roll.mad*2,ymin = Flux_filt-roll.mad*2,fill='2'))+
+  geom_ribbon(aes(x = df$ts,ymax = Flux_filt+roll.mad*1,ymin = Flux_filt-roll.mad*1,fill='1'))+
+  geom_point(aes(df$ts,LEclean),col='red')+
+  geom_point(aes(df$ts,LE.c),col='black')+
+  scale_y_continuous(limits = c(-40,80))
+```
+
+Add flag data
+```{r}
+
+df$LE.flag <- ifelse(is.na(df$LE.c) & !is.na(co2fluxclean) & df$LE.flag != 2 & df$LE.flag != 3, 4, df$LE.flag)
+
+df$LE.flag <- as.factor(df$LE.flag)
+summary(df$LE.flag)
+
+color_map = c("0" = "yellow3", "1" = "darkblue" , "2" =  "red4", "3" = "pink3", "4" = "green4")
+
+ggplot(data = df)+geom_hline(yintercept = 0)+
+  geom_point(aes(TIMESTAMP,LE,color = LE.flag))+
+  #geom_point(aes(TIMESTAMP,LE.c),col='black')+
+  #scale_y_continuous(limits=c(-12,8))+
+  scale_x_datetime(limits = as.POSIXct(flux_dates,format="%F"))+
+scale_color_manual(values = color_map, name = "QC LE Flux")
+
+ggplot(data = df)+geom_hline(yintercept = 0)+
+  geom_point(aes(TIMESTAMP,LE,color = LE.flag))+
+  geom_point(aes(TIMESTAMP,LE.c),col='black')+
+  #scale_y_continuous(limits=c(-12,8))+
+  scale_x_datetime(limits = as.POSIXct(flux_dates,format="%F"))+
+scale_color_manual(values = color_map, name = "QC LE Flux")
+```
+# Main Plots
+
+```{r, warning=FALSE}
+ggplot(data = df)+theme_bw()+geom_hline(yintercept = 0)+
+  geom_point(aes(ts,LE,col='Filt.'))+
+  geom_point(aes(ts,LE.c,col='clean'))+
+  scale_y_continuous(expression('LE ('*W~m^-2*')'))+
+  scale_color_manual(values = c('black','red'))
+  
+
+ggplot(data = df)+theme_bw()+geom_hline(yintercept = 0)+
+  geom_point(aes(ts,H,col='Filt.'))+
+  geom_point(aes(ts,H.c,col='clean'))+
+  scale_y_continuous(expression('H ('*W~m^-2*')'))+
+  scale_color_manual(values = c('black','red'))
+
+ggplot(data = df)+theme_bw()+geom_hline(yintercept = 0)+
+  geom_point(aes(ts,co2_flux,col='Filt.'))+
+  geom_point(aes(ts,co2_flux.c,col='clean'))+
+  scale_y_continuous (expression('NEE ('*mu*mol~m^-2~s^-1*')'),
+                      limits = c(-20,20))+
+  scale_color_manual(values = c('black','red'))
+
+ggplot(data = df)+theme_bw()+geom_hline(yintercept = 0)+
+  geom_point(aes(ts,ch4_flux*43.2,col='Filt.'))+
+  geom_point(aes(ts,ch4_flux.c*43.2,col='clean'))+
+  scale_y_continuous(expression(CH[4]~'flux ('*mu*mol~m^-2~s^-1*')'),
+                     limits = c(-3,8))+
+  scale_color_manual(values = c('black','red'))
+
+```
+
+# Diurnal Fluxes
+
+set hour and month vectors to be able to take the averages
+
+```{r, warning=FALSE}
+df$hour = as.numeric(format(df$ts,'%H'))
+df$month = as.numeric(format(df$ts,'%m'))
+
+diel = df %>%
+  group_by(hour,month) %>%
+  select(co2_flux.c,LE.c,H.c,hour,month) %>%
+  summarise_all(.funs = c(median,sd),na.rm=T)
+#,ch4_flux.c
+diel = subset(diel,!is.na(diel$month))
+```
+
+## NEE
+
+```{r, warning=FALSE}
+ggplot(data = diel)+geom_hline(yintercept = 0)+
+  geom_line(aes(hour,co2_flux.c_fn1),lty=2)+
+  geom_ribbon(aes(x = hour,y = co2_flux.c_fn1,
+                  ymax = co2_flux.c_fn1 + co2_flux.c_fn2,
+                  ymin = co2_flux.c_fn1 - co2_flux.c_fn2),
+              alpha= 0.5)+
+  facet_wrap(~month)
+levels(diel$month)
+```
+
+## CH4
+
+```{r, warning=FALSE}
+ggplot(data = diel)+geom_hline(yintercept = 0)+
+  geom_line(aes(hour,ch4_flux.c_fn1),lty=2)+
+  geom_ribbon(aes(x = hour,y = ch4_flux.c_fn1,
+                  ymax = ch4_flux.c_fn1 + ch4_flux.c_fn2,
+                  ymin = ch4_flux.c_fn1 - ch4_flux.c_fn2),
+              alpha= 0.5)+
+  facet_wrap(~month)
+
+ggplot(data = diel)+geom_hline(yintercept = 0)+
+  geom_line(aes(hour,ch4_flux.c_fn1*43.2),lty=2)+
+  geom_ribbon(aes(x = hour,y = ch4_flux.c_fn1*43.2,
+                  ymax = ch4_flux.c_fn1*43.2 + ch4_flux.c_fn2*43.2,
+                  ymin = ch4_flux.c_fn1*43.2 - ch4_flux.c_fn2*43.2),
+              alpha= 0.5)+
+  scale_y_continuous(limits = c(-1,6))+
+  facet_wrap(~month)
+```
+
+## H
+
+```{r, warning=FALSE}
+ggplot(data = diel)+geom_hline(yintercept = 0)+
+  geom_line(aes(hour,H.c_fn1),lty=2)+
+  geom_ribbon(aes(x = hour,y = H.c_fn1,
+                  ymax = H.c_fn1 + H.c_fn2,
+                  ymin = H.c_fn1 - H.c_fn2),
+              alpha= 0.5)+
+  facet_wrap(~month)
+```
+
+## LE
+
+```{r, warning=FALSE}
+ggplot(data = diel)+geom_hline(yintercept = 0)+
+  geom_line(aes(hour,LE.c_fn1),lty=2)+
+  geom_ribbon(aes(x = hour,y = LE.c_fn1,
+                  ymax = LE.c_fn1 + LE.c_fn2,
+                  ymin = LE.c_fn1 - LE.c_fn2),
+              alpha= 0.5)+
+  facet_wrap(~month)
+```
+
+# Save
+
+```{r, warning=FALSE}
+df <- df[!duplicated(df$TIMESTAMP), ]
+
+write.csv(x = df,file = 'C:/Users/klynoe/Documents/pond_inlet/R_outputs/pond_inlet_Flux_Met_Clean_Aug_Nov_24.csv',row.names = F,quote = F)
+```
+
+#NEST AND SPLIT THE DATA BY MONTH AND SAVE IN DESIRED DIRECTORY
+```{r, warning=FALSE}
+
+base_path = "C:/Users/klynoe/Documents/pond_inlet/R_outputs/met_and_flux/"
+
+# Nest the data and prepare for saving
+data_nested <- df %>%
+  mutate(TIMESTAMP = as.POSIXct(TIMESTAMP, format = "%Y-%m-%d %H:%M:%S")) %>%
+  mutate(year_month = format(TIMESTAMP, "%Y%m")) %>%
+  group_by(year_month) %>%
+  nest() %>%
+  ungroup() %>%  # Important to prevent errors with grouped data
+  mutate(file_path = paste0(base_path, year_month, ".csv"))
+
+# Write each nested data frame to the specified file path
+walk2(
+  .x = data_nested$data, 
+  .y = data_nested$file_path, 
+  ~ {
+    # Ensure the nested data frame has columns as character if needed
+    .x[] <- lapply(.x, as.character)  # Convert all columns to character, if needed
+    
+    # Write to CSV without adding the units row
+    write.csv(.x, .y, row.names = FALSE)
+  }
+)
+
+```
